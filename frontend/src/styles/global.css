@@ -801,6 +801,8 @@ body {
     align-items: center;
     gap: 12px;
     margin-bottom: 6px;
+    overflow: visible;
+    padding-bottom: 4px;
 }
 
 .greeting-sun {
@@ -816,7 +818,10 @@ body {
     -webkit-text-fill-color: transparent;
     background-clip: text;
     letter-spacing: -2px;
-    line-height: 1;
+    line-height: 1.2;
+    padding-bottom: 6px;
+    padding-right: 4px;
+    display: inline-block;
 }
 
 .dark .greeting-text {
@@ -893,4 +898,88 @@ body {
 
 .status-option.active {
     background: var(--accent-light);
+}
+
+/* Search bar */
+.search-bar-wrap {
+    margin-bottom: 4px;
+}
+
+.search-input {
+    width: 100%;
+    max-width: 400px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text-primary);
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.15s;
+}
+
+.search-input:focus {
+    border-color: var(--accent);
+}
+
+.search-input::placeholder {
+    color: var(--text-muted);
+}
+
+/* Meetings layout */
+.meetings-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 16px;
+}
+
+.meetings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.meeting-list-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.meeting-list-item:hover {
+    border-color: var(--border-hover);
+}
+
+.meeting-list-item.active {
+    border-color: var(--accent);
+    background: var(--accent-light);
+}
+
+.mli-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.mli-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.meeting-list-item.active .mli-title {
+    color: var(--accent-text);
+}
+
+.mli-date {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.meeting-detail {
+    flex: 1;
 }
