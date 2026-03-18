@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import API from '../config';
 
 const STATUSES = [
     { key: 'pending', label: 'Pending', cls: 'pill-amber' },
@@ -62,7 +63,7 @@ export default function CommitmentRow({ commitment, index, onUpdate }) {
         setSaving(true);
         setLocalStatus(newStatus);
         try {
-            await axios.patch(`http://localhost:5001/commitments/${commitment.id}`, {
+            await axios.patch(`${API}/commitments/${commitment.id}`, {
                 status: newStatus
             });
             onUpdate && onUpdate();

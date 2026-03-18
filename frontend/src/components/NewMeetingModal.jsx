@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import API from '../config';
 
 export default function NewMeetingModal({ isOpen, onClose, onSuccess }) {
     const [title, setTitle] = useState('');
@@ -36,7 +37,7 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess }) {
         }, 800);
 
         try {
-            await axios.post('http://localhost:5001/extract', {
+            await axios.post(`${API}/extract`, {
                 transcript,
                 meetingTitle: title || 'Untitled Meeting',
                 ownerEmail: email || 'unknown@email.com',

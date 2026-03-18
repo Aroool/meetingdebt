@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import CommitmentRow from '../components/CommitmentRow';
+import API from '../config';
 
 export default function Meetings() {
     const [meetings, setMeetings] = useState([]);
@@ -12,8 +13,8 @@ export default function Meetings() {
     const fetchData = useCallback(async () => {
         try {
             const [mm, cm] = await Promise.all([
-                axios.get('http://localhost:5001/meetings'),
-                axios.get('http://localhost:5001/commitments'),
+                axios.get(`${API}/meetings`),
+                axios.get(`${API}/commitments`),
             ]);
             setMeetings(mm.data);
             setCommitments(cm.data);

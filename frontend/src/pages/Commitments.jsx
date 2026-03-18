@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import CommitmentRow from '../components/CommitmentRow';
+import API from '../config';
 
 const FILTERS = ['All', 'Overdue', 'Pending', 'Done', 'Blocked'];
 
@@ -24,7 +25,7 @@ export default function Commitments() {
 
     const fetchData = useCallback(async () => {
         try {
-            const res = await axios.get('http://localhost:5001/commitments');
+            const res = await axios.get(`${API}/commitments`);
             setCommitments(res.data);
         } catch (err) {
             console.error(err);

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import API from '../config';
 import StatCard from '../components/StatCard';
 import CommitmentRow from '../components/CommitmentRow';
 import MeetingCard from '../components/MeetingCard';
@@ -36,8 +37,8 @@ export default function Dashboard() {
     const fetchData = useCallback(async () => {
         try {
             const [cm, mm] = await Promise.all([
-                axios.get('http://localhost:5001/commitments'),
-                axios.get('http://localhost:5001/meetings'),
+                axios.get(`${API}/commitments`),
+                axios.get(`${API}/meetings`),
             ]);
             setCommitments(cm.data);
             setMeetings(mm.data);
