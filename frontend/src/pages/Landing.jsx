@@ -1,6 +1,8 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
+import { supabase } from '../supabase';
+
 
 function AnimatedLogo() {
     return (
@@ -63,6 +65,11 @@ function FadeInSection({ children, delay = 0 }) {
 
 export default function Landing() {
     const navigate = useNavigate();
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) navigate('/dashboard');
+        });
+    }, [navigate]);
 
     return (
         <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, Inter, sans-serif', background: '#fff', color: '#0f172a' }}>
