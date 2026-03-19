@@ -11,6 +11,7 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess }) {
     const [loading, setLoading] = useState(false);
     const [processingText, setProcessingText] = useState('');
     const [error, setError] = useState('');
+    const workspaceId = localStorage.getItem('workspaceId');
 
     const processingSteps = [
         'Reading transcript...',
@@ -45,6 +46,7 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess }) {
                 meetingTitle: title || 'Untitled Meeting',
                 ownerEmail: email || session?.user?.email || 'unknown@email.com',
                 userId,
+                workspaceId,
             });
             clearInterval(interval);
             setLoading(false);

@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '../supabase';
-import '../styles/global.css';
 
 export default function Navbar() {
     const [dark, setDark] = useState(false);
     const [user, setUser] = useState(null);
     const location = useLocation();
     const navigate = useNavigate();
+    const role = localStorage.getItem('userRole') || 'solo';
+    const isSolo = localStorage.getItem('soloMode') === 'true';
 
     useEffect(() => {
         document.body.classList.toggle('dark', dark);
@@ -26,6 +27,7 @@ export default function Navbar() {
 
     async function handleLogout() {
         await supabase.auth.signOut();
+        localStorage.clear();
         navigate('/login');
     }
 
@@ -40,17 +42,39 @@ export default function Navbar() {
             </Link>
 
             <div className="navbar-links">
-                <Link to="/dashboard" className={`nav-link ${location.pathname === '/dashboard' ? 'active' : ''}`}>
+                <Link to="/dashboard"
+                    className={`nav-link ${location.pathname === '/dashboard' ? 'active' : ''}`}>
                     Dashboard
                 </Link>
+
+                {/* Commitments — solo and manager see all, member sees "My Tasks" */}
                 <Link to="/commitments"
                     className={`nav-link ${location.pathname === '/commitments' ? 'active' : ''}`}>
-                    Commitments
+                    {role === 'member' ? 'My Tasks' : 'Commitments'}
                 </Link>
+
                 <Link to="/meetings"
                     className={`nav-link ${location.pathname === '/meetings' ? 'active' : ''}`}>
                     Meetings
                 </Link>
+
+                {/* Team tab — only for managers */}
+                {role === 'manager' && (
+                    <Link to="/workspace"
+                        className={`nav-link ${location.pathname === '/workspace' ? 'active' : ''}`}>
+                        Team
+                    </Link>
+                )}
+
+                {/* Upgrade to team — only for solo users */}
+                {isSolo && (
+                    <Link to="/workspace"
+                        className={`nav-link ${location.pathname === '/workspace' ? 'active' : ''}`}
+                        style={{ color: 'var(--accent)', fontWeight: 600 }}
+                    >
+                        ⬆ Upgrade to team
+                    </Link>
+                )}
             </div>
 
             <div className="navbar-right">

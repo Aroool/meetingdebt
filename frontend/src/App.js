@@ -4,9 +4,14 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
 import Commitments from './pages/Commitments';
 import Meetings from './pages/Meetings';
+import Workspace from './pages/Workspace';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Landing from './pages/Landing';
+import CreateWorkspace from './pages/CreateWorkspace';
+import AcceptInvite from './pages/AcceptInvite';
+import JoinOrCreate from './pages/JoinOrCreate';
+import EnterInvite from './pages/EnterInvite';
 
 function App() {
   return (
@@ -15,6 +20,18 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/invite/:token" element={<AcceptInvite />} />
+        <Route path="/create-workspace" element={
+          <ProtectedRoute>
+            <CreateWorkspace />
+          </ProtectedRoute>
+        } />
+        <Route path="/workspace" element={
+          <ProtectedRoute>
+            <Navbar />
+            <Workspace />
+          </ProtectedRoute>
+        } />
         <Route path="/dashboard" element={
           <ProtectedRoute>
             <Navbar />
@@ -31,6 +48,16 @@ function App() {
           <ProtectedRoute>
             <Navbar />
             <Meetings />
+          </ProtectedRoute>
+        } />
+        <Route path="/join-or-create" element={
+          <ProtectedRoute>
+            <JoinOrCreate />
+          </ProtectedRoute>
+        } />
+        <Route path="/enter-invite" element={
+          <ProtectedRoute>
+            <EnterInvite />
           </ProtectedRoute>
         } />
       </Routes>

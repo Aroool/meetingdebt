@@ -49,11 +49,25 @@ export default function Dashboard() {
         try {
             const { data: { session } } = await supabase.auth.getSession();
             const userId = session?.user?.id;
-            if (!userId) return;
+            const workspaceId = localStorage.getItem('workspaceId');
+            const role = localStorage.getItem('userRole') || 'solo';
+
+            let commitmentsUrl = `${API}/commitments?userId=${userId}`;
+            let meetingsUrl = `${API}/meetings?userId=${userId}`;
+
+            // Manager sees ALL workspace data
+            // Member sees only their own commitments but all meetings
+            if (workspaceId && role === 'manager') {
+                commitmentsUrl = `${API}/commitments?workspaceId=${workspaceId}`;
+                meetingsUrl = `${API}/meetings?workspaceId=${workspaceId}`;
+            } else if (workspaceId && role === 'member') {
+                commitmentsUrl = `${API}/commitments?workspaceId=${workspaceId}&userId=${userId}`;
+                meetingsUrl = `${API}/meetings?workspaceId=${workspaceId}`;
+            }
 
             const [cm, mm] = await Promise.all([
-                axios.get(`${API}/commitments?userId=${userId}`),
-                axios.get(`${API}/meetings?userId=${userId}`),
+                axios.get(commitmentsUrl),
+                axios.get(meetingsUrl),
             ]);
             setCommitments(cm.data);
             setMeetings(mm.data);
@@ -262,17 +276,19 @@ export default function Dashboard() {
                 </Panel>
             </PanelGroup>
 
-            <motion.button
-                className="fab"
-                onClick={() => setModalOpen(true)}
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.95 }}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.5, type: 'spring', stiffness: 200 }}
-            >
-                +
-            </motion.button>
+            {localStorage.getItem('userRole') !== 'member' && (
+                <motion.button
+                    className="fab"
+                    onClick={() => setModalOpen(true)}
+                    whileHover={{ scale: 1.08 }}
+                    whileTap={{ scale: 0.95 }}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.5, type: 'spring', stiffness: 200 }}
+                >
+                    +
+                </motion.button>
+            )}
 
             <NewMeetingModal
                 isOpen={modalOpen}
