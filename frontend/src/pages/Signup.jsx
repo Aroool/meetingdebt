@@ -28,7 +28,7 @@ export default function Signup() {
             setLoading(false);
         } else {
             setSuccess(true);
-            setTimeout(() => navigate('/'), 2000);
+            setTimeout(() => navigate('/dashboard'), 2000);
         }
     }
 

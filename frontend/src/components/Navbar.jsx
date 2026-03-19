@@ -34,14 +34,13 @@ export default function Navbar() {
 
     return (
         <nav className="navbar">
-            <Link to="/" className="navbar-logo">
+            <Link to="/dashboard" className="navbar-logo">
                 <div className="logo-dot" />
                 Meeting<span className="logo-debt">Debt</span>
             </Link>
 
             <div className="navbar-links">
-                <Link to="/"
-                    className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}>
+                <Link to="/dashboard" className={`nav-link ${location.pathname === '/dashboard' ? 'active' : ''}`}>
                     Dashboard
                 </Link>
                 <Link to="/commitments"
