@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '../supabase';
+import LogoTransition from '../components/LogoTransition';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const navigate = useNavigate();
+    const [showTransition, setShowTransition] = useState(false);
 
     async function handleLogin(e) {
         e.preventDefault();
@@ -19,15 +21,22 @@ export default function Login() {
             setError(error.message);
             setLoading(false);
         } else {
-            navigate('/dashboard');
+            setShowTransition(true);
         }
     }
 
     async function handleGoogle() {
+        sessionStorage.setItem('showTransition', 'true');
         await supabase.auth.signInWithOAuth({
             provider: 'google',
-            options: { redirectTo: window.location.origin }
+            options: { redirectTo: window.location.origin + '/dashboard' }
         });
+    }
+
+    if (showTransition) {
+        return (
+            <LogoTransition onComplete={() => navigate('/dashboard')} />
+        );
     }
 
     return (

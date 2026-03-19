@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import { supabase } from '../supabase';
@@ -65,11 +65,19 @@ function FadeInSection({ children, delay = 0 }) {
 
 export default function Landing() {
     const navigate = useNavigate();
+    const [checking, setChecking] = useState(true);
+
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session) navigate('/dashboard');
+            if (session) {
+                navigate('/dashboard');
+            } else {
+                setChecking(false);
+            }
         });
     }, [navigate]);
+
+    if (checking) return null;
 
     return (
         <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, Inter, sans-serif', background: '#fff', color: '#0f172a' }}>

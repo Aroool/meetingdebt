@@ -8,6 +8,7 @@ import MeetingCard from '../components/MeetingCard';
 import NewMeetingModal from '../components/NewMeetingModal';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import { supabase } from '../supabase';
+import LogoTransition from '../components/LogoTransition';
 
 const FILTERS = ['All', 'Overdue', 'Pending', 'Done'];
 
@@ -34,6 +35,15 @@ export default function Dashboard() {
     const [filter, setFilter] = useState('All');
     const [modalOpen, setModalOpen] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [showTransition, setShowTransition] = useState(false);
+
+    useEffect(() => {
+        const shouldShow = sessionStorage.getItem('showTransition');
+        if (shouldShow) {
+            sessionStorage.removeItem('showTransition');
+            setShowTransition(true);
+        }
+    }, []);
 
     const fetchData = useCallback(async () => {
         try {
@@ -93,6 +103,9 @@ export default function Dashboard() {
     function getInitials(name) {
         if (!name) return '??';
         return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    }
+    if (showTransition) {
+        return <LogoTransition onComplete={() => setShowTransition(false)} />;
     }
 
     return (

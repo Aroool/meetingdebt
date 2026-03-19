@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '../supabase';
+import LogoTransition from '../components/LogoTransition';
 
 export default function Signup() {
     const [name, setName] = useState('');
@@ -9,7 +10,7 @@ export default function Signup() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [success, setSuccess] = useState(false);
+    const [showTransition, setShowTransition] = useState(false);
     const navigate = useNavigate();
 
     async function handleSignup(e) {
@@ -27,33 +28,20 @@ export default function Signup() {
             setError(error.message);
             setLoading(false);
         } else {
-            setSuccess(true);
-            setTimeout(() => navigate('/dashboard'), 2000);
+            setShowTransition(true);
         }
     }
 
     async function handleGoogle() {
+        sessionStorage.setItem('showTransition', 'true');
         await supabase.auth.signInWithOAuth({
             provider: 'google',
-            options: { redirectTo: window.location.origin }
+            options: { redirectTo: window.location.origin + '/dashboard' }
         });
     }
 
-    if (success) {
-        return (
-            <div className="auth-page">
-                <motion.div
-                    className="auth-card"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    style={{ textAlign: 'center' }}
-                >
-                    <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
-                    <div className="auth-title">Account created!</div>
-                    <div className="auth-sub">Taking you to your dashboard...</div>
-                </motion.div>
-            </div>
-        );
+    if (showTransition) {
+        return <LogoTransition onComplete={() => navigate('/dashboard')} />;
     }
 
     return (
