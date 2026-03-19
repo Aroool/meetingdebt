@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import API from '../config';
+import { supabase } from '../supabase';
 
 export default function NewMeetingModal({ isOpen, onClose, onSuccess }) {
     const [title, setTitle] = useState('');
@@ -37,10 +38,13 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess }) {
         }, 800);
 
         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const userId = session?.user?.id;
             await axios.post(`${API}/extract`, {
                 transcript,
                 meetingTitle: title || 'Untitled Meeting',
-                ownerEmail: email || 'unknown@email.com',
+                ownerEmail: email || session?.user?.email || 'unknown@email.com',
+                userId,
             });
             clearInterval(interval);
             setLoading(false);

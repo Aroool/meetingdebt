@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import CommitmentRow from '../components/CommitmentRow';
 import API from '../config';
+import { supabase } from '../supabase';
 
 export default function Meetings() {
     const [meetings, setMeetings] = useState([]);
@@ -12,9 +13,11 @@ export default function Meetings() {
 
     const fetchData = useCallback(async () => {
         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const userId = session?.user?.id;
             const [mm, cm] = await Promise.all([
-                axios.get(`${API}/meetings`),
-                axios.get(`${API}/commitments`),
+                axios.get(`${API}/meetings?userId=${userId}`),
+                axios.get(`${API}/commitments?userId=${userId}`),
             ]);
             setMeetings(mm.data);
             setCommitments(cm.data);

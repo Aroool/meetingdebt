@@ -7,6 +7,7 @@ import CommitmentRow from '../components/CommitmentRow';
 import MeetingCard from '../components/MeetingCard';
 import NewMeetingModal from '../components/NewMeetingModal';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
+import { supabase } from '../supabase';
 
 const FILTERS = ['All', 'Overdue', 'Pending', 'Done'];
 
@@ -36,9 +37,13 @@ export default function Dashboard() {
 
     const fetchData = useCallback(async () => {
         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const userId = session?.user?.id;
+            if (!userId) return;
+
             const [cm, mm] = await Promise.all([
-                axios.get(`${API}/commitments`),
-                axios.get(`${API}/meetings`),
+                axios.get(`${API}/commitments?userId=${userId}`),
+                axios.get(`${API}/meetings?userId=${userId}`),
             ]);
             setCommitments(cm.data);
             setMeetings(mm.data);

@@ -21,7 +21,7 @@ app.get('/', (req, res) => {
 // Main route — paste transcript, get commitments back
 app.post('/extract', async (req, res) => {
     try {
-        const { transcript, meetingTitle, ownerEmail } = req.body;
+        const { transcript, meetingTitle, ownerEmail, userId } = req.body;
 
         if (!transcript) {
             return res.status(400).json({ error: 'Transcript is required' });
@@ -68,7 +68,8 @@ ${transcript}`
             .from('meetings')
             .insert({
                 title: meetingTitle || 'Untitled Meeting',
-                owner_email: ownerEmail || 'unknown@email.com'
+                owner_email: ownerEmail || 'unknown@email.com',
+                user_id: userId || null
             })
             .select()
             .single();
@@ -82,7 +83,8 @@ ${transcript}`
             owner: c.owner,
             deadline: c.deadline,
             type: c.type,
-            status: 'pending'
+            status: 'pending',
+            user_id: userId || null
         }));
 
         const { data: commitments, error: commitError } = await supabase
@@ -108,11 +110,10 @@ ${transcript}`
 // Get all meetings
 app.get('/meetings', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('meetings')
-            .select('*')
-            .order('created_at', { ascending: false });
-
+        const { userId } = req.query;
+        let query = supabase.from('meetings').select('*').order('created_at', { ascending: false });
+        if (userId) query = query.eq('user_id', userId);
+        const { data, error } = await query;
         if (error) throw error;
         res.json(data);
     } catch (error) {
@@ -139,11 +140,10 @@ app.get('/commitments/:meetingId', async (req, res) => {
 // Get all commitments
 app.get('/commitments', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('commitments')
-            .select('*')
-            .order('created_at', { ascending: false });
-
+        const { userId } = req.query;
+        let query = supabase.from('commitments').select('*').order('created_at', { ascending: false });
+        if (userId) query = query.eq('user_id', userId);
+        const { data, error } = await query;
         if (error) throw error;
         res.json(data);
     } catch (error) {

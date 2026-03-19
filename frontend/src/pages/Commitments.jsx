@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import axios from 'axios';
 import CommitmentRow from '../components/CommitmentRow';
 import API from '../config';
+import { supabase } from '../supabase';
 
 const FILTERS = ['All', 'Overdue', 'Pending', 'Done', 'Blocked'];
 
@@ -25,7 +26,9 @@ export default function Commitments() {
 
     const fetchData = useCallback(async () => {
         try {
-            const res = await axios.get(`${API}/commitments`);
+            const { data: { session } } = await supabase.auth.getSession();
+            const userId = session?.user?.id;
+            const res = await axios.get(`${API}/commitments?userId=${userId}`);
             setCommitments(res.data);
         } catch (err) {
             console.error(err);
