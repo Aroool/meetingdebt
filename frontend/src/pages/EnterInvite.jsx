@@ -20,7 +20,7 @@ export default function EnterInvite() {
 
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            const { data } = await axios.post(`${API}/workspaces/join-by-code`, {
+            await axios.post(`${API}/workspaces/join-by-code`, {
                 code: code.trim().toUpperCase(),
                 userId: session?.user?.id,
                 userEmail: session?.user?.email,

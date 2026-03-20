@@ -14,19 +14,17 @@ export default function JoinOrCreate() {
             const userEmail = session?.user?.email;
             const name = session?.user?.user_metadata?.full_name || userEmail?.split('@')[0] || 'My';
 
-            const { data } = await axios.post(`${API}/workspaces`, {
+            await axios.post(`${API}/workspaces`, {
                 name: `${name}'s Workspace`,
                 userId,
                 userEmail
             });
 
-            async function handleSolo() {
-                localStorage.setItem('userRole', 'solo');
-                localStorage.setItem('soloMode', 'true');
-                localStorage.removeItem('workspaceId');
-                localStorage.removeItem('workspaceName');
-                navigate('/dashboard');
-            }
+            localStorage.setItem('userRole', 'solo');
+            localStorage.setItem('soloMode', 'true');
+            localStorage.removeItem('workspaceId');
+            localStorage.removeItem('workspaceName');
+            navigate('/dashboard');
         } catch (err) {
             console.error(err);
         }
