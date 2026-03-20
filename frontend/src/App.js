@@ -12,6 +12,7 @@ import CreateWorkspace from './pages/CreateWorkspace';
 import AcceptInvite from './pages/AcceptInvite';
 import JoinOrCreate from './pages/JoinOrCreate';
 import EnterInvite from './pages/EnterInvite';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -58,6 +59,12 @@ function App() {
         <Route path="/enter-invite" element={
           <ProtectedRoute>
             <EnterInvite />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <Navbar />
+            <Profile />
           </ProtectedRoute>
         } />
       </Routes>
