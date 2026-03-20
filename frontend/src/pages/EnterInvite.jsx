@@ -27,11 +27,7 @@ export default function EnterInvite() {
                 userName: session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0]
             });
 
-            localStorage.setItem('workspaceId', data.workspace.id);
-            localStorage.setItem('workspaceName', data.workspace.name);
-            localStorage.setItem('userRole', 'member');
-            localStorage.removeItem('soloMode');
-            navigate('/dashboard');
+            navigate('/workspace');
         } catch (err) {
             setError(err.response?.data?.error || 'Invalid code. Check with your manager.');
             setLoading(false);
