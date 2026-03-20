@@ -23,7 +23,8 @@ export default function EnterInvite() {
             const { data } = await axios.post(`${API}/workspaces/join-by-code`, {
                 code: code.trim().toUpperCase(),
                 userId: session?.user?.id,
-                userEmail: session?.user?.email
+                userEmail: session?.user?.email,
+                userName: session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0]
             });
 
             localStorage.setItem('workspaceId', data.workspace.id);

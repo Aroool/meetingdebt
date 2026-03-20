@@ -1,24 +1,33 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../supabase';
 import LogoTransition from './LogoTransition';
 import axios from 'axios';
 import API from '../config';
+
+// These pages handle their own logic — don't redirect from them
+const SKIP_WORKSPACE_CHECK = [
+    '/join-or-create',
+    '/create-workspace',
+    '/enter-invite',
+    '/invite',
+    '/login',
+    '/signup',
+    '/profile',
+];
 
 export default function ProtectedRoute({ children }) {
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState(null);
     const [showTransition, setShowTransition] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
 
     useEffect(() => {
+        const currentPath = location.pathname;
+        const shouldSkip = SKIP_WORKSPACE_CHECK.some(p => currentPath.startsWith(p));
+
         supabase.auth.getSession().then(async ({ data: { session } }) => {
-            const currentPath = window.location.pathname;
-            const skipPaths = ['/join-or-create', '/create-workspace', '/enter-invite', '/invite'];
-            if (skipPaths.some(p => currentPath.startsWith(p))) {
-                setLoading(false);
-                return;
-            }
             if (!session) {
                 navigate('/login');
                 setLoading(false);
@@ -27,8 +36,22 @@ export default function ProtectedRoute({ children }) {
 
             setUser(session.user);
 
+            // Don't do workspace check on setup pages
+            if (shouldSkip) {
+                setLoading(false);
+                return;
+            }
+
             // Check if user has a workspace
             const workspaceId = localStorage.getItem('workspaceId');
+            const soloMode = localStorage.getItem('soloMode');
+
+            // Solo users don't need a workspace
+            if (soloMode === 'true') {
+                setLoading(false);
+                return;
+            }
+
             if (!workspaceId) {
                 try {
                     const { data } = await axios.get(`${API}/workspaces?userId=${session.user.id}`);
@@ -65,7 +88,7 @@ export default function ProtectedRoute({ children }) {
         );
 
         return () => subscription.unsubscribe();
-    }, [navigate]);
+    }, [navigate, location.pathname]);
 
     if (loading) return null;
 

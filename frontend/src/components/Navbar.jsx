@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
 
+
 export default function Navbar() {
     const [dark, setDark] = useState(false);
     const [user, setUser] = useState(null);
@@ -13,6 +14,7 @@ export default function Navbar() {
     const role = localStorage.getItem('userRole') || 'solo';
     const isSolo = localStorage.getItem('soloMode') === 'true';
     const workspaceName = localStorage.getItem('workspaceName') || '';
+
 
     useEffect(() => {
         document.body.classList.toggle('dark', dark);
@@ -140,7 +142,7 @@ export default function Navbar() {
                                     </div>
                                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{email}</div>
                                     {workspaceName && (
-                                        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <div style={{ marginTop: 6 }}>
                                             <span style={{
                                                 fontSize: 10, fontWeight: 700, padding: '2px 8px',
                                                 borderRadius: 20,
@@ -149,7 +151,12 @@ export default function Navbar() {
                                             }}>
                                                 {role}
                                             </span>
-                                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{workspaceName}</span>
+                                            <div style={{
+                                                fontSize: 11, color: 'var(--text-muted)', marginTop: 3,
+                                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180
+                                            }}>
+                                                {workspaceName}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -177,6 +184,46 @@ export default function Navbar() {
                                         {item.label}
                                     </div>
                                 ))}
+                                {/* Workspace switcher — only show if multiple workspaces
+                                {workspaces.length > 1 && (
+                                    <>
+                                        <div style={{ height: 1, background: 'var(--border)', margin: '6px 0' }} />
+                                        <div style={{ padding: '4px 10px 4px', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            Switch workspace
+                                        </div>
+                                        {workspaces.map(ws => {
+                                            const isActive = localStorage.getItem('workspaceId') === ws.id;
+                                            return (
+                                                <div
+                                                    key={ws.id}
+                                                    onClick={() => {
+                                                        if (!isActive) {
+                                                            localStorage.setItem('workspaceId', ws.id);
+                                                            localStorage.setItem('workspaceName', ws.name);
+                                                            localStorage.setItem('userRole', ws.role);
+                                                            localStorage.removeItem('soloMode');
+                                                            setDropdownOpen(false);
+                                                            window.location.href = '/dashboard';
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                        padding: '7px 10px', borderRadius: 8,
+                                                        cursor: isActive ? 'default' : 'pointer',
+                                                        background: isActive ? 'var(--accent-light)' : 'transparent',
+                                                        fontSize: 13, color: isActive ? 'var(--accent-text)' : 'var(--text-primary)',
+                                                        transition: 'background 0.1s',
+                                                    }}
+                                                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--bg)'; }}
+                                                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                                                >
+                                                    <span>{ws.name}</span>
+                                                    {isActive && <span style={{ fontSize: 10, fontWeight: 700 }}>active</span>}
+                                                </div>
+                                            );
+                                        })}
+                                    </>
+                                )} */}
 
                                 {/* Divider */}
                                 <div style={{ height: 1, background: 'var(--border)', margin: '6px 0' }} />

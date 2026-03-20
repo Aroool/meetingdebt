@@ -20,11 +20,13 @@ export default function JoinOrCreate() {
                 userEmail
             });
 
-            localStorage.setItem('workspaceId', data.workspace.id);
-            localStorage.setItem('workspaceName', data.workspace.name);
-            localStorage.setItem('userRole', 'manager');
-            localStorage.setItem('soloMode', 'true');
-            navigate('/dashboard');
+            async function handleSolo() {
+                localStorage.setItem('userRole', 'solo');
+                localStorage.setItem('soloMode', 'true');
+                localStorage.removeItem('workspaceId');
+                localStorage.removeItem('workspaceName');
+                navigate('/dashboard');
+            }
         } catch (err) {
             console.error(err);
         }

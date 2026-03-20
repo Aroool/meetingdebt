@@ -1,247 +1,464 @@
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
 import axios from 'axios';
 import API from '../config';
-import { useNavigate } from 'react-router-dom';
 
-export default function Workspace() {
-    const [workspace, setWorkspace] = useState(null);
+function RightPanel({ ws, isActive, onSwitch }) {
     const [members, setMembers] = useState([]);
-    const [inviteEmail, setInviteEmail] = useState('');
     const [loading, setLoading] = useState(true);
+    const [expandedMember, setExpandedMember] = useState(null);
+    const [inviteEmail, setInviteEmail] = useState('');
     const [inviting, setInviting] = useState(false);
     const [inviteSuccess, setInviteSuccess] = useState(false);
-    const [error, setError] = useState('');
-    const [role, setRole] = useState('member');
-    const navigate = useNavigate();
 
-    const workspaceId = localStorage.getItem('workspaceId');
-    const workspaceName = localStorage.getItem('workspaceName');
-
-    const fetchData = useCallback(async () => {
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const userId = session?.user?.id;
-
-            const [membersRes, roleRes, workspaceRes] = await Promise.all([
-                axios.get(`${API}/workspaces/${workspaceId}/members`),
-                axios.get(`${API}/workspaces/${workspaceId}/role?userId=${userId}`),
-                axios.get(`${API}/workspaces/${workspaceId}`)
-            ]);
-
-            setMembers(membersRes.data);
-            setRole(roleRes.data.role);
-            setWorkspace(workspaceRes.data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    }, [workspaceId]);
-
-    useEffect(() => { fetchData(); }, [fetchData]);
+    useEffect(() => {
+        setLoading(true);
+        setExpandedMember(null);
+        axios.get(`${API}/workspaces/${ws.id}/members`)
+            .then(res => { setMembers(res.data); setLoading(false); })
+            .catch(() => setLoading(false));
+    }, [ws.id]);
 
     async function handleInvite(e) {
         e.preventDefault();
         setInviting(true);
-        setError('');
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            await axios.post(`${API}/workspaces/${workspaceId}/invite`, {
+            await axios.post(`${API}/workspaces/${ws.id}/invite`, {
                 email: inviteEmail,
                 invitedBy: session?.user?.id,
-                workspaceName
+                workspaceName: ws.name
             });
             setInviteEmail('');
             setInviteSuccess(true);
             setTimeout(() => setInviteSuccess(false), 3000);
         } catch (err) {
-            setError('Failed to send invite. Try again.');
+            console.error(err);
         } finally {
             setInviting(false);
         }
     }
 
-    const avatarColors = ['av-blue', 'av-purple', 'av-amber', 'av-rose', 'av-teal'];
-    function getAvatarColor(email) {
-        return avatarColors[(email?.charCodeAt(0) || 0) % avatarColors.length];
+    const avatarColors = [
+        { bg: '#dbeafe', color: '#1d4ed8' },
+        { bg: '#ede9fe', color: '#7c3aed' },
+        { bg: '#fef3c7', color: '#92400e' },
+        { bg: '#ffe4e6', color: '#be123c' },
+        { bg: '#ccfbf1', color: '#0f766e' },
+    ];
+
+    return (
+        <motion.div
+            key={ws.id}
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{
+                background: 'var(--bg-card)',
+                border: '0.5px solid var(--border)',
+                borderRadius: 14, overflow: 'hidden',
+                display: 'flex', flexDirection: 'column',
+                height: '100%',
+            }}
+        >
+            {/* Header */}
+            <div style={{
+                padding: '14px 20px', borderBottom: '0.5px solid var(--border)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                flexShrink: 0,
+            }}>
+                <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+                        {ws.name}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{
+                            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+                            background: ws.role === 'manager' ? 'var(--accent-light)' : 'var(--blue-light)',
+                            color: ws.role === 'manager' ? 'var(--accent-text)' : 'var(--blue)'
+                        }}>
+                            {ws.role}
+                        </span>
+                        {isActive && (
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Active workspace</span>
+                        )}
+                    </div>
+                </div>
+                {!isActive && (
+                    <motion.button
+                        whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                        onClick={() => onSwitch(ws)}
+                        style={{
+                            fontSize: 13, padding: '8px 18px', borderRadius: 8,
+                            border: 'none', background: '#16a34a', color: '#fff',
+                            cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit'
+                        }}
+                    >
+                        Switch to this →
+                    </motion.button>
+                )}
+            </div>
+
+            {/* Stats row */}
+            <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(5,1fr)',
+                borderBottom: '0.5px solid var(--border)', flexShrink: 0,
+            }}>
+                {[
+                    { label: 'Members', value: ws.stats?.members || 0, color: 'var(--text-primary)' },
+                    { label: 'Total', value: ws.stats?.total || 0, color: 'var(--text-primary)' },
+                    { label: 'Pending', value: ws.stats?.pending || 0, color: 'var(--amber)' },
+                    { label: 'Overdue', value: ws.stats?.overdue || 0, color: 'var(--red)' },
+                    { label: 'Done', value: ws.stats?.done || 0, color: 'var(--accent)' },
+                ].map((s, i) => (
+                    <div key={s.label} style={{
+                        padding: '10px 0', textAlign: 'center',
+                        borderRight: i < 4 ? '0.5px solid var(--border)' : 'none',
+                        background: isActive ? 'var(--accent-light)' : 'var(--bg)',
+                    }}>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: s.color, letterSpacing: -0.5, lineHeight: 1, marginBottom: 3 }}>
+                            {s.value}
+                        </div>
+                        <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {s.label}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Members list */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 20px' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+                    Team members
+                </div>
+
+                {loading ? (
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading...</div>
+                ) : members.map((m, i) => {
+                    const av = avatarColors[i % avatarColors.length];
+                    const isOpen = expandedMember === m.id;
+                    return (
+                        <div key={m.id}>
+                            <div
+                                onClick={() => setExpandedMember(isOpen ? null : m.id)}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 10,
+                                    padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
+                                    background: isOpen ? 'var(--bg)' : 'transparent',
+                                    transition: 'background 0.1s', marginBottom: 2,
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+                                onMouseLeave={e => { if (!isOpen) e.currentTarget.style.background = 'transparent'; }}
+                            >
+                                <div style={{
+                                    width: 30, height: 30, borderRadius: '50%',
+                                    background: av.bg, color: av.color,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: 11, fontWeight: 800, flexShrink: 0
+                                }}>
+                                    {m.email?.charAt(0).toUpperCase()}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {m.email}
+                                    </div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                        Joined {new Date(m.joined_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    </div>
+                                </div>
+                                <span style={{
+                                    fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, flexShrink: 0,
+                                    background: m.role === 'manager' ? 'var(--accent-light)' : 'var(--blue-light)',
+                                    color: m.role === 'manager' ? 'var(--accent-text)' : 'var(--blue)'
+                                }}>
+                                    {m.role}
+                                </span>
+                                <motion.span
+                                    animate={{ rotate: isOpen ? 90 : 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    style={{ fontSize: 14, color: 'var(--text-muted)', flexShrink: 0, display: 'inline-block' }}
+                                >
+                                    ›
+                                </motion.span>
+                            </div>
+
+                            <AnimatePresence>
+                                {isOpen && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        style={{ overflow: 'hidden' }}
+                                    >
+                                        <div style={{
+                                            background: 'var(--bg)', borderRadius: 8,
+                                            padding: '10px 14px', margin: '3px 0 6px 40px',
+                                            border: '0.5px solid var(--border)'
+                                        }}>
+                                            {[
+                                                ['Email', m.email],
+                                                ['Role', m.role],
+                                                ['Joined', new Date(m.joined_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })],
+                                            ].map(([label, value]) => (
+                                                <div key={label} style={{
+                                                    display: 'flex', justifyContent: 'space-between',
+                                                    padding: '4px 0', borderBottom: '0.5px solid var(--border)', fontSize: 12
+                                                }}>
+                                                    <span style={{ color: 'var(--text-muted)' }}>{label}</span>
+                                                    <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{value}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Footer — invite + code — manager only */}
+            {ws.role === 'manager' && (
+                <div style={{
+                    borderTop: '0.5px solid var(--border)', padding: '12px 20px',
+                    display: 'grid', gridTemplateColumns: '1fr auto', gap: 16,
+                    alignItems: 'start', flexShrink: 0, background: 'var(--bg-card)'
+                }}>
+                    <div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                            Invite member
+                        </div>
+                        <form onSubmit={handleInvite} style={{ display: 'flex', gap: 8 }}>
+                            <input
+                                className="field-input"
+                                type="email"
+                                placeholder="teammate@company.com"
+                                value={inviteEmail}
+                                onChange={e => setInviteEmail(e.target.value)}
+                                required
+                                style={{ marginBottom: 0, flex: 1 }}
+                            />
+                            <button className="btn-extract" type="submit" disabled={inviting}
+                                style={{ whiteSpace: 'nowrap', padding: '0 16px' }}>
+                                {inviting ? '...' : 'Send →'}
+                            </button>
+                        </form>
+                        {inviteSuccess && (
+                            <div style={{ fontSize: 12, color: 'var(--accent)', marginTop: 6 }}>✓ Invite sent!</div>
+                        )}
+                    </div>
+
+                    {ws.code && (
+                        <div>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                                Team code
+                            </div>
+                            <div style={{
+                                background: 'var(--bg)', border: '0.5px solid var(--border)',
+                                borderRadius: 8, padding: '7px 14px', textAlign: 'center', minWidth: 110
+                            }}>
+                                <div style={{ fontSize: 15, fontWeight: 900, letterSpacing: 3, color: 'var(--accent-text)', lineHeight: 1 }}>
+                                    {ws.code}
+                                </div>
+                                <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 3 }}>
+                                    Share with team
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </motion.div>
+    );
+}
+
+export default function Workspace() {
+    const [workspaces, setWorkspaces] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [selected, setSelected] = useState(null);
+    const navigate = useNavigate();
+    const activeWsId = localStorage.getItem('workspaceId');
+
+    const fetchWorkspaces = useCallback(async () => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const { data: wsData } = await axios.get(`${API}/workspaces?userId=${session.user.id}`);
+
+            const withStats = await Promise.all(wsData.map(async (ws) => {
+                try {
+                    const [membersRes, commitmentsRes] = await Promise.all([
+                        axios.get(`${API}/workspaces/${ws.id}/members`),
+                        axios.get(`${API}/commitments?workspaceId=${ws.id}`)
+                    ]);
+                    const commitments = commitmentsRes.data;
+                    const now = new Date();
+                    return {
+                        ...ws,
+                        stats: {
+                            members: membersRes.data.length,
+                            total: commitments.length,
+                            pending: commitments.filter(c => c.status === 'pending').length,
+                            overdue: commitments.filter(c => {
+                                if (c.status === 'completed') return false;
+                                if (c.deadline) { const due = new Date(c.deadline); return !isNaN(due) && due < now; }
+                                return false;
+                            }).length,
+                            done: commitments.filter(c => c.status === 'completed').length,
+                        }
+                    };
+                } catch {
+                    return { ...ws, stats: { members: 0, total: 0, pending: 0, overdue: 0, done: 0 } };
+                }
+            }));
+
+            setWorkspaces(withStats);
+            // Auto select active workspace
+            const active = withStats.find(w => w.id === activeWsId) || withStats[0];
+            if (active) setSelected(active);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }, [activeWsId]);
+
+    useEffect(() => { fetchWorkspaces(); }, [fetchWorkspaces]);
+
+    function switchWorkspace(ws) {
+        localStorage.setItem('workspaceId', ws.id);
+        localStorage.setItem('workspaceName', ws.name);
+        localStorage.setItem('userRole', ws.role);
+        localStorage.removeItem('soloMode');
+        navigate('/dashboard');
     }
 
     return (
         <div className="main">
             <motion.div
-                className="page-header"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
+                style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}
             >
-                <div className="page-title">{workspaceName || 'Workspace'}</div>
-                <div className="page-sub">{members.length} members · {role === 'manager' ? 'You are the manager' : 'You are a member'}</div>
+                <div>
+                    <div className="page-title">My Teams</div>
+                    <div className="page-sub">
+                        {workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''} · Click to view details
+                    </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <motion.button
+                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                        onClick={() => navigate('/create-workspace')}
+                        style={{
+                            fontSize: 12, padding: '7px 14px', borderRadius: 8,
+                            border: 'none', background: '#16a34a', color: '#fff',
+                            cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit'
+                        }}
+                    >
+                        + Create team
+                    </motion.button>
+                    <motion.button
+                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                        onClick={() => navigate('/enter-invite')}
+                        style={{
+                            fontSize: 12, padding: '7px 14px', borderRadius: 8,
+                            border: '1px solid var(--border)', background: 'transparent',
+                            color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 500, fontFamily: 'inherit'
+                        }}
+                    >
+                        Join another team
+                    </motion.button>
+                </div>
             </motion.div>
 
-            {localStorage.getItem('soloMode') === 'true' && (
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    style={{
-                        background: 'var(--accent-light)',
-                        border: '1px solid var(--accent)',
-                        borderRadius: 12,
-                        padding: '16px 20px',
-                        marginBottom: 20,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 16,
-                    }}
-                >
-                    <div>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent-text)', marginBottom: 3 }}>
-                            You're using MeetingDebt solo
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--accent-text)', opacity: 0.8 }}>
-                            Want to track your team's commitments? Create or join a workspace.
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                        <button
-                            onClick={() => {
-                                localStorage.removeItem('soloMode');
-                                navigate('/create-workspace');
-                            }}
-                            style={{
-                                fontSize: 12, padding: '7px 14px', borderRadius: 8,
-                                border: 'none', background: '#16a34a', color: '#fff',
-                                cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit'
-                            }}
-                        >
-                            Create team →
-                        </button>
-                        <button
-                            onClick={() => {
-                                localStorage.removeItem('soloMode');
-                                navigate('/enter-invite');
-                            }}
-                            style={{
-                                fontSize: 12, padding: '7px 14px', borderRadius: 8,
-                                border: '1px solid var(--accent)', background: 'transparent',
-                                color: 'var(--accent-text)', cursor: 'pointer', fontWeight: 600,
-                                fontFamily: 'inherit'
-                            }}
-                        >
-                            Join team
-                        </button>
-                    </div>
-                </motion.div>
-            )}
-
-            <div className="two-col" style={{ gridTemplateColumns: '1fr 320px' }}>
-                {/* Members list */}
-                <div className="card">
-                    <div className="card-header">
-                        <div className="card-title">Team members</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{members.length} total</div>
-                    </div>
-                    {loading ? (
-                        <div className="empty-state"><div className="empty-title">Loading...</div></div>
-                    ) : members.length === 0 ? (
-                        <div className="empty-state">
-                            <div className="empty-title">No members yet</div>
-                            <div className="empty-sub">Invite your team using the form</div>
-                        </div>
-                    ) : (
-                        members.map((m, i) => (
-                            <motion.div
-                                key={m.id}
-                                className="commitment-row"
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: i * 0.05 }}
-                            >
-                                <div className={`avatar ${getAvatarColor(m.email)}`}>
-                                    {m.email?.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="commit-info">
-                                    <div className="commit-task">{m.email}</div>
-                                    <div className="commit-meta">Joined {new Date(m.joined_at).toLocaleDateString()}</div>
-                                </div>
-                                <span className={`pill ${m.role === 'manager' ? 'pill-green' : 'pill-blue'}`}>
-                                    {m.role}
-                                </span>
-                            </motion.div>
-                        ))
-                    )}
+            {loading ? (
+                <div className="empty-state"><div className="empty-title">Loading...</div></div>
+            ) : workspaces.length === 0 ? (
+                <div className="empty-state" style={{ marginTop: 48 }}>
+                    <div className="empty-title">No workspaces yet</div>
+                    <div className="empty-sub">Create a team or join one with an invite code.</div>
                 </div>
-
-                {/* Invite form — only for managers */}
-                <div className="sidebar">
-                    {role === 'manager' && (
-                        <div className="sidebar-card">
-                            <div className="sidebar-head">Invite team member</div>
-                            <div style={{ padding: '14px 16px' }}>
-                                <form onSubmit={handleInvite}>
-                                    <label className="field-label">Email address</label>
-                                    <input
-                                        className="field-input"
-                                        type="email"
-                                        placeholder="teammate@company.com"
-                                        value={inviteEmail}
-                                        onChange={e => setInviteEmail(e.target.value)}
-                                        required
-                                        style={{ marginBottom: 10 }}
-                                    />
-                                    {error && <div className="auth-error" style={{ marginBottom: 10 }}>{error}</div>}
-                                    {inviteSuccess && (
-                                        <div style={{ fontSize: 12, color: 'var(--accent)', background: 'var(--accent-light)', padding: '8px 12px', borderRadius: 8, marginBottom: 10 }}>
-                                            ✓ Invite sent!
-                                        </div>
-                                    )}
-                                    <button className="btn-extract" type="submit" disabled={inviting}>
-                                        {inviting ? 'Sending...' : 'Send invite →'}
-                                    </button>
-                                </form>
-                            </div>
+            ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 12, height: 520 }}>
+                    {/* Left panel */}
+                    <div style={{
+                        background: 'var(--bg-card)', border: '0.5px solid var(--border)',
+                        borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column'
+                    }}>
+                        <div style={{
+                            padding: '10px 14px', borderBottom: '0.5px solid var(--border)',
+                            fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
+                            textTransform: 'uppercase', letterSpacing: '0.05em'
+                        }}>
+                            Workspaces
                         </div>
-                    )}
 
-                    <div className="sidebar-card">
-                        <div className="sidebar-head">Workspace info</div>
-                        <div style={{ padding: '14px 16px' }}>
-                            <div style={{ marginBottom: 16 }}>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Workspace name</div>
-                                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{workspaceName}</div>
-                            </div>
-
-                            <div style={{ marginBottom: 16 }}>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Your role</div>
-                                <span className={`pill ${role === 'manager' ? 'pill-green' : 'pill-blue'}`} style={{ fontSize: 12 }}>
-                                    {role}
-                                </span>
-                            </div>
-
-                            {role === 'manager' && workspace?.code && (
-                                <div>
-                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Team code</div>
+                        {workspaces.map(ws => {
+                            const isActive = ws.id === activeWsId;
+                            const isSelected = selected?.id === ws.id;
+                            return (
+                                <div
+                                    key={ws.id}
+                                    onClick={() => setSelected(ws)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 10,
+                                        padding: '10px 14px', cursor: 'pointer',
+                                        borderBottom: '0.5px solid var(--border)',
+                                        background: isSelected ? 'var(--accent-light)' : 'transparent',
+                                        transition: 'background 0.1s',
+                                    }}
+                                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--bg)'; }}
+                                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                                >
                                     <div style={{
-                                        background: 'var(--accent-light)',
-                                        border: '1px solid var(--accent)',
-                                        borderRadius: 8,
-                                        padding: '10px 14px',
-                                        textAlign: 'center'
+                                        width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                                        background: ws.role === 'manager' ? 'var(--accent-light)' : 'var(--blue-light)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16
                                     }}>
-                                        <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: 6, color: 'var(--accent-text)' }}>
-                                            {workspace.code}
+                                        {ws.role === 'manager' ? '🏢' : '👤'}
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{
+                                            fontSize: 13, fontWeight: 600, marginBottom: 3,
+                                            color: isSelected ? 'var(--accent-text)' : 'var(--text-primary)',
+                                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                                        }}>
+                                            {ws.name}
                                         </div>
-                                        <div style={{ fontSize: 11, color: 'var(--accent-text)', marginTop: 4 }}>
-                                            Share this code with your team
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                            <span style={{
+                                                fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 20,
+                                                background: ws.role === 'manager' ? 'var(--accent-light)' : 'var(--blue-light)',
+                                                color: ws.role === 'manager' ? 'var(--accent-text)' : 'var(--blue)'
+                                            }}>
+                                                {ws.role}
+                                            </span>
+                                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{ws.stats?.members || 0} members</span>
                                         </div>
                                     </div>
+                                    {isActive && (
+                                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a', flexShrink: 0 }} />
+                                    )}
                                 </div>
-                            )}
-                        </div>
+                            );
+                        })}
                     </div>
+
+                    {/* Right panel */}
+                    {selected && (
+                        <RightPanel
+                            ws={selected}
+                            isActive={selected.id === activeWsId}
+                            onSwitch={switchWorkspace}
+                        />
+                    )}
                 </div>
-            </div>
+            )}
         </div>
     );
 }

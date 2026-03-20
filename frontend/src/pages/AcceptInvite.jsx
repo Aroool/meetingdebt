@@ -23,7 +23,8 @@ export default function AcceptInvite() {
 
                 const { data } = await axios.post(`${API}/invites/${token}/accept`, {
                     userId: session.user.id,
-                    userEmail: session.user.email
+                    userEmail: session.user.email,
+                    userName: session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0]
                 });
 
                 localStorage.setItem('workspaceId', data.workspaceId);

@@ -13,7 +13,7 @@ app.use(express.json());
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-// Test route — just to verify server works
+// Test route
 app.get('/', (req, res) => {
     res.json({ message: 'MeetingDebt backend is running!' });
 });
@@ -34,7 +34,7 @@ app.post('/extract', async (req, res) => {
             messages: [
                 {
                     role: 'user',
-                    content: `You are analyzing a meeting transcript. 
+                    content: `You are analyzing a meeting transcript.
           
 Extract all action items, decisions, and blockers.
 For each item identify the real name of the person responsible by reading the conversation context.
@@ -77,7 +77,34 @@ ${transcript}`
 
         if (meetingError) throw meetingError;
 
-        // Step 4: Save commitments to Supabase
+        // Step 4: Fetch workspace members for auto-matching
+        let members = [];
+        if (workspaceId) {
+            const { data: memberData } = await supabase
+                .from('workspace_members')
+                .select('user_id, name, email')
+                .eq('workspace_id', workspaceId);
+            members = memberData || [];
+        }
+
+        function matchMember(ownerName) {
+            if (!ownerName || members.length === 0) return null;
+            const lower = ownerName.toLowerCase().trim();
+            // Try exact name match first
+            const exact = members.find(m =>
+                m.name?.toLowerCase() === lower ||
+                m.email?.toLowerCase().startsWith(lower)
+            );
+            if (exact) return exact.user_id;
+            // Try partial match
+            const partial = members.find(m =>
+                m.name?.toLowerCase().includes(lower) ||
+                lower.includes(m.name?.toLowerCase().split(' ')[0])
+            );
+            return partial?.user_id || null;
+        }
+
+        // Step 5: Save commitments with auto-assigned members
         const commitmentsToInsert = parsed.commitments.map(c => ({
             meeting_id: meeting.id,
             task: c.task,
@@ -86,7 +113,8 @@ ${transcript}`
             type: c.type,
             status: 'pending',
             user_id: userId || null,
-            workspace_id: workspaceId || null
+            workspace_id: workspaceId || null,
+            assigned_to: matchMember(c.owner)
         }));
 
         const { data: commitments, error: commitError } = await supabase
@@ -96,7 +124,7 @@ ${transcript}`
 
         if (commitError) throw commitError;
 
-        // Step 5: Return everything to frontend
+        // Step 6: Return everything to frontend
         res.json({
             success: true,
             meeting,
@@ -119,10 +147,8 @@ app.get('/meetings', async (req, res) => {
             .order('created_at', { ascending: false });
 
         if (workspaceId) {
-            // Team — all workspace meetings
             query = query.eq('workspace_id', workspaceId);
         } else if (userId) {
-            // Solo — their own meetings
             query = query.eq('user_id', userId);
         }
 
@@ -134,8 +160,7 @@ app.get('/meetings', async (req, res) => {
     }
 });
 
-
-// Get commitments for a meeting
+// Get commitments for a specific meeting
 app.get('/commitments/:meetingId', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -162,7 +187,7 @@ app.get('/commitments', async (req, res) => {
 
         if (workspaceId && userId) {
             // Member — workspace commitments assigned to them
-            query = query.eq('workspace_id', workspaceId).eq('user_id', userId);
+            query = query.eq('workspace_id', workspaceId).eq('assigned_to', userId);
         } else if (workspaceId) {
             // Manager — all workspace commitments
             query = query.eq('workspace_id', workspaceId);
@@ -179,7 +204,7 @@ app.get('/commitments', async (req, res) => {
     }
 });
 
-// Mark commitment as complete
+// Update commitment status
 app.patch('/commitments/:id', async (req, res) => {
     try {
         const { status } = req.body;
@@ -214,14 +239,12 @@ function nudgeEmail(commitment, meetingTitle) {
       <div style="margin-bottom: 24px;">
         <span style="font-size: 16px; font-weight: 800; color: #0f172a;">Meeting<span style="color: #16a34a;">Debt</span></span>
       </div>
-
       <h2 style="font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">
         A commitment from your meeting is overdue
       </h2>
       <p style="font-size: 14px; color: #64748b; margin-bottom: 24px;">
         From: <strong>${meetingTitle}</strong>
       </p>
-
       <div style="background: #fef2f2; border-left: 3px solid #ef4444; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px;">
         <div style="font-size: 13px; color: #64748b; margin-bottom: 4px;">Commitment</div>
         <div style="font-size: 15px; font-weight: 600; color: #0f172a; margin-bottom: 8px;">${commitment.task}</div>
@@ -230,12 +253,10 @@ function nudgeEmail(commitment, meetingTitle) {
           Deadline: <strong>${commitment.deadline || 'No deadline set'}</strong>
         </div>
       </div>
-
-      <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" 
+      <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard" 
          style="display: inline-block; background: #16a34a; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 24px;">
         View dashboard →
       </a>
-
       <p style="font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 16px;">
         Powered by MeetingDebt — making sure meeting commitments actually happen.
       </p>
@@ -243,7 +264,7 @@ function nudgeEmail(commitment, meetingTitle) {
   `;
 }
 
-// Manual nudge endpoint — send nudge for a specific commitment
+// Manual nudge endpoint
 app.post('/nudge/:commitmentId', async (req, res) => {
     try {
         const { email } = req.body;
@@ -279,7 +300,7 @@ app.post('/nudge/:commitmentId', async (req, res) => {
     }
 });
 
-// Automated daily cron — runs every day at 9am
+// Automated daily cron — 9am every day
 cron.schedule('0 9 * * *', async () => {
     console.log('Running daily nudge check...');
     try {
@@ -305,28 +326,37 @@ cron.schedule('0 9 * * *', async () => {
                 .eq('id', commitment.meeting_id)
                 .single();
 
-            const ownerEmail = meeting?.owner_email;
-            if (!ownerEmail || ownerEmail === 'unknown@email.com') continue;
+            // If assigned to a specific member, get their email
+            let recipientEmail = meeting?.owner_email;
+            if (commitment.assigned_to) {
+                const { data: member } = await supabase
+                    .from('workspace_members')
+                    .select('email')
+                    .eq('user_id', commitment.assigned_to)
+                    .single();
+                if (member?.email) recipientEmail = member.email;
+            }
+
+            if (!recipientEmail || recipientEmail === 'unknown@email.com') continue;
 
             await transporter.sendMail({
                 from: `MeetingDebt <${process.env.SENDGRID_FROM_EMAIL}>`,
-                to: ownerEmail,
+                to: recipientEmail,
                 subject: `Overdue commitment: ${commitment.task}`,
                 html: nudgeEmail(commitment, meeting?.title || 'Your meeting')
             });
 
-            console.log(`Nudge sent to ${ownerEmail} for: ${commitment.task}`);
+            console.log(`Nudge sent to ${recipientEmail} for: ${commitment.task}`);
         }
     } catch (err) {
         console.error('Cron error:', err);
     }
 });
+
 // Create a workspace
 app.post('/workspaces', async (req, res) => {
     try {
-        const { name, userId, userEmail } = req.body;
-
-        // Generate a readable 6-char code
+        const { name, userId, userEmail, userName } = req.body;
         const code = Math.random().toString(36).substring(2, 8).toUpperCase();
 
         const { data: workspace, error } = await supabase
@@ -341,7 +371,8 @@ app.post('/workspaces', async (req, res) => {
             workspace_id: workspace.id,
             user_id: userId,
             role: 'manager',
-            email: userEmail
+            email: userEmail,
+            name: userName || userEmail?.split('@')[0]
         });
 
         res.json({ success: true, workspace });
@@ -353,9 +384,8 @@ app.post('/workspaces', async (req, res) => {
 // Join workspace by code
 app.post('/workspaces/join-by-code', async (req, res) => {
     try {
-        const { code, userId, userEmail } = req.body;
+        const { code, userId, userEmail, userName } = req.body;
 
-        // Find workspace by code
         const { data: workspace, error } = await supabase
             .from('workspaces')
             .select('*')
@@ -375,16 +405,15 @@ app.post('/workspaces/join-by-code', async (req, res) => {
             .single();
 
         if (existing) {
-            // Already a member — just return the workspace
             return res.json({ success: true, workspace, alreadyMember: true });
         }
 
-        // Add as member
         await supabase.from('workspace_members').insert({
             workspace_id: workspace.id,
             user_id: userId,
             role: 'member',
-            email: userEmail
+            email: userEmail,
+            name: userName || userEmail?.split('@')[0]
         });
 
         res.json({ success: true, workspace });
@@ -431,13 +460,12 @@ app.get('/workspaces/:workspaceId/members', async (req, res) => {
     }
 });
 
-// Invite a member
+// Invite a member by email
 app.post('/workspaces/:workspaceId/invite', async (req, res) => {
     try {
         const { email, invitedBy, workspaceName } = req.body;
         const { workspaceId } = req.params;
 
-        // Create invite token
         const { data: invite, error } = await supabase
             .from('invites')
             .insert({
@@ -450,7 +478,6 @@ app.post('/workspaces/:workspaceId/invite', async (req, res) => {
 
         if (error) throw error;
 
-        // Send invite email
         const inviteUrl = `${process.env.FRONTEND_URL}/invite/${invite.token}`;
 
         await transporter.sendMail({
@@ -488,9 +515,8 @@ app.post('/workspaces/:workspaceId/invite', async (req, res) => {
 // Accept invite
 app.post('/invites/:token/accept', async (req, res) => {
     try {
-        const { userId, userEmail } = req.body;
+        const { userId, userEmail, userName } = req.body;
 
-        // Get invite
         const { data: invite, error } = await supabase
             .from('invites')
             .select('*')
@@ -502,15 +528,14 @@ app.post('/invites/:token/accept', async (req, res) => {
             return res.status(404).json({ error: 'Invite not found or already used' });
         }
 
-        // Add user as member
         await supabase.from('workspace_members').insert({
             workspace_id: invite.workspace_id,
             user_id: userId,
             role: 'member',
-            email: userEmail
+            email: userEmail,
+            name: userName || userEmail?.split('@')[0]
         });
 
-        // Mark invite as accepted
         await supabase.from('invites').update({ accepted: true }).eq('id', invite.id);
 
         res.json({ success: true, workspaceId: invite.workspace_id });
@@ -537,6 +562,7 @@ app.get('/workspaces/:workspaceId/role', async (req, res) => {
     }
 });
 
+// Get single workspace
 app.get('/workspaces/:workspaceId', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -552,8 +578,26 @@ app.get('/workspaces/:workspaceId', async (req, res) => {
     }
 });
 
+// Test nudges manually
+app.get('/test-nudges', async (req, res) => {
+    try {
+        const today = new Date().toISOString();
+        const { data: overdue } = await supabase
+            .from('commitments')
+            .select('*')
+            .eq('status', 'pending')
+            .lt('deadline', today);
+
+        res.json({
+            found: overdue?.length || 0,
+            commitments: overdue?.map(c => ({ id: c.id, task: c.task, deadline: c.deadline }))
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
     console.log(`MeetingDebt backend running on port ${PORT}`);
 });
-

@@ -22,7 +22,10 @@ export default function CreateWorkspace() {
             const userEmail = session?.user?.email;
 
             const { data } = await axios.post(`${API}/workspaces`, {
-                name, userId, userEmail
+                name,
+                userId,
+                userEmail,
+                userName: session?.user?.user_metadata?.full_name || userEmail?.split('@')[0]
             });
 
             localStorage.setItem('workspaceId', data.workspace.id);
