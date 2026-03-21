@@ -8,26 +8,11 @@ export default function JoinOrCreate() {
     const navigate = useNavigate();
 
     async function handleSolo() {
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const userId = session?.user?.id;
-            const userEmail = session?.user?.email;
-            const name = session?.user?.user_metadata?.full_name || userEmail?.split('@')[0] || 'My';
-
-            await axios.post(`${API}/workspaces`, {
-                name: `${name}'s Workspace`,
-                userId,
-                userEmail
-            });
-
-            localStorage.setItem('userRole', 'solo');
-            localStorage.setItem('soloMode', 'true');
-            localStorage.removeItem('workspaceId');
-            localStorage.removeItem('workspaceName');
-            navigate('/dashboard');
-        } catch (err) {
-            console.error(err);
-        }
+        localStorage.setItem('userRole', 'solo');
+        localStorage.setItem('soloMode', 'true');
+        localStorage.removeItem('workspaceId');
+        localStorage.removeItem('workspaceName');
+        navigate('/dashboard');
     }
 
     return (

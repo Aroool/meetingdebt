@@ -27,7 +27,18 @@ export default function AcceptInvite() {
                     userName: session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0]
                 });
 
-                localStorage.setItem('workspaceId', data.workspaceId);
+                // Fetch workspace name
+                const wsRes = await axios.get(`${API}/workspaces/${data.workspaceId}`);
+
+                // Only switch if no active workspace already
+                const existingWsId = localStorage.getItem('workspaceId');
+                if (!existingWsId) {
+                    localStorage.setItem('workspaceId', data.workspaceId);
+                    localStorage.setItem('workspaceName', wsRes.data.name);
+                    localStorage.setItem('userRole', 'member');
+                    localStorage.removeItem('soloMode');
+                }
+
                 setStatus('success');
                 setTimeout(() => navigate('/dashboard'), 2000);
             } catch (err) {

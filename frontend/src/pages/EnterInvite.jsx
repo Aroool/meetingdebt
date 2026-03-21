@@ -17,16 +17,23 @@ export default function EnterInvite() {
         e.preventDefault();
         setLoading(true);
         setError('');
-
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            await axios.post(`${API}/workspaces/join-by-code`, {
+            const { data } = await axios.post(`${API}/workspaces/join-by-code`, {
                 code: code.trim().toUpperCase(),
                 userId: session?.user?.id,
                 userEmail: session?.user?.email,
                 userName: session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0]
             });
 
+            // Only switch to this workspace if user has no active workspace yet
+            const existingWsId = localStorage.getItem('workspaceId');
+            if (!existingWsId) {
+                localStorage.setItem('workspaceId', data.workspace.id);
+                localStorage.setItem('workspaceName', data.workspace.name);
+                localStorage.setItem('userRole', 'member');
+                localStorage.removeItem('soloMode');
+            }
             navigate('/workspace');
         } catch (err) {
             setError(err.response?.data?.error || 'Invalid code. Check with your manager.');

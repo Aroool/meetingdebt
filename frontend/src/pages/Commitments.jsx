@@ -20,6 +20,7 @@ function getStatus(c) {
 
 export default function Commitments() {
     const [commitments, setCommitments] = useState([]);
+    const [members, setMembers] = useState([]);
     const [filter, setFilter] = useState('All');
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
@@ -28,8 +29,23 @@ export default function Commitments() {
         try {
             const { data: { session } } = await supabase.auth.getSession();
             const userId = session?.user?.id;
-            const res = await axios.get(`${API}/commitments?userId=${userId}`);
+            const workspaceId = localStorage.getItem('workspaceId');
+            const role = localStorage.getItem('userRole');
+
+            let url = `${API}/commitments?userId=${userId}`;
+            if (workspaceId && role === 'manager') {
+                url = `${API}/commitments?workspaceId=${workspaceId}`;
+            } else if (workspaceId && role === 'member') {
+                url = `${API}/commitments?workspaceId=${workspaceId}&userId=${userId}`;
+            }
+
+            const res = await axios.get(url);
             setCommitments(res.data);
+
+            if (workspaceId && role === 'manager') {
+                const membersRes = await axios.get(`${API}/workspaces/${workspaceId}/members`);
+                setMembers(membersRes.data);
+            }
         } catch (err) {
             console.error(err);
         } finally {
@@ -117,6 +133,7 @@ export default function Commitments() {
                             commitment={c}
                             index={i}
                             onUpdate={fetchData}
+                            members={members}
                         />
                     ))
                 )}

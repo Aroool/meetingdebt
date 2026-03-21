@@ -32,6 +32,7 @@ function getHour() {
 export default function Dashboard() {
     const [commitments, setCommitments] = useState([]);
     const [meetings, setMeetings] = useState([]);
+    const [members, setMembers] = useState([]);
     const [filter, setFilter] = useState('All');
     const [modalOpen, setModalOpen] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -55,8 +56,6 @@ export default function Dashboard() {
             let commitmentsUrl = `${API}/commitments?userId=${userId}`;
             let meetingsUrl = `${API}/meetings?userId=${userId}`;
 
-            // Manager sees ALL workspace data
-            // Member sees only their own commitments but all meetings
             if (workspaceId && role === 'manager') {
                 commitmentsUrl = `${API}/commitments?workspaceId=${workspaceId}`;
                 meetingsUrl = `${API}/meetings?workspaceId=${workspaceId}`;
@@ -69,8 +68,15 @@ export default function Dashboard() {
                 axios.get(commitmentsUrl),
                 axios.get(meetingsUrl),
             ]);
+
             setCommitments(cm.data);
             setMeetings(mm.data);
+
+            // Fetch members for reassign dropdown
+            if (workspaceId && role === 'manager') {
+                const membersRes = await axios.get(`${API}/workspaces/${workspaceId}/members`);
+                setMembers(membersRes.data);
+            }
         } catch (err) {
             console.error('Failed to fetch:', err);
         } finally {
@@ -118,6 +124,7 @@ export default function Dashboard() {
         if (!name) return '??';
         return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
     }
+
     if (showTransition) {
         return <LogoTransition onComplete={() => setShowTransition(false)} />;
     }
@@ -208,6 +215,7 @@ export default function Dashboard() {
                                     commitment={c}
                                     index={i}
                                     onUpdate={fetchData}
+                                    members={members}
                                 />
                             ))
                         )}
@@ -215,18 +223,12 @@ export default function Dashboard() {
                 </Panel>
 
                 <PanelResizeHandle style={{
-                    width: 6,
-                    cursor: 'col-resize',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    width: 6, cursor: 'col-resize',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                     <div style={{
-                        width: 3,
-                        height: 40,
-                        borderRadius: 4,
-                        background: 'var(--border)',
-                        transition: 'background 0.15s',
+                        width: 3, height: 40, borderRadius: 4,
+                        background: 'var(--border)', transition: 'background 0.15s',
                     }} />
                 </PanelResizeHandle>
 

@@ -15,9 +15,23 @@ export default function Meetings() {
         try {
             const { data: { session } } = await supabase.auth.getSession();
             const userId = session?.user?.id;
+            const workspaceId = localStorage.getItem('workspaceId');
+            const role = localStorage.getItem('userRole');
+
+            let meetingsUrl = `${API}/meetings?userId=${userId}`;
+            let commitmentsUrl = `${API}/commitments?userId=${userId}`;
+
+            if (workspaceId && role === 'manager') {
+                meetingsUrl = `${API}/meetings?workspaceId=${workspaceId}`;
+                commitmentsUrl = `${API}/commitments?workspaceId=${workspaceId}`;
+            } else if (workspaceId && role === 'member') {
+                meetingsUrl = `${API}/meetings?workspaceId=${workspaceId}`;
+                commitmentsUrl = `${API}/commitments?workspaceId=${workspaceId}&userId=${userId}`;
+            }
+
             const [mm, cm] = await Promise.all([
-                axios.get(`${API}/meetings?userId=${userId}`),
-                axios.get(`${API}/commitments?userId=${userId}`),
+                axios.get(meetingsUrl),
+                axios.get(commitmentsUrl),
             ]);
             setMeetings(mm.data);
             setCommitments(cm.data);

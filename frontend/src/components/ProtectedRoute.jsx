@@ -56,9 +56,11 @@ export default function ProtectedRoute({ children }) {
                 try {
                     const { data } = await axios.get(`${API}/workspaces?userId=${session.user.id}`);
                     if (data.length > 0) {
-                        localStorage.setItem('workspaceId', data[0].id);
-                        localStorage.setItem('workspaceName', data[0].name);
-                        localStorage.setItem('userRole', data[0].role);
+                        // Find manager workspace first, fall back to first
+                        const preferred = data.find(w => w.role === 'manager') || data[0];
+                        localStorage.setItem('workspaceId', preferred.id);
+                        localStorage.setItem('workspaceName', preferred.name);
+                        localStorage.setItem('userRole', preferred.role);
                     } else {
                         navigate('/join-or-create');
                         setLoading(false);
