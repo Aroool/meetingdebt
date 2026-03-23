@@ -73,7 +73,7 @@ export default function Navbar() {
                     Meetings
                 </Link>
 
-                {role === 'manager' && !isSolo && (
+                {!isSolo && (
                     <Link to="/workspace"
                         className={`nav-link ${location.pathname === '/workspace' ? 'active' : ''}`}>
                         Team

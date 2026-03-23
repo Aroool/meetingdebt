@@ -234,9 +234,7 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess }) {
                                 <div style={{ padding: '16px 24px', maxHeight: 400, overflowY: 'auto' }}>
                                     {extracted.commitments.map((c, i) => {
                                         const assignedUserId = assignments[i];
-                                        const assignedMember = extracted.members?.find(m => m.user_id === assignedUserId);
                                         const isMatched = !!assignedUserId;
-                                        const av = avatarColors[i % avatarColors.length];
 
                                         return (
                                             <motion.div

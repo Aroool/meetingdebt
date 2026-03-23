@@ -8,6 +8,7 @@ import { supabase } from '../supabase';
 export default function Meetings() {
     const [meetings, setMeetings] = useState([]);
     const [commitments, setCommitments] = useState([]);
+    const [members, setMembers] = useState([]);
     const [selected, setSelected] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -16,7 +17,7 @@ export default function Meetings() {
             const { data: { session } } = await supabase.auth.getSession();
             const userId = session?.user?.id;
             const workspaceId = localStorage.getItem('workspaceId');
-            const role = localStorage.getItem('userRole');
+            const role = localStorage.getItem('userRole') || 'solo';
 
             let meetingsUrl = `${API}/meetings?userId=${userId}`;
             let commitmentsUrl = `${API}/commitments?userId=${userId}`;
@@ -25,6 +26,7 @@ export default function Meetings() {
                 meetingsUrl = `${API}/meetings?workspaceId=${workspaceId}`;
                 commitmentsUrl = `${API}/commitments?workspaceId=${workspaceId}`;
             } else if (workspaceId && role === 'member') {
+                // Member sees all workspace meetings but only their own commitments
                 meetingsUrl = `${API}/meetings?workspaceId=${workspaceId}`;
                 commitmentsUrl = `${API}/commitments?workspaceId=${workspaceId}&userId=${userId}`;
             }
@@ -33,8 +35,16 @@ export default function Meetings() {
                 axios.get(meetingsUrl),
                 axios.get(commitmentsUrl),
             ]);
+
             setMeetings(mm.data);
             setCommitments(cm.data);
+
+            // Fetch members for reassign (manager only)
+            if (workspaceId && role === 'manager') {
+                const membersRes = await axios.get(`${API}/workspaces/${workspaceId}/members`);
+                setMembers(membersRes.data);
+            }
+
             if (mm.data.length > 0) setSelected(mm.data[0]);
         } catch (err) {
             console.error(err);
@@ -74,7 +84,11 @@ export default function Meetings() {
             ) : meetings.length === 0 ? (
                 <div className="empty-state" style={{ marginTop: 48 }}>
                     <div className="empty-title">No meetings yet</div>
-                    <div className="empty-sub">Click + on the dashboard to add your first meeting</div>
+                    <div className="empty-sub">
+                        {localStorage.getItem('userRole') === 'member'
+                            ? 'Your manager hasn\'t added any meetings yet'
+                            : 'Click + on the dashboard to add your first meeting'}
+                    </div>
                 </div>
             ) : (
                 <div className="meetings-layout">
@@ -124,8 +138,16 @@ export default function Meetings() {
                                     </div>
                                     {selectedCommitments.length === 0 ? (
                                         <div className="empty-state">
-                                            <div className="empty-title">No commitments</div>
-                                            <div className="empty-sub">Nothing was extracted from this meeting</div>
+                                            <div className="empty-title">
+                                                {localStorage.getItem('userRole') === 'member'
+                                                    ? 'No tasks assigned to you from this meeting'
+                                                    : 'No commitments extracted'}
+                                            </div>
+                                            <div className="empty-sub">
+                                                {localStorage.getItem('userRole') === 'member'
+                                                    ? 'Your manager may assign tasks to you later'
+                                                    : 'Nothing was extracted from this meeting'}
+                                            </div>
                                         </div>
                                     ) : (
                                         selectedCommitments.map((c, i) => (
@@ -134,6 +156,7 @@ export default function Meetings() {
                                                 commitment={c}
                                                 index={i}
                                                 onUpdate={fetchData}
+                                                members={members}
                                             />
                                         ))
                                     )}

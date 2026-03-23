@@ -1,8 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import axios from 'axios';
-import { supabase } from '../supabase';
-import API from '../config';
 
 export default function JoinOrCreate() {
     const navigate = useNavigate();
