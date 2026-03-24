@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
+import NotificationBell from './NotificationBell';
 
 
 export default function Navbar() {
@@ -91,6 +92,7 @@ export default function Navbar() {
             </div>
 
             <div className="navbar-right">
+                <NotificationBell />
                 <motion.button
                     className="dark-toggle"
                     onClick={() => setDark(!dark)}

@@ -115,7 +115,7 @@ app.get('/', (req, res) => {
     res.json({ message: 'MeetingDebt backend is running!' });
 });
 
-// Extract preview — Claude extracts + auto-matches, saves meeting, returns for confirmation
+// Extract preview
 app.post('/extract-preview', async (req, res) => {
     try {
         const { transcript, meetingTitle, ownerEmail, userId, workspaceId } = req.body;
@@ -127,10 +127,8 @@ app.post('/extract-preview', async (req, res) => {
             messages: [{
                 role: 'user',
                 content: `You are analyzing a meeting transcript.
-
 Extract all action items, decisions, and blockers.
 For each item identify the real name of the person responsible.
-
 Return ONLY valid JSON, nothing else:
 {
   "commitments": [
@@ -142,7 +140,6 @@ Return ONLY valid JSON, nothing else:
     }
   ]
 }
-
 Transcript:
 ${transcript}`
             }]
@@ -180,7 +177,6 @@ ${transcript}`
             .single();
 
         if (meetingError) throw meetingError;
-
         return res.json({ meeting, commitments });
 
     } catch (error) {
@@ -189,7 +185,7 @@ ${transcript}`
     }
 });
 
-// Save commitments after manager confirms assignments + send assignment emails
+// Save commitments after manager confirms
 app.post('/save-commitments', async (req, res) => {
     try {
         const { meeting, commitments, userId, workspaceId } = req.body;
@@ -213,15 +209,31 @@ app.post('/save-commitments', async (req, res) => {
 
         if (error) throw error;
 
-        // Send assignment emails
+        // Send notifications + emails for each assigned commitment
         for (const commitment of data) {
             if (!commitment.assigned_to) continue;
+
             const { data: member } = await supabase
                 .from('workspace_members')
                 .select('email, name')
                 .eq('user_id', commitment.assigned_to)
                 .single();
+
             if (!member?.email) continue;
+
+            // Create in-app notification
+            try {
+                await supabase.from('notifications').insert({
+                    user_id: commitment.assigned_to,
+                    workspace_id: commitment.workspace_id,
+                    type: 'assignment',
+                    message: `You were assigned: "${commitment.task}" from ${meeting.title}`,
+                });
+            } catch (notifErr) {
+                console.error('Notification insert failed:', notifErr.message);
+            }
+
+            // Send assignment email
             try {
                 await transporter.sendMail({
                     from: `MeetingDebt <${process.env.SENDGRID_FROM_EMAIL}>`,
@@ -242,7 +254,7 @@ app.post('/save-commitments', async (req, res) => {
     }
 });
 
-// Legacy extract route (kept for compatibility)
+// Legacy extract route
 app.post('/extract', async (req, res) => {
     try {
         const { transcript, meetingTitle, ownerEmail, userId, workspaceId } = req.body;
@@ -312,7 +324,6 @@ ${transcript}`
             .select();
 
         if (commitError) throw commitError;
-
         return res.json({ success: true, meeting, commitments });
 
     } catch (error) {
@@ -344,7 +355,7 @@ app.get('/meetings', async (req, res) => {
     }
 });
 
-// Get commitments for a specific meeting — includes meeting title
+// Get commitments for a specific meeting
 app.get('/commitments/:meetingId', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -364,7 +375,7 @@ app.get('/commitments/:meetingId', async (req, res) => {
     }
 });
 
-// Get all commitments — includes meeting title
+// Get all commitments
 app.get('/commitments', async (req, res) => {
     try {
         const { userId, workspaceId } = req.query;
@@ -393,10 +404,10 @@ app.get('/commitments', async (req, res) => {
     }
 });
 
-// Update commitment — status and/or assigned_to
+// Update commitment
 app.patch('/commitments/:id', async (req, res) => {
     try {
-        const { status, assigned_to } = req.body;
+        const { status, assigned_to, userId } = req.body;
         const updates = {};
         if (status !== undefined) updates.status = status;
         if (assigned_to !== undefined) updates.assigned_to = assigned_to;
@@ -409,6 +420,33 @@ app.patch('/commitments/:id', async (req, res) => {
             .single();
 
         if (error) throw error;
+
+        // Notify manager when member changes status
+        if (status && data.workspace_id) {
+            try {
+                const { data: workspace } = await supabase
+                    .from('workspaces')
+                    .select('owner_id')
+                    .eq('id', data.workspace_id)
+                    .single();
+
+                if (workspace?.owner_id && workspace.owner_id !== userId) {
+                    const statusLabel = status === 'completed' ? 'Done' :
+                        status === 'blocked' ? 'Blocked' :
+                            status === 'overdue' ? 'Overdue' : 'Pending';
+
+                    await supabase.from('notifications').insert({
+                        user_id: workspace.owner_id,
+                        workspace_id: data.workspace_id,
+                        type: 'status_update',
+                        message: `${data.owner} marked "${data.task}" as ${statusLabel}`,
+                    });
+                }
+            } catch (notifErr) {
+                console.error('Status notification failed:', notifErr.message);
+            }
+        }
+
         return res.json(data);
     } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -449,7 +487,7 @@ app.post('/nudge/:commitmentId', async (req, res) => {
     }
 });
 
-// Automated daily cron — 9am
+// Daily cron — 9am
 cron.schedule('0 9 * * *', async () => {
     console.log('Running daily nudge check...');
     try {
@@ -724,6 +762,63 @@ app.get('/test-nudges', async (req, res) => {
         });
     } catch (err) {
         return res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+
+// Mark ALL read — must be before /:id route
+app.patch('/notifications/read-all', async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const { error } = await supabase
+            .from('notifications')
+            .update({ read: true })
+            .filter('user_id', 'eq', userId)
+            .eq('read', false);
+
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// Mark single notification read
+app.patch('/notifications/:id/read', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('notifications')
+            .update({ read: true })
+            .eq('id', req.params.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return res.json(data);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// Get notifications — uses filter() instead of eq() to avoid uuid type mismatch
+app.get('/notifications', async (req, res) => {
+    try {
+        const { userId } = req.query;
+        if (!userId) return res.json([]);
+
+        const { data, error } = await supabase
+            .from('notifications')
+            .select('*')
+            .filter('user_id', 'eq', userId)
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        if (error) throw error;
+        return res.json(data || []);
+    } catch (error) {
+        console.error('Notifications error:', error);
+        return res.status(500).json({ error: error.message });
     }
 });
 
