@@ -68,13 +68,20 @@ export default function Landing() {
     const [checking, setChecking] = useState(true);
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session) {
-                navigate('/dashboard');
-            } else {
-                setChecking(false);
+        const checkSession = async () => {
+            try {
+                const response = await supabase?.auth?.getSession?.();
+                const session = response?.data?.session;
+                if (session) {
+                    navigate('/dashboard');
+                    return;
+                }
+            } catch (error) {
+                console.error('Failed to check session', error);
             }
-        });
+            setChecking(false);
+        };
+        checkSession();
     }, [navigate]);
 
     if (checking) return null;
@@ -241,6 +248,28 @@ export default function Landing() {
                     </div>
                 </div>
             </motion.div>
+
+            {/* CAPABILITIES */}
+            <div style={{ padding: '0 48px 72px', maxWidth: 920, margin: '0 auto' }}>
+                <FadeInSection>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <h2 style={{ fontSize: 12, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: 0.6, margin: 0 }}>What can you do?</h2>
+                        <div style={{ fontSize: 30, fontWeight: 900, color: '#0f172a', letterSpacing: -1 }}>Everything a meeting promised — delivered.</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 12 }}>
+                            {[
+                                ['Extract every commitment', 'Drop in any transcript and MeetingDebt pulls out every action item, decision, and blocker with zero manual cleanup.'],
+                                ['Assign owners and deadlines automatically', 'We detect who owns the task and the due date from the conversation so nothing slips through.'],
+                                ['Automatic nudges keep tasks moving', 'Overdue? We send polite reminders with links back to the dashboard to close the loop.'],
+                            ].map(([title, body]) => (
+                                <div key={title} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 18 }}>
+                                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>{title}</div>
+                                    <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.6 }}>{body}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </FadeInSection>
+            </div>
 
             {/* HOW IT WORKS */}
             <div style={{ padding: '72px 48px', background: '#f8fafc' }}>
