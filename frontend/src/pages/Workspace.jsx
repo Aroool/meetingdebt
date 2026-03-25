@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
+import TeamMemberModal from '../components/TeamMemberModal';
 import api from '../api';
+
 
 function RightPanel({ ws, isActive, onSwitch }) {
     const [members, setMembers] = useState([]);
@@ -11,6 +13,9 @@ function RightPanel({ ws, isActive, onSwitch }) {
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviting, setInviting] = useState(false);
     const [inviteSuccess, setInviteSuccess] = useState(false);
+    const [modalMember, setModalMember] = useState(null);
+    const [modalTasks, setModalTasks] = useState([]);
+    const [modalLoading, setModalLoading] = useState(false);
 
 
 
@@ -143,7 +148,18 @@ function RightPanel({ ws, isActive, onSwitch }) {
                     return (
                         <div key={m.id}>
                             <div
-                                onClick={() => setExpandedMember(isOpen ? null : m.id)}
+                                onClick={async () => {
+                                    setModalMember(m);
+                                    setModalTasks([]);
+                                    setModalLoading(true);
+                                    try {
+                                        const res = await api.get('/commitments', {
+                                            params: { workspaceId: ws.id, userId: m.user_id }
+                                        });
+                                        setModalTasks(res.data);
+                                    } catch { setModalTasks([]); }
+                                    finally { setModalLoading(false); }
+                                }}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: 10,
                                     padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
@@ -272,6 +288,12 @@ function RightPanel({ ws, isActive, onSwitch }) {
                     )}
                 </div>
             )}
+            <TeamMemberModal
+                member={modalMember}
+                tasks={modalTasks}
+                loading={modalLoading}
+                onClose={() => setModalMember(null)}
+            />
         </motion.div>
     );
 }
@@ -288,7 +310,7 @@ export default function Workspace() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            const { data: wsData } = await api.get('/workspaces');
+            const { data: wsData } = await api.get(`/workspaces?userId=${session.user.id}`);
 
             const withStats = await Promise.all(wsData.map(async (ws) => {
                 try {

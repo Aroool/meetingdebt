@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useEffect } from 'react';
 
 export default function JoinOrCreate() {
     const navigate = useNavigate();
@@ -11,6 +12,14 @@ export default function JoinOrCreate() {
         localStorage.removeItem('workspaceName');
         navigate('/dashboard');
     }
+
+    useEffect(() => {
+        const workspaceId = localStorage.getItem('workspaceId');
+        const soloMode = localStorage.getItem('soloMode');
+        if (workspaceId || soloMode) {
+            navigate('/dashboard');
+        }
+    }, [navigate]);
 
     return (
         <div className="auth-page">

@@ -1,120 +1,395 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
-import LogoTransition from '../components/LogoTransition';
 
 export default function Signup() {
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [step, setStep] = useState(1);
+    const [form, setForm] = useState({
+        firstName: '', lastName: '', nickname: '', bio: '',
+        email: '', password: '', confirmPassword: '',
+    });
+    const [avatar, setAvatar] = useState(null);
+    const [avatarPreview, setAvatarPreview] = useState(null);
     const [error, setError] = useState('');
-    const [showTransition, setShowTransition] = useState(false);
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    async function handleSignup(e) {
-        e.preventDefault();
-        setLoading(true);
+    function handleChange(e) {
+        setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
         setError('');
+    }
 
-        const { error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { full_name: name } }
-        });
+    function handleAvatar(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) { setError('Image must be under 2MB'); return; }
+        setAvatar(file);
+        setAvatarPreview(URL.createObjectURL(file));
+    }
 
-        if (error) {
-            setError(error.message);
+    function validateStep1() {
+        if (!form.firstName.trim()) return 'First name is required';
+        if (!form.lastName.trim()) return 'Last name is required';
+        return null;
+    }
+
+    function validateStep2() {
+        if (!form.email.trim()) return 'Email is required';
+        if (!form.password) return 'Password is required';
+        if (form.password.length < 8) return 'Password must be at least 8 characters';
+        if (form.password !== form.confirmPassword) return 'Passwords do not match';
+        return null;
+    }
+
+    function nextStep() {
+        const err = validateStep1();
+        if (err) { setError(err); return; }
+        setStep(2);
+    }
+
+    async function handleSubmit(e) {
+        e.preventDefault();
+        const err = validateStep2();
+        if (err) { setError(err); return; }
+
+        setLoading(true);
+        try {
+            const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`;
+
+            const { data, error: signupError } = await supabase.auth.signUp({
+                email: form.email.trim(),
+                password: form.password,
+                options: {
+                    data: {
+                        full_name: fullName,
+                        first_name: form.firstName.trim(),
+                        last_name: form.lastName.trim(),
+                        nickname: form.nickname.trim(),
+                        bio: form.bio.trim(),
+                        avatar_url: '',
+                    }
+                }
+            });
+
+            if (signupError) throw signupError;
+
+            // Upload avatar if provided
+            if (avatar && data.user) {
+                const ext = avatar.name.split('.').pop();
+                const path = `${data.user.id}.${ext}`;
+                const { error: uploadError } = await supabase.storage
+                    .from('avatars')
+                    .upload(path, avatar, { upsert: true });
+
+                if (!uploadError) {
+                    const { data: urlData } = supabase.storage
+                        .from('avatars')
+                        .getPublicUrl(path);
+                    await supabase.auth.updateUser({
+                        data: { avatar_url: urlData.publicUrl }
+                    });
+                }
+            }
+
+            sessionStorage.setItem('showTransition', 'true');
+            navigate('/join-or-create');
+        } catch (err) {
+            setError(err.message);
+        } finally {
             setLoading(false);
-        } else {
-            setShowTransition(true);
         }
     }
 
-    async function handleGoogle() {
-        sessionStorage.setItem('showTransition', 'true');
-        await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: { redirectTo: window.location.origin + '/dashboard' }
-        });
-    }
-
-    if (showTransition) {
-        return <LogoTransition onComplete={() => navigate('/dashboard')} />;
-    }
+    const initials = form.firstName ? form.firstName[0].toUpperCase() : '?';
 
     return (
-        <div className="auth-page">
+        <div style={{
+            minHeight: '100vh', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', background: 'var(--bg)', padding: 20,
+        }}>
             <motion.div
-                className="auth-card"
-                initial={{ opacity: 0, y: 24 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
+                style={{
+                    width: '100%', maxWidth: 460,
+                    background: 'var(--bg-card)', borderRadius: 20,
+                    border: '1px solid var(--border)',
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.08)',
+                    overflow: 'hidden',
+                }}
             >
-                <div className="auth-logo">
-                    <div className="logo-dot" />
-                    Meeting<span className="logo-debt">Debt</span>
+                {/* Header */}
+                <div style={{ padding: '28px 32px 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#16a34a' }} />
+                        <span style={{ fontSize: 15, fontWeight: 700 }}>
+                            Meeting<span style={{ color: '#16a34a' }}>Debt</span>
+                        </span>
+                    </div>
+
+                    <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>
+                        {step === 1 ? 'Create your account' : 'Almost there 🎉'}
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>
+                        {step === 1 ? 'Tell us about yourself' : 'Set up your login credentials'}
+                    </div>
+
+                    {/* Progress */}
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 28 }}>
+                        {[1, 2].map(s => (
+                            <div key={s} style={{
+                                height: 3, flex: 1, borderRadius: 10,
+                                background: s <= step ? '#16a34a' : 'var(--border)',
+                                transition: 'background 0.3s',
+                            }} />
+                        ))}
+                    </div>
                 </div>
 
-                <div className="auth-title">Create your account</div>
-                <div className="auth-sub">Start tracking meeting commitments</div>
+                <div style={{ padding: '0 32px 32px' }}>
+                    <AnimatePresence mode="wait">
 
-                <button className="google-btn" onClick={handleGoogle}>
-                    <svg width="18" height="18" viewBox="0 0 18 18">
-                        <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z" />
-                        <path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z" />
-                        <path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18z" />
-                        <path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.3z" />
-                    </svg>
-                    Continue with Google
-                </button>
+                        {/* Step 1 — Profile info */}
+                        {step === 1 && (
+                            <motion.div
+                                key="step1"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                {/* Avatar upload */}
+                                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+                                    <label style={{ cursor: 'pointer', position: 'relative' }}>
+                                        <div style={{
+                                            width: 80, height: 80, borderRadius: '50%',
+                                            background: avatarPreview ? 'transparent' : '#dbeafe',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            overflow: 'hidden', border: '3px solid var(--border)',
+                                            transition: 'border-color 0.2s',
+                                        }}>
+                                            {avatarPreview ? (
+                                                <img src={avatarPreview} alt="avatar"
+                                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                <span style={{ fontSize: 26, fontWeight: 800, color: '#1d4ed8' }}>
+                                                    {initials}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div style={{
+                                            position: 'absolute', bottom: 0, right: 0,
+                                            width: 24, height: 24, borderRadius: '50%',
+                                            background: '#16a34a', display: 'flex',
+                                            alignItems: 'center', justifyContent: 'center',
+                                            fontSize: 14, color: '#fff', border: '2px solid var(--bg-card)',
+                                        }}>
+                                            +
+                                        </div>
+                                        <input type="file" accept="image/*" onChange={handleAvatar}
+                                            style={{ display: 'none' }} />
+                                    </label>
+                                </div>
+                                <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', marginTop: -16, marginBottom: 20 }}>
+                                    Click to add photo (optional)
+                                </div>
 
-                <div className="auth-divider"><span>or</span></div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                                    <div>
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                                            First name *
+                                        </label>
+                                        <input
+                                            className="field-input"
+                                            name="firstName"
+                                            placeholder="John"
+                                            value={form.firstName}
+                                            onChange={handleChange}
+                                            style={{ marginBottom: 0 }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                                            Last name *
+                                        </label>
+                                        <input
+                                            className="field-input"
+                                            name="lastName"
+                                            placeholder="Smith"
+                                            value={form.lastName}
+                                            onChange={handleChange}
+                                            style={{ marginBottom: 0 }}
+                                        />
+                                    </div>
+                                </div>
 
-                <form onSubmit={handleSignup}>
-                    <label className="field-label">Full name</label>
-                    <input
-                        className="field-input"
-                        type="text"
-                        placeholder="Your name"
-                        value={name}
-                        onChange={e => setName(e.target.value)}
-                        required
-                    />
+                                <div style={{ marginBottom: 12 }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                                        Nickname <span style={{ fontWeight: 400 }}>(optional)</span>
+                                    </label>
+                                    <input
+                                        className="field-input"
+                                        name="nickname"
+                                        placeholder="Johnny"
+                                        value={form.nickname}
+                                        onChange={handleChange}
+                                        style={{ marginBottom: 0 }}
+                                    />
+                                </div>
 
-                    <label className="field-label">Email</label>
-                    <input
-                        className="field-input"
-                        type="email"
-                        placeholder="you@company.com"
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        required
-                    />
+                                <div style={{ marginBottom: 20 }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                                        Bio <span style={{ fontWeight: 400 }}>(optional)</span>
+                                    </label>
+                                    <textarea
+                                        className="field-input"
+                                        name="bio"
+                                        placeholder="Tell your team a bit about yourself..."
+                                        value={form.bio}
+                                        onChange={handleChange}
+                                        rows={2}
+                                        style={{ marginBottom: 0, resize: 'none', fontFamily: 'inherit' }}
+                                    />
+                                </div>
 
-                    <label className="field-label">Password</label>
-                    <input
-                        className="field-input"
-                        type="password"
-                        placeholder="Min 6 characters"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        required
-                        minLength={6}
-                    />
+                                {error && (
+                                    <div style={{ fontSize: 12, color: 'var(--red)', marginBottom: 12, padding: '8px 12px', background: 'var(--red-light)', borderRadius: 8 }}>
+                                        {error}
+                                    </div>
+                                )}
 
-                    {error && <div className="auth-error">{error}</div>}
+                                <button
+                                    onClick={nextStep}
+                                    className="btn-primary"
+                                    style={{ width: '100%', padding: '12px', fontSize: 14, fontWeight: 600 }}
+                                >
+                                    Continue →
+                                </button>
+                            </motion.div>
+                        )}
 
-                    <button className="btn-extract" type="submit" disabled={loading}
-                        style={{ marginTop: 4 }}>
-                        {loading ? 'Creating account...' : 'Create account →'}
-                    </button>
-                </form>
+                        {/* Step 2 — Credentials */}
+                        {step === 2 && (
+                            <motion.div
+                                key="step2"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                {/* Mini profile preview */}
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: 12,
+                                    padding: '10px 14px', borderRadius: 10,
+                                    background: 'var(--bg)', border: '1px solid var(--border)',
+                                    marginBottom: 20,
+                                }}>
+                                    <div style={{
+                                        width: 36, height: 36, borderRadius: '50%',
+                                        background: avatarPreview ? 'transparent' : '#dbeafe',
+                                        overflow: 'hidden', flexShrink: 0,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
+                                        {avatarPreview
+                                            ? <img src={avatarPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            : <span style={{ fontSize: 14, fontWeight: 800, color: '#1d4ed8' }}>{initials}</span>
+                                        }
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                                            {form.firstName} {form.lastName}
+                                            {form.nickname && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> "{form.nickname}"</span>}
+                                        </div>
+                                        {form.bio && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{form.bio}</div>}
+                                    </div>
+                                    <button
+                                        onClick={() => setStep(1)}
+                                        style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                                    >
+                                        Edit
+                                    </button>
+                                </div>
 
-                <div className="auth-footer">
-                    Already have an account?{' '}
-                    <Link to="/login" className="auth-link">Sign in</Link>
+                                <div style={{ marginBottom: 12 }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                                        Email address *
+                                    </label>
+                                    <input
+                                        className="field-input"
+                                        name="email"
+                                        type="email"
+                                        placeholder="john@company.com"
+                                        value={form.email}
+                                        onChange={handleChange}
+                                        style={{ marginBottom: 0 }}
+                                    />
+                                </div>
+
+                                <div style={{ marginBottom: 12 }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                                        Password * <span style={{ fontWeight: 400 }}>(min. 8 characters)</span>
+                                    </label>
+                                    <input
+                                        className="field-input"
+                                        name="password"
+                                        type="password"
+                                        placeholder="••••••••"
+                                        value={form.password}
+                                        onChange={handleChange}
+                                        style={{ marginBottom: 0 }}
+                                    />
+                                </div>
+
+                                <div style={{ marginBottom: 20 }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                                        Confirm password *
+                                    </label>
+                                    <input
+                                        className="field-input"
+                                        name="confirmPassword"
+                                        type="password"
+                                        placeholder="••••••••"
+                                        value={form.confirmPassword}
+                                        onChange={handleChange}
+                                        style={{ marginBottom: 0 }}
+                                    />
+                                    {form.confirmPassword && form.password !== form.confirmPassword && (
+                                        <div style={{ fontSize: 11, color: 'var(--red)', marginTop: 4 }}>Passwords do not match</div>
+                                    )}
+                                    {form.confirmPassword && form.password === form.confirmPassword && form.confirmPassword.length > 0 && (
+                                        <div style={{ fontSize: 11, color: '#16a34a', marginTop: 4 }}>✓ Passwords match</div>
+                                    )}
+                                </div>
+
+                                {error && (
+                                    <div style={{ fontSize: 12, color: 'var(--red)', marginBottom: 12, padding: '8px 12px', background: 'var(--red-light)', borderRadius: 8 }}>
+                                        {error}
+                                    </div>
+                                )}
+
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={loading}
+                                    className="btn-primary"
+                                    style={{ width: '100%', padding: '12px', fontSize: 14, fontWeight: 600 }}
+                                >
+                                    {loading ? 'Creating account...' : 'Create account 🚀'}
+                                </button>
+
+                                <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: 'var(--text-muted)' }}>
+                                    By signing up you agree to our terms of service
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <div style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: 'var(--text-muted)' }}>
+                        Already have an account?{' '}
+                        <Link to="/login" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
+                            Sign in
+                        </Link>
+                    </div>
                 </div>
             </motion.div>
         </div>
