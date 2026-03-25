@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import StatCard from '../components/StatCard';
 import CommitmentRow from '../components/CommitmentRow';
@@ -7,12 +8,9 @@ import MeetingCard from '../components/MeetingCard';
 import NewMeetingModal from '../components/NewMeetingModal';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import LogoTransition from '../components/LogoTransition';
-
 import { getStatus } from '../utils';
 
 const FILTERS = ['All', 'Overdue', 'Pending', 'Done'];
-
-
 
 function getHour() {
     const h = new Date().getHours();
@@ -26,10 +24,13 @@ export default function Dashboard() {
     const [meetings, setMeetings] = useState([]);
     const [members, setMembers] = useState([]);
     const [filter, setFilter] = useState('All');
+    const [personFilter, setPersonFilter] = useState(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [showTransition, setShowTransition] = useState(false);
     const [view, setView] = useState(localStorage.getItem('commitmentsView') || 'flat');
+    const [currentRole, setCurrentRole] = useState(localStorage.getItem('userRole') || 'solo');
+    const navigate = useNavigate();
 
     useEffect(() => {
         const shouldShow = sessionStorage.getItem('showTransition');
@@ -38,8 +39,6 @@ export default function Dashboard() {
             setShowTransition(true);
         }
     }, []);
-
-    const [currentRole, setCurrentRole] = useState(localStorage.getItem('userRole') || 'solo');
 
     useEffect(() => {
         function handleSwitch() {
@@ -73,7 +72,6 @@ export default function Dashboard() {
             setCommitments(cm.data);
             setMeetings(mm.data);
 
-            // Fetch members for reassign dropdown
             if (workspaceId && role === 'manager') {
                 const membersRes = await api.get(`/workspaces/${workspaceId}/members`);
                 setMembers(membersRes.data);
@@ -88,6 +86,7 @@ export default function Dashboard() {
     useEffect(() => { fetchData(); }, [fetchData]);
 
     const filtered = commitments.filter(c => {
+        if (personFilter && c.owner !== personFilter) return false;
         if (filter === 'All') return true;
         const s = getStatus(c);
         if (filter === 'Overdue') return s === 'overdue';
@@ -164,9 +163,7 @@ export default function Dashboard() {
                 >
                     {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                     {overdue > 0 && (
-                        <span className="attention-badge">
-                            {overdue} need attention
-                        </span>
+                        <span className="attention-badge">{overdue} need attention</span>
                     )}
                 </motion.div>
             </div>
@@ -182,17 +179,35 @@ export default function Dashboard() {
                 <Panel defaultSize={72} minSize={40}>
                     <div className="card" style={{ marginRight: 8 }}>
                         <div className="card-header">
-                            <div className="card-title">Commitments</div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                {/* View toggle */}
+                                <div className="card-title">Commitments</div>
+                                {personFilter && (
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: 6,
+                                        background: 'var(--accent-light)', borderRadius: 20,
+                                        padding: '2px 10px',
+                                    }}>
+                                        <span style={{ fontSize: 11, color: 'var(--accent-text)', fontWeight: 600 }}>
+                                            {personFilter}
+                                        </span>
+                                        <button
+                                            onClick={() => setPersonFilter(null)}
+                                            style={{
+                                                fontSize: 12, color: 'var(--accent-text)', background: 'none',
+                                                border: 'none', cursor: 'pointer', fontWeight: 700, padding: 0,
+                                            }}
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <div style={{
                                     display: 'flex', gap: 2, background: 'var(--bg)',
                                     borderRadius: 6, padding: 2, border: '1px solid var(--border)'
                                 }}>
-                                    {[
-                                        { key: 'flat', icon: '☰' },
-                                        { key: 'grouped', icon: '⊞' },
-                                    ].map(v => (
+                                    {[{ key: 'flat', icon: '☰' }, { key: 'grouped', icon: '⊞' }].map(v => (
                                         <button
                                             key={v.key}
                                             onClick={() => { setView(v.key); localStorage.setItem('commitmentsView', v.key); }}
@@ -224,28 +239,21 @@ export default function Dashboard() {
                         </div>
 
                         {loading ? (
-                            <div className="empty-state">
-                                <div className="empty-title">Loading...</div>
-                            </div>
+                            <div className="empty-state"><div className="empty-title">Loading...</div></div>
                         ) : filtered.length === 0 ? (
                             <div className="empty-state">
                                 <div className="empty-title">No commitments here</div>
                                 <div className="empty-sub">
-                                    {filter === 'All'
-                                        ? 'Click + to add your first meeting'
-                                        : `No ${filter.toLowerCase()} commitments`}
+                                    {personFilter
+                                        ? `No commitments for ${personFilter}`
+                                        : filter === 'All' ? 'Click + to add your first meeting'
+                                            : `No ${filter.toLowerCase()} commitments`}
                                 </div>
                             </div>
                         ) : (
                             view === 'flat' ? (
                                 filtered.map((c, i) => (
-                                    <CommitmentRow
-                                        key={c.id}
-                                        commitment={c}
-                                        index={i}
-                                        onUpdate={fetchData}
-                                        members={members}
-                                    />
+                                    <CommitmentRow key={c.id} commitment={c} index={i} onUpdate={fetchData} members={members} />
                                 ))
                             ) : (
                                 Object.entries(
@@ -272,13 +280,7 @@ export default function Dashboard() {
                                             </span>
                                         </div>
                                         {group.commitments.map((c, i) => (
-                                            <CommitmentRow
-                                                key={c.id}
-                                                commitment={c}
-                                                index={i}
-                                                onUpdate={fetchData}
-                                                members={members}
-                                            />
+                                            <CommitmentRow key={c.id} commitment={c} index={i} onUpdate={fetchData} members={members} />
                                         ))}
                                     </div>
                                 ))
@@ -287,14 +289,8 @@ export default function Dashboard() {
                     </div>
                 </Panel>
 
-                <PanelResizeHandle style={{
-                    width: 6, cursor: 'col-resize',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                    <div style={{
-                        width: 3, height: 40, borderRadius: 4,
-                        background: 'var(--border)', transition: 'background 0.15s',
-                    }} />
+                <PanelResizeHandle style={{ width: 6, cursor: 'col-resize', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 3, height: 40, borderRadius: 4, background: 'var(--border)' }} />
                 </PanelResizeHandle>
 
                 <Panel defaultSize={28} minSize={20}>
@@ -321,10 +317,19 @@ export default function Dashboard() {
                             >
                                 <div className="sidebar-head">Top accountability</div>
                                 {topPeople.map((p) => (
-                                    <div key={p.name} className="person-row">
+                                    <div
+                                        key={p.name}
+                                        className="person-row"
+                                        onClick={() => setPersonFilter(personFilter === p.name ? null : p.name)}
+                                        style={{
+                                            cursor: 'pointer',
+                                            background: personFilter === p.name ? 'var(--accent-light)' : 'transparent',
+                                            borderRadius: 6,
+                                            transition: 'background 0.15s',
+                                        }}
+                                    >
                                         <div className="person-left">
-                                            <div className={`avatar ${getAvatarColor(p.name)}`}
-                                                style={{ width: 26, height: 26, fontSize: 9 }}>
+                                            <div className={`avatar ${getAvatarColor(p.name)}`} style={{ width: 26, height: 26, fontSize: 9 }}>
                                                 {getInitials(p.name)}
                                             </div>
                                             {p.name}

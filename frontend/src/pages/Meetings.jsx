@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 import api from '../api';
 import CommitmentRow from '../components/CommitmentRow';
 
@@ -11,6 +12,7 @@ export default function Meetings() {
     const [selected, setSelected] = useState(null);
     const [tab, setTab] = useState('team');
     const [loading, setLoading] = useState(true);
+    const location = useLocation();
 
     const role = localStorage.getItem('userRole') || 'solo';
     const workspaceId = localStorage.getItem('workspaceId');
@@ -20,24 +22,20 @@ export default function Meetings() {
         try {
             const promises = [];
 
-            // Team meetings
             if (workspaceId && !isSolo) {
                 promises.push(api.get('/meetings', { params: { workspaceId } }));
             } else {
                 promises.push(Promise.resolve({ data: [] }));
             }
 
-            // Personal meetings — always fetch by userId
             promises.push(api.get('/meetings'));
 
-            // Commitments
             let commitmentsParams = {};
             if (workspaceId && (role === 'manager' || role === 'member')) {
                 commitmentsParams = { workspaceId };
             }
             promises.push(api.get('/commitments', { params: commitmentsParams }));
 
-            // Members for reassign
             if (workspaceId && role === 'manager') {
                 promises.push(api.get(`/workspaces/${workspaceId}/members`));
             } else {
@@ -45,44 +43,52 @@ export default function Meetings() {
             }
 
             const [teamRes, personalRes, commitmentsRes, membersRes] = await Promise.all(promises);
-
-            // Personal meetings are only those NOT in any workspace
             const personalOnly = personalRes.data.filter(m => !m.workspace_id);
 
             setTeamMeetings(teamRes.data);
             setPersonalMeetings(personalOnly);
             setCommitments(commitmentsRes.data);
             setMembers(membersRes.data);
-
-            // Auto select first meeting of active tab
-            const activeList = tab === 'team' ? teamRes.data : personalOnly;
-            if (activeList.length > 0) setSelected(activeList[0]);
-            else if (tab === 'team' && personalOnly.length > 0) {
-                setTab('personal');
-                setSelected(personalOnly[0]);
-            }
-
         } catch (err) {
             console.error(err);
         } finally {
             setLoading(false);
         }
-    }, [workspaceId, role, isSolo, tab]);
+    }, [workspaceId, role, isSolo]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    // When tab changes, auto select first meeting of that tab
+    // Auto-select from navigation state or default to first
+    useEffect(() => {
+        const allMeetings = [...teamMeetings, ...personalMeetings];
+        if (allMeetings.length === 0) return;
+
+        const stateId = location.state?.selectedMeetingId;
+        if (stateId) {
+            const target = allMeetings.find(m => m.id === stateId);
+            if (target) {
+                // Switch to correct tab
+                const isTeam = teamMeetings.find(m => m.id === stateId);
+                setTab(isTeam ? 'team' : 'personal');
+                setSelected(target);
+                return;
+            }
+        }
+
+        const activeList = tab === 'team' ? teamMeetings : personalMeetings;
+        if (activeList.length > 0) setSelected(activeList[0]);
+    }, [teamMeetings, personalMeetings, location.state]);
+
+    // When tab changes manually
     useEffect(() => {
         const list = tab === 'team' ? teamMeetings : personalMeetings;
         if (list.length > 0) setSelected(list[0]);
         else setSelected(null);
-    }, [tab, teamMeetings, personalMeetings]);
+    }, [tab]);
 
     const activeMeetings = tab === 'team' ? teamMeetings : personalMeetings;
-
-    const selectedCommitments = commitments.filter(
-        c => c.meeting_id === selected?.id
-    );
+    const selectedCommitments = commitments.filter(c => c.meeting_id === selected?.id);
+    const showTabs = !isSolo && workspaceId;
 
     function formatDate(d) {
         return new Date(d).toLocaleDateString('en-US', {
@@ -91,15 +97,9 @@ export default function Meetings() {
         });
     }
 
-    const showTabs = !isSolo && workspaceId;
-
     return (
         <div className="main">
-            <motion.div
-                className="page-header"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-            >
+            <motion.div className="page-header" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="page-title">Meetings</div>
                 <div className="page-sub">
                     {showTabs
@@ -108,13 +108,8 @@ export default function Meetings() {
                 </div>
             </motion.div>
 
-            {/* Tabs — only show for team users */}
             {showTabs && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    style={{ display: 'flex', gap: 4, marginBottom: 16 }}
-                >
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
                     {[
                         { key: 'team', label: '🏢 Team meetings', count: teamMeetings.length },
                         { key: 'personal', label: '🙋 Personal', count: personalMeetings.length },
@@ -128,14 +123,12 @@ export default function Meetings() {
                                 color: tab === t.key ? 'var(--accent-text)' : 'var(--text-muted)',
                                 fontWeight: tab === t.key ? 600 : 400,
                                 cursor: 'pointer', fontSize: 13, fontFamily: 'inherit',
-                                transition: 'all 0.15s',
-                                display: 'flex', alignItems: 'center', gap: 6,
+                                transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6,
                             }}
                         >
                             {t.label}
                             <span style={{
-                                fontSize: 10, fontWeight: 700, padding: '1px 7px',
-                                borderRadius: 20,
+                                fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 20,
                                 background: tab === t.key ? 'var(--accent)' : 'var(--border)',
                                 color: tab === t.key ? '#fff' : 'var(--text-muted)',
                             }}>
@@ -147,17 +140,11 @@ export default function Meetings() {
             )}
 
             {loading ? (
-                <div className="empty-state">
-                    <div className="empty-title">Loading...</div>
-                </div>
+                <div className="empty-state"><div className="empty-title">Loading...</div></div>
             ) : activeMeetings.length === 0 ? (
                 <div className="empty-state" style={{ marginTop: 48 }}>
-                    <div style={{ fontSize: 32, marginBottom: 12 }}>
-                        {tab === 'team' ? '🏢' : '🙋'}
-                    </div>
-                    <div className="empty-title">
-                        {tab === 'team' ? 'No team meetings yet' : 'No personal meetings yet'}
-                    </div>
+                    <div style={{ fontSize: 32, marginBottom: 12 }}>{tab === 'team' ? '🏢' : '🙋'}</div>
+                    <div className="empty-title">{tab === 'team' ? 'No team meetings yet' : 'No personal meetings yet'}</div>
                     <div className="empty-sub">
                         {tab === 'team' && role === 'member'
                             ? "Your manager hasn't added any meetings yet"
@@ -168,7 +155,6 @@ export default function Meetings() {
                 </div>
             ) : (
                 <div className="meetings-layout">
-                    {/* Left — meeting list */}
                     <div className="meetings-list">
                         <AnimatePresence mode="wait">
                             <motion.div
@@ -201,7 +187,6 @@ export default function Meetings() {
                         </AnimatePresence>
                     </div>
 
-                    {/* Right — meeting detail */}
                     <AnimatePresence mode="wait">
                         {selected ? (
                             <motion.div
@@ -218,64 +203,34 @@ export default function Meetings() {
                                             <div className="card-title">{selected.title}</div>
                                             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                                                 {formatDate(selected.created_at)}
-                                                {tab === 'team' && (
-                                                    <span style={{
-                                                        marginLeft: 8, fontSize: 10, fontWeight: 700,
-                                                        padding: '1px 7px', borderRadius: 20,
-                                                        background: 'var(--accent-light)', color: 'var(--accent-text)'
-                                                    }}>
-                                                        team
-                                                    </span>
-                                                )}
-                                                {tab === 'personal' && (
-                                                    <span style={{
-                                                        marginLeft: 8, fontSize: 10, fontWeight: 700,
-                                                        padding: '1px 7px', borderRadius: 20,
-                                                        background: 'var(--blue-light)', color: 'var(--blue)'
-                                                    }}>
-                                                        personal
-                                                    </span>
-                                                )}
+                                                <span style={{
+                                                    marginLeft: 8, fontSize: 10, fontWeight: 700,
+                                                    padding: '1px 7px', borderRadius: 20,
+                                                    background: tab === 'team' ? 'var(--accent-light)' : 'var(--blue-light)',
+                                                    color: tab === 'team' ? 'var(--accent-text)' : 'var(--blue)'
+                                                }}>
+                                                    {tab}
+                                                </span>
                                             </div>
                                         </div>
-                                        <div className="meeting-badge">
-                                            {selectedCommitments.length} commitments
-                                        </div>
+                                        <div className="meeting-badge">{selectedCommitments.length} commitments</div>
                                     </div>
 
                                     {selectedCommitments.length === 0 ? (
                                         <div className="empty-state">
                                             <div className="empty-title">
-                                                {role === 'member'
-                                                    ? 'No tasks assigned to you from this meeting'
-                                                    : 'No commitments extracted'}
-                                            </div>
-                                            <div className="empty-sub">
-                                                {role === 'member'
-                                                    ? 'Your manager may assign tasks to you later'
-                                                    : 'Nothing was extracted from this meeting'}
+                                                {role === 'member' ? 'No tasks assigned to you from this meeting' : 'No commitments extracted'}
                                             </div>
                                         </div>
                                     ) : (
                                         selectedCommitments.map((c, i) => (
-                                            <CommitmentRow
-                                                key={c.id}
-                                                commitment={c}
-                                                index={i}
-                                                onUpdate={fetchData}
-                                                members={members}
-                                            />
+                                            <CommitmentRow key={c.id} commitment={c} index={i} onUpdate={fetchData} members={members} />
                                         ))
                                     )}
                                 </div>
                             </motion.div>
                         ) : (
-                            <motion.div
-                                key="empty"
-                                className="meeting-detail"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                            >
+                            <motion.div key="empty" className="meeting-detail" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                                 <div className="card">
                                     <div className="empty-state" style={{ padding: '64px 20px' }}>
                                         <div style={{ fontSize: 32, marginBottom: 12 }}>👈</div>
