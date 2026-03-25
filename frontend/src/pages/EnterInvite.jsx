@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { supabase } from '../supabase';
-import axios from 'axios';
-import API from '../config';
+import api from '../api';
 
 export default function EnterInvite() {
     const [tab, setTab] = useState('code'); // 'code' or 'link'
@@ -18,12 +16,8 @@ export default function EnterInvite() {
         setLoading(true);
         setError('');
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const { data } = await axios.post(`${API}/workspaces/join-by-code`, {
+            const { data } = await api.post('/workspaces/join-by-code', {
                 code: code.trim().toUpperCase(),
-                userId: session?.user?.id,
-                userEmail: session?.user?.email,
-                userName: session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0]
             });
 
             // Only switch to this workspace if user has no active workspace yet

@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '../supabase';
-import axios from 'axios';
-import API from '../config';
+import api from '../api';
 
 export default function AcceptInvite() {
     const { token } = useParams();
@@ -21,14 +20,10 @@ export default function AcceptInvite() {
                     return;
                 }
 
-                const { data } = await axios.post(`${API}/invites/${token}/accept`, {
-                    userId: session.user.id,
-                    userEmail: session.user.email,
-                    userName: session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0]
-                });
+                const { data } = await api.post(`/invites/${token}/accept`);
 
                 // Fetch workspace name
-                const wsRes = await axios.get(`${API}/workspaces/${data.workspaceId}`);
+                const wsRes = await api.get(`/workspaces/${data.workspaceId}`);
 
                 // Only switch if no active workspace already
                 const existingWsId = localStorage.getItem('workspaceId');

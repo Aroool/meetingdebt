@@ -2,8 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
-import axios from 'axios';
-import API from '../config';
+import api from '../api';
 
 function RightPanel({ ws, isActive, onSwitch }) {
     const [members, setMembers] = useState([]);
@@ -13,10 +12,12 @@ function RightPanel({ ws, isActive, onSwitch }) {
     const [inviting, setInviting] = useState(false);
     const [inviteSuccess, setInviteSuccess] = useState(false);
 
+
+
     useEffect(() => {
         setLoading(true);
         setExpandedMember(null);
-        axios.get(`${API}/workspaces/${ws.id}/members`)
+        api.get(`/workspaces/${ws.id}/members`)
             .then(res => { setMembers(res.data); setLoading(false); })
             .catch(() => setLoading(false));
     }, [ws.id]);
@@ -26,7 +27,7 @@ function RightPanel({ ws, isActive, onSwitch }) {
         setInviting(true);
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            await axios.post(`${API}/workspaces/${ws.id}/invite`, {
+            await api.post(`/workspaces/${ws.id}/invite`, {
                 email: inviteEmail,
                 invitedBy: session?.user?.id,
                 workspaceName: ws.name
@@ -287,13 +288,13 @@ export default function Workspace() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            const { data: wsData } = await axios.get(`${API}/workspaces?userId=${session.user.id}`);
+            const { data: wsData } = await api.get('/workspaces');
 
             const withStats = await Promise.all(wsData.map(async (ws) => {
                 try {
                     const [membersRes, commitmentsRes] = await Promise.all([
-                        axios.get(`${API}/workspaces/${ws.id}/members`),
-                        axios.get(`${API}/commitments?workspaceId=${ws.id}`)
+                        api.get(`/workspaces/${ws.id}/members`),
+                        api.get(`/commitments`, { params: { workspaceId: ws.id } })
                     ]);
                     const commitments = commitmentsRes.data;
                     const now = new Date();
@@ -334,6 +335,7 @@ export default function Workspace() {
         localStorage.setItem('workspaceName', ws.name);
         localStorage.setItem('userRole', ws.role);
         localStorage.removeItem('soloMode');
+        window.dispatchEvent(new Event('workspaceSwitched'));
         navigate('/dashboard');
     }
 

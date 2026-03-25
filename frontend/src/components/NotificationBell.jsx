@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
-import API from '../config';
+import api from '../api';
 import { supabase } from '../supabase';
 
 export default function NotificationBell() {
@@ -15,7 +14,7 @@ export default function NotificationBell() {
     const fetchNotifications = useCallback(async () => {
         if (!userId) return;
         try {
-            const { data } = await axios.get(`${API}/notifications?userId=${userId}`);
+            const { data } = await api.get('/notifications');
             setNotifications(data);
         } catch (err) {
             console.error(err);
@@ -50,7 +49,7 @@ export default function NotificationBell() {
 
     async function markRead(id) {
         try {
-            await axios.patch(`${API}/notifications/${id}/read`);
+            await api.patch(`/notifications/${id}/read`);
             setNotifications(prev => prev.map(n =>
                 n.id === id ? { ...n, read: true } : n
             ));
@@ -61,7 +60,7 @@ export default function NotificationBell() {
 
     async function markAllRead() {
         try {
-            await axios.patch(`${API}/notifications/read-all`, { userId });
+            await api.patch('/notifications/read-all');
             setNotifications(prev => prev.map(n => ({ ...n, read: true })));
         } catch (err) {
             console.error(err);

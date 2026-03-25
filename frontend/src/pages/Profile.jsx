@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
-import axios from 'axios';
-import API from '../config';
+import api from '../api';
 
 export default function Profile() {
     const [user, setUser] = useState(null);
@@ -17,8 +16,18 @@ export default function Profile() {
     const [deleteError, setDeleteError] = useState('');
     const [passwordSent, setPasswordSent] = useState(false);
     const [nudgeEmails, setNudgeEmails] = useState(true);
+    const [savingSettings, setSavingSettings] = useState(false);
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+
+    async function switchWorkspace(ws) {
+        localStorage.setItem('workspaceId', ws.id);
+        localStorage.setItem('workspaceName', ws.name);
+        localStorage.setItem('userRole', ws.role);
+        if (ws.role !== 'solo') localStorage.removeItem('soloMode');
+        window.dispatchEvent(new Event('workspaceSwitched'));
+        navigate('/dashboard');
+    }
 
     useEffect(() => {
         if (searchParams.get('tab') === 'settings') setTab('settings');
@@ -32,8 +41,15 @@ export default function Profile() {
 
             // Fetch workspaces
             try {
-                const { data } = await axios.get(`${API}/workspaces?userId=${session.user.id}`);
+                const { data } = await api.get('/workspaces');
                 setWorkspaces(data);
+
+                // Set nudge preference from the active workspace membership
+                const workspaceId = localStorage.getItem('workspaceId');
+                const activeWs = data.find(ws => ws.id === workspaceId);
+                if (activeWs) {
+                    setNudgeEmails(activeWs.nudge_enabled !== false);
+                }
             } catch (err) {
                 console.error(err);
             }
@@ -52,6 +68,23 @@ export default function Profile() {
         setPasswordSent(true);
     }
 
+    async function toggleNudges() {
+        const newVal = !nudgeEmails;
+        setNudgeEmails(newVal);
+        setSavingSettings(true);
+        try {
+            await api.patch('/profile/settings', {
+                nudge_enabled: newVal,
+                workspaceId: localStorage.getItem('workspaceId')
+            });
+        } catch (err) {
+            console.error(err);
+            setNudgeEmails(!newVal); // Rollback
+        } finally {
+            setSavingSettings(false);
+        }
+    }
+
     async function handleDelete() {
         if (deleteConfirm !== 'DELETE') {
             setDeleteError('Please type DELETE exactly to confirm.');
@@ -64,7 +97,7 @@ export default function Profile() {
         if (role === 'manager' && workspaceId) {
             // Check if there are other members
             try {
-                const { data: members } = await axios.get(`${API}/workspaces/${workspaceId}/members`);
+                const { data: members } = await api.get(`/workspaces/${workspaceId}/members`);
                 const otherMembers = members.filter(m => m.user_id !== user.id);
                 if (otherMembers.length > 0) {
                     setDeleteError('You are a manager with team members. Please transfer ownership or remove all members before deleting your account.');
@@ -77,12 +110,12 @@ export default function Profile() {
 
         setDeleting(true);
         try {
-            // Sign out and delete
+            await api.post('/profile/delete-account');
             await supabase.auth.signOut();
             localStorage.clear();
             navigate('/');
         } catch (err) {
-            setDeleteError('Failed to delete account. Please try again.');
+            setDeleteError('Failed to delete account data. Please try again.');
             setDeleting(false);
         }
     }
@@ -118,7 +151,7 @@ export default function Profile() {
                 <div className="page-sub">Manage your account and preferences</div>
             </motion.div>
 
-            {/* Avatar + name header */}
+            {/* Avatar + name header — NO global role badge */}
             <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -142,6 +175,21 @@ export default function Profile() {
                         {displayName}
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{user.email}</div>
+                    {/* Show active workspace context instead of global role */}
+                    {localStorage.getItem('workspaceName') && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                            <span style={{
+                                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+                                background: localStorage.getItem('userRole') === 'manager' ? 'var(--accent-light)' : 'var(--blue-light)',
+                                color: localStorage.getItem('userRole') === 'manager' ? 'var(--accent-text)' : 'var(--blue)'
+                            }}>
+                                {localStorage.getItem('userRole')}
+                            </span>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                in {localStorage.getItem('workspaceName')}
+                            </span>
+                        </div>
+                    )}
                 </div>
             </motion.div>
 
@@ -295,12 +343,14 @@ export default function Profile() {
                                     </div>
                                     <motion.button
                                         whileTap={{ scale: 0.95 }}
-                                        onClick={() => setNudgeEmails(!nudgeEmails)}
+                                        onClick={toggleNudges}
+                                        disabled={savingSettings}
                                         style={{
                                             width: 44, height: 24, borderRadius: 12, border: 'none',
                                             background: nudgeEmails ? '#16a34a' : 'var(--border)',
-                                            cursor: 'pointer', position: 'relative', transition: 'background 0.2s',
-                                            flexShrink: 0
+                                            cursor: savingSettings ? 'not-allowed' : 'pointer',
+                                            position: 'relative', transition: 'background 0.2s',
+                                            flexShrink: 0, opacity: savingSettings ? 0.7 : 1
                                         }}
                                     >
                                         <motion.div

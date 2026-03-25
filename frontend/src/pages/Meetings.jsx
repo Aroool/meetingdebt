@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
+import api from '../api';
 import CommitmentRow from '../components/CommitmentRow';
-import API from '../config';
-import { supabase } from '../supabase';
 
 export default function Meetings() {
     const [teamMeetings, setTeamMeetings] = useState([]);
@@ -20,42 +18,35 @@ export default function Meetings() {
 
     const fetchData = useCallback(async () => {
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const userId = session?.user?.id;
-
             const promises = [];
 
             // Team meetings
             if (workspaceId && !isSolo) {
-                promises.push(axios.get(`${API}/meetings?workspaceId=${workspaceId}`));
+                promises.push(api.get('/meetings', { params: { workspaceId } }));
             } else {
                 promises.push(Promise.resolve({ data: [] }));
             }
 
             // Personal meetings — always fetch by userId
-            promises.push(axios.get(`${API}/meetings?userId=${userId}`));
+            promises.push(api.get('/meetings'));
 
             // Commitments
-            let commitmentsUrl = `${API}/commitments?userId=${userId}`;
-            if (workspaceId && role === 'manager') {
-                commitmentsUrl = `${API}/commitments?workspaceId=${workspaceId}`;
-            } else if (workspaceId && role === 'member') {
-                commitmentsUrl = `${API}/commitments?workspaceId=${workspaceId}&userId=${userId}`;
+            let commitmentsParams = {};
+            if (workspaceId && (role === 'manager' || role === 'member')) {
+                commitmentsParams = { workspaceId };
             }
-            promises.push(axios.get(commitmentsUrl));
+            promises.push(api.get('/commitments', { params: commitmentsParams }));
 
             // Members for reassign
             if (workspaceId && role === 'manager') {
-                promises.push(axios.get(`${API}/workspaces/${workspaceId}/members`));
+                promises.push(api.get(`/workspaces/${workspaceId}/members`));
             } else {
                 promises.push(Promise.resolve({ data: [] }));
             }
 
             const [teamRes, personalRes, commitmentsRes, membersRes] = await Promise.all(promises);
 
-            // Team meetings are workspace meetings
             // Personal meetings are only those NOT in any workspace
-            const teamMeetingIds = new Set(teamRes.data.map(m => m.id));
             const personalOnly = personalRes.data.filter(m => !m.workspace_id);
 
             setTeamMeetings(teamRes.data);
@@ -78,14 +69,14 @@ export default function Meetings() {
         }
     }, [workspaceId, role, isSolo, tab]);
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
     // When tab changes, auto select first meeting of that tab
     useEffect(() => {
         const list = tab === 'team' ? teamMeetings : personalMeetings;
         if (list.length > 0) setSelected(list[0]);
         else setSelected(null);
-    }, [tab]);
+    }, [tab, teamMeetings, personalMeetings]);
 
     const activeMeetings = tab === 'team' ? teamMeetings : personalMeetings;
 

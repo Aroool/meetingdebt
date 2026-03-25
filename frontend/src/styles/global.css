@@ -247,7 +247,7 @@ body {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    overflow: hidden;
+    /* Remove overflow: hidden if present */
     transition: background 0.3s, border-color 0.3s;
 }
 

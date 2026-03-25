@@ -5,13 +5,55 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
 const nodemailer = require('nodemailer');
 const cron = require('node-cron');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+
+// CORS — lock to frontend origin
+app.use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
+}));
+app.use(express.json({ limit: '1mb' }));
+
+// Rate limiting
+const generalLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' },
+});
+const aiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    message: { error: 'AI extraction rate limit reached. Wait a minute.' },
+});
+app.use(generalLimiter);
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+// ─── AUTH MIDDLEWARE ──────────────────────────────────────────────────────────
+async function requireAuth(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Missing or invalid authorization header' });
+    }
+    const token = authHeader.split(' ')[1];
+    try {
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+        if (error || !user) {
+            return res.status(401).json({ error: 'Invalid or expired token' });
+        }
+        req.userId = user.id;
+        req.userEmail = user.email;
+        req.userName = user.user_metadata?.full_name || user.email?.split('@')[0];
+        next();
+    } catch (err) {
+        return res.status(401).json({ error: 'Authentication failed' });
+    }
+}
 
 // SendGrid transporter
 const transporter = nodemailer.createTransport({
@@ -116,10 +158,13 @@ app.get('/', (req, res) => {
 });
 
 // Extract preview
-app.post('/extract-preview', async (req, res) => {
+app.post('/extract-preview', aiLimiter, requireAuth, async (req, res) => {
     try {
-        const { transcript, meetingTitle, ownerEmail, userId, workspaceId } = req.body;
+        const { transcript, meetingTitle, workspaceId } = req.body;
+        const userId = req.userId;
+        const ownerEmail = req.userEmail;
         if (!transcript) return res.status(400).json({ error: 'Transcript required' });
+        if (transcript.length > 50000) return res.status(400).json({ error: 'Transcript too long (max 50,000 characters)' });
 
         const response = await anthropic.messages.create({
             model: 'claude-haiku-4-5',
@@ -186,9 +231,10 @@ ${transcript}`
 });
 
 // Save commitments after manager confirms
-app.post('/save-commitments', async (req, res) => {
+app.post('/save-commitments', requireAuth, async (req, res) => {
     try {
-        const { meeting, commitments, userId, workspaceId } = req.body;
+        const { meeting, commitments, workspaceId } = req.body;
+        const userId = req.userId;
 
         const commitmentsToInsert = commitments.map(c => ({
             meeting_id: meeting.id,
@@ -254,88 +300,34 @@ app.post('/save-commitments', async (req, res) => {
     }
 });
 
-// Legacy extract route
-app.post('/extract', async (req, res) => {
+app.get('/workspaces', async (req, res) => {
     try {
-        const { transcript, meetingTitle, ownerEmail, userId, workspaceId } = req.body;
-        if (!transcript) return res.status(400).json({ error: 'Transcript is required' });
+        const { userId } = req.query;
+        const { data: memberships, error } = await supabase
+            .from('workspace_members')
+            .select('*, workspaces(*)')
+            .eq('user_id', userId);
 
-        const response = await anthropic.messages.create({
-            model: 'claude-haiku-4-5',
-            max_tokens: 1000,
-            messages: [{
-                role: 'user',
-                content: `You are analyzing a meeting transcript.
-Extract all action items, decisions, and blockers.
-Return ONLY valid JSON:
-{
-  "commitments": [
-    { "task": "...", "owner": "...", "deadline": "... or null", "type": "action_item or decision or blocker" }
-  ]
-}
-Transcript:
-${transcript}`
-            }]
-        });
+        if (error) throw error;
 
-        const rawText = response.content[0].text;
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error('No JSON found');
-        const parsed = JSON.parse(jsonMatch[0]);
-
-        const { data: meeting, error: meetingError } = await supabase
-            .from('meetings')
-            .insert({
-                title: meetingTitle || 'Untitled Meeting',
-                owner_email: ownerEmail || 'unknown@email.com',
-                user_id: userId || null,
-                workspace_id: workspaceId || null
-            })
-            .select()
-            .single();
-
-        if (meetingError) throw meetingError;
-
-        let members = [];
-        if (workspaceId) {
-            const { data: memberData } = await supabase
-                .from('workspace_members')
-                .select('user_id, name, email')
-                .eq('workspace_id', workspaceId);
-            members = memberData || [];
-        }
-
-        const matchMember = buildMatcher(members);
-        const commitmentsToInsert = parsed.commitments.map(c => ({
-            meeting_id: meeting.id,
-            task: c.task,
-            owner: c.owner,
-            deadline: c.deadline,
-            type: c.type,
-            status: 'pending',
-            user_id: userId || null,
-            workspace_id: workspaceId || null,
-            assigned_to: matchMember(c.owner)
+        const workspaces = memberships.map(m => ({
+            ...m.workspaces,
+            role: m.role
         }));
 
-        const { data: commitments, error: commitError } = await supabase
-            .from('commitments')
-            .insert(commitmentsToInsert)
-            .select();
-
-        if (commitError) throw commitError;
-        return res.json({ success: true, meeting, commitments });
-
+        return res.json(workspaces);
     } catch (error) {
-        console.error('Extract error:', error);
         return res.status(500).json({ error: error.message });
     }
 });
 
+// Legacy /extract route removed — use /extract-preview + /save-commitments instead
+
 // Get all meetings
-app.get('/meetings', async (req, res) => {
+app.get('/meetings', requireAuth, async (req, res) => {
     try {
-        const { userId, workspaceId } = req.query;
+        const { workspaceId } = req.query;
+        const userId = req.userId;
         let query = supabase
             .from('meetings')
             .select('*')
@@ -356,7 +348,7 @@ app.get('/meetings', async (req, res) => {
 });
 
 // Get commitments for a specific meeting
-app.get('/commitments/:meetingId', async (req, res) => {
+app.get('/commitments/:meetingId', requireAuth, async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('commitments')
@@ -376,9 +368,10 @@ app.get('/commitments/:meetingId', async (req, res) => {
 });
 
 // Get all commitments
-app.get('/commitments', async (req, res) => {
+app.get('/commitments', requireAuth, async (req, res) => {
     try {
-        const { userId, workspaceId } = req.query;
+        const { workspaceId } = req.query;
+        const userId = req.userId;
         let query = supabase
             .from('commitments')
             .select('*, meetings(title)')
@@ -405,9 +398,10 @@ app.get('/commitments', async (req, res) => {
 });
 
 // Update commitment
-app.patch('/commitments/:id', async (req, res) => {
+app.patch('/commitments/:id', requireAuth, async (req, res) => {
     try {
-        const { status, assigned_to, userId } = req.body;
+        const { status, assigned_to } = req.body;
+        const userId = req.userId;
         const updates = {};
         if (status !== undefined) updates.status = status;
         if (assigned_to !== undefined) updates.assigned_to = assigned_to;
@@ -454,7 +448,7 @@ app.patch('/commitments/:id', async (req, res) => {
 });
 
 // Manual nudge
-app.post('/nudge/:commitmentId', async (req, res) => {
+app.post('/nudge/:commitmentId', requireAuth, async (req, res) => {
     try {
         const { email } = req.body;
         if (!email) return res.status(400).json({ error: 'Email required' });
@@ -504,34 +498,60 @@ cron.schedule('0 9 * * *', async () => {
         }
 
         for (const commitment of overdue) {
-            const { data: meeting } = await supabase
-                .from('meetings')
-                .select('title, owner_email')
-                .eq('id', commitment.meeting_id)
-                .single();
+            let recipientEmail = null;
+            let nudgeEnabled = true;
 
-            let recipientEmail = meeting?.owner_email;
             if (commitment.assigned_to) {
                 const { data: member } = await supabase
                     .from('workspace_members')
-                    .select('email')
+                    .select('email, nudge_enabled')
                     .eq('user_id', commitment.assigned_to)
                     .single();
-                if (member?.email) recipientEmail = member.email;
+
+                if (member) {
+                    recipientEmail = member.email;
+                    nudgeEnabled = member.nudge_enabled !== false;
+                }
+            }
+
+            if (!nudgeEnabled) continue;
+            if (!recipientEmail || recipientEmail === 'unknown@email.com') {
+                const { data: meeting } = await supabase
+                    .from('meetings')
+                    .select('owner_email')
+                    .eq('id', commitment.meeting_id)
+                    .single();
+                recipientEmail = meeting?.owner_email;
             }
 
             if (!recipientEmail || recipientEmail === 'unknown@email.com') continue;
 
             try {
+                const { data: meeting } = await supabase
+                    .from('meetings')
+                    .select('title')
+                    .eq('id', commitment.meeting_id)
+                    .single();
+
                 await transporter.sendMail({
                     from: `MeetingDebt <${process.env.SENDGRID_FROM_EMAIL}>`,
                     to: recipientEmail,
                     subject: `Overdue: ${commitment.task}`,
-                    html: nudgeEmail(commitment, meeting?.title || 'Your meeting')
+                    html: `
+                        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+                            <h2 style="color: #0f172a;">Commitment Overdue</h2>
+                            <p style="color: #475569;">Your commitment from <strong>${meeting?.title || 'a meeting'}</strong> is now overdue.</p>
+                            <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0;">
+                                <p style="margin: 0; color: #1e293b; font-weight: 600;">${commitment.task}</p>
+                                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 14px;">Due: ${new Date(commitment.deadline).toLocaleDateString()}</p>
+                            </div>
+                            <a href="${process.env.FRONTEND_URL}/dashboard" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">View Dashboard</a>
+                        </div>
+                    `
                 });
-                console.log(`Nudge sent to ${recipientEmail}`);
-            } catch (emailErr) {
-                console.error('Nudge email failed:', emailErr.message);
+                console.log(`Sent nudge to ${recipientEmail} for task: ${commitment.task}`);
+            } catch (err) {
+                console.error(`Failed to send mail to ${recipientEmail}:`, err);
             }
         }
     } catch (err) {
@@ -541,10 +561,22 @@ cron.schedule('0 9 * * *', async () => {
 
 // ─── WORKSPACES ───────────────────────────────────────────────────────────────
 
-app.post('/workspaces', async (req, res) => {
+app.post('/workspaces', requireAuth, async (req, res) => {
     try {
-        const { name, userId, userEmail, userName } = req.body;
-        const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const { name } = req.body;
+        const userId = req.userId;
+        const userEmail = req.userEmail;
+        const userName = req.userName;
+        if (!name || name.trim().length === 0) return res.status(400).json({ error: 'Workspace name is required' });
+
+        // Generate unique code
+        let code;
+        let codeExists = true;
+        while (codeExists) {
+            code = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const { data } = await supabase.from('workspaces').select('id').eq('code', code).single();
+            codeExists = !!data;
+        }
 
         const { data: workspace, error } = await supabase
             .from('workspaces')
@@ -568,9 +600,12 @@ app.post('/workspaces', async (req, res) => {
     }
 });
 
-app.post('/workspaces/join-by-code', async (req, res) => {
+app.post('/workspaces/join-by-code', requireAuth, async (req, res) => {
     try {
-        const { code, userId, userEmail, userName } = req.body;
+        const { code } = req.body;
+        const userId = req.userId;
+        const userEmail = req.userEmail;
+        const userName = req.userName;
 
         const { data: workspace, error } = await supabase
             .from('workspaces')
@@ -607,9 +642,9 @@ app.post('/workspaces/join-by-code', async (req, res) => {
     }
 });
 
-app.get('/workspaces', async (req, res) => {
+app.get('/workspaces', requireAuth, async (req, res) => {
     try {
-        const { userId } = req.query;
+        const userId = req.userId;
         const { data: memberships, error } = await supabase
             .from('workspace_members')
             .select('*, workspaces(*)')
@@ -628,7 +663,7 @@ app.get('/workspaces', async (req, res) => {
     }
 });
 
-app.get('/workspaces/:workspaceId/members', async (req, res) => {
+app.get('/workspaces/:workspaceId/members', requireAuth, async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('workspace_members')
@@ -642,7 +677,7 @@ app.get('/workspaces/:workspaceId/members', async (req, res) => {
     }
 });
 
-app.post('/workspaces/:workspaceId/invite', async (req, res) => {
+app.post('/workspaces/:workspaceId/invite', requireAuth, async (req, res) => {
     try {
         const { email, invitedBy, workspaceName } = req.body;
         const { workspaceId } = req.params;
@@ -683,9 +718,11 @@ app.post('/workspaces/:workspaceId/invite', async (req, res) => {
     }
 });
 
-app.post('/invites/:token/accept', async (req, res) => {
+app.post('/invites/:token/accept', requireAuth, async (req, res) => {
     try {
-        const { userId, userEmail, userName } = req.body;
+        const userId = req.userId;
+        const userEmail = req.userEmail;
+        const userName = req.userName;
 
         const { data: invite, error } = await supabase
             .from('invites')
@@ -714,9 +751,9 @@ app.post('/invites/:token/accept', async (req, res) => {
     }
 });
 
-app.get('/workspaces/:workspaceId/role', async (req, res) => {
+app.get('/workspaces/:workspaceId/role', requireAuth, async (req, res) => {
     try {
-        const { userId } = req.query;
+        const userId = req.userId;
         const { data, error } = await supabase
             .from('workspace_members')
             .select('role')
@@ -731,7 +768,7 @@ app.get('/workspaces/:workspaceId/role', async (req, res) => {
     }
 });
 
-app.get('/workspaces/:workspaceId', async (req, res) => {
+app.get('/workspaces/:workspaceId', requireAuth, async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('workspaces')
@@ -747,7 +784,7 @@ app.get('/workspaces/:workspaceId', async (req, res) => {
 });
 
 // Test nudges manually
-app.get('/test-nudges', async (req, res) => {
+app.get('/test-nudges', requireAuth, async (req, res) => {
     try {
         const today = new Date().toISOString();
         const { data: overdue } = await supabase
@@ -768,9 +805,9 @@ app.get('/test-nudges', async (req, res) => {
 // ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
 
 // Mark ALL read — must be before /:id route
-app.patch('/notifications/read-all', async (req, res) => {
+app.patch('/notifications/read-all', requireAuth, async (req, res) => {
     try {
-        const { userId } = req.body;
+        const userId = req.userId;
         const { error } = await supabase
             .from('notifications')
             .update({ read: true })
@@ -785,7 +822,7 @@ app.patch('/notifications/read-all', async (req, res) => {
 });
 
 // Mark single notification read
-app.patch('/notifications/:id/read', async (req, res) => {
+app.patch('/notifications/:id/read', requireAuth, async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('notifications')
@@ -802,10 +839,9 @@ app.patch('/notifications/:id/read', async (req, res) => {
 });
 
 // Get notifications — uses filter() instead of eq() to avoid uuid type mismatch
-app.get('/notifications', async (req, res) => {
+app.get('/notifications', requireAuth, async (req, res) => {
     try {
-        const { userId } = req.query;
-        if (!userId) return res.json([]);
+        const userId = req.userId;
 
         const { data, error } = await supabase
             .from('notifications')
@@ -818,6 +854,44 @@ app.get('/notifications', async (req, res) => {
         return res.json(data || []);
     } catch (error) {
         console.error('Notifications error:', error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// Update settings (nudge preference)
+app.patch('/profile/settings', requireAuth, async (req, res) => {
+    try {
+        const { nudge_enabled, workspaceId } = req.body;
+        if (workspaceId) {
+            const { error } = await supabase
+                .from('workspace_members')
+                .update({ nudge_enabled: !!nudge_enabled })
+                .eq('user_id', req.userId)
+                .eq('workspace_id', workspaceId);
+            if (error) throw error;
+        } else {
+            const { error } = await supabase
+                .from('workspace_members')
+                .update({ nudge_enabled: !!nudge_enabled })
+                .eq('user_id', req.userId);
+            if (error) throw error;
+        }
+        return res.json({ success: true });
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete account permanently
+app.post('/profile/delete-account', requireAuth, async (req, res) => {
+    try {
+        const userId = req.userId;
+        await supabase.from('notifications').delete().eq('user_id', userId);
+        await supabase.from('workspace_members').delete().eq('user_id', userId);
+        await supabase.from('commitments').delete().eq('user_id', userId);
+        await supabase.from('meetings').delete().eq('user_id', userId);
+        return res.json({ success: true });
+    } catch (error) {
         return res.status(500).json({ error: error.message });
     }
 });

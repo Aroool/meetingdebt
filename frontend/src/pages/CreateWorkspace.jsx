@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { supabase } from '../supabase';
-import axios from 'axios';
-import API from '../config';
+import api from '../api';
 
 export default function CreateWorkspace() {
     const [name, setName] = useState('');
@@ -17,16 +15,7 @@ export default function CreateWorkspace() {
         setError('');
 
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const userId = session?.user?.id;
-            const userEmail = session?.user?.email;
-
-            const { data } = await axios.post(`${API}/workspaces`, {
-                name,
-                userId,
-                userEmail,
-                userName: session?.user?.user_metadata?.full_name || userEmail?.split('@')[0]
-            });
+            const { data } = await api.post('/workspaces', { name });
 
             localStorage.setItem('workspaceId', data.workspace.id);
             localStorage.setItem('workspaceName', data.workspace.name);

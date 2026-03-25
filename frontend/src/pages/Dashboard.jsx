@@ -1,26 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import axios from 'axios';
-import API from '../config';
+import api from '../api';
 import StatCard from '../components/StatCard';
 import CommitmentRow from '../components/CommitmentRow';
 import MeetingCard from '../components/MeetingCard';
 import NewMeetingModal from '../components/NewMeetingModal';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
-import { supabase } from '../supabase';
 import LogoTransition from '../components/LogoTransition';
+
+import { getStatus } from '../utils';
 
 const FILTERS = ['All', 'Overdue', 'Pending', 'Done'];
 
-function getStatus(c) {
-    if (c.status === 'completed') return 'done';
-    if (c.status === 'blocked') return 'blocked';
-    if (c.deadline) {
-        const due = new Date(c.deadline);
-        if (!isNaN(due) && due < new Date()) return 'overdue';
-    }
-    return 'pending';
-}
+
 
 function getHour() {
     const h = new Date().getHours();
@@ -37,6 +29,7 @@ export default function Dashboard() {
     const [modalOpen, setModalOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [showTransition, setShowTransition] = useState(false);
+    const [view, setView] = useState(localStorage.getItem('commitmentsView') || 'flat');
 
     useEffect(() => {
         const shouldShow = sessionStorage.getItem('showTransition');
@@ -46,27 +39,35 @@ export default function Dashboard() {
         }
     }, []);
 
+    const [currentRole, setCurrentRole] = useState(localStorage.getItem('userRole') || 'solo');
+
+    useEffect(() => {
+        function handleSwitch() {
+            setCurrentRole(localStorage.getItem('userRole') || 'solo');
+        }
+        window.addEventListener('workspaceSwitched', handleSwitch);
+        return () => window.removeEventListener('workspaceSwitched', handleSwitch);
+    }, []);
+
     const fetchData = useCallback(async () => {
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const userId = session?.user?.id;
             const workspaceId = localStorage.getItem('workspaceId');
             const role = localStorage.getItem('userRole') || 'solo';
 
-            let commitmentsUrl = `${API}/commitments?userId=${userId}`;
-            let meetingsUrl = `${API}/meetings?userId=${userId}`;
+            let commitmentsParams = {};
+            let meetingsParams = {};
 
             if (workspaceId && role === 'manager') {
-                commitmentsUrl = `${API}/commitments?workspaceId=${workspaceId}`;
-                meetingsUrl = `${API}/meetings?workspaceId=${workspaceId}`;
+                commitmentsParams = { workspaceId };
+                meetingsParams = { workspaceId };
             } else if (workspaceId && role === 'member') {
-                commitmentsUrl = `${API}/commitments?workspaceId=${workspaceId}&userId=${userId}`;
-                meetingsUrl = `${API}/meetings?workspaceId=${workspaceId}`;
+                commitmentsParams = { workspaceId };
+                meetingsParams = { workspaceId };
             }
 
             const [cm, mm] = await Promise.all([
-                axios.get(commitmentsUrl),
-                axios.get(meetingsUrl),
+                api.get('/commitments', { params: commitmentsParams }),
+                api.get('/meetings', { params: meetingsParams }),
             ]);
 
             setCommitments(cm.data);
@@ -74,7 +75,7 @@ export default function Dashboard() {
 
             // Fetch members for reassign dropdown
             if (workspaceId && role === 'manager') {
-                const membersRes = await axios.get(`${API}/workspaces/${workspaceId}/members`);
+                const membersRes = await api.get(`/workspaces/${workspaceId}/members`);
                 setMembers(membersRes.data);
             }
         } catch (err) {
@@ -182,16 +183,43 @@ export default function Dashboard() {
                     <div className="card" style={{ marginRight: 8 }}>
                         <div className="card-header">
                             <div className="card-title">Commitments</div>
-                            <div className="filter-tabs">
-                                {FILTERS.map(f => (
-                                    <button
-                                        key={f}
-                                        className={`ftab ${filter === f ? 'active' : ''}`}
-                                        onClick={() => setFilter(f)}
-                                    >
-                                        {f}
-                                    </button>
-                                ))}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                {/* View toggle */}
+                                <div style={{
+                                    display: 'flex', gap: 2, background: 'var(--bg)',
+                                    borderRadius: 6, padding: 2, border: '1px solid var(--border)'
+                                }}>
+                                    {[
+                                        { key: 'flat', icon: '☰' },
+                                        { key: 'grouped', icon: '⊞' },
+                                    ].map(v => (
+                                        <button
+                                            key={v.key}
+                                            onClick={() => { setView(v.key); localStorage.setItem('commitmentsView', v.key); }}
+                                            style={{
+                                                padding: '3px 8px', borderRadius: 4, border: 'none',
+                                                background: view === v.key ? 'var(--bg-card)' : 'transparent',
+                                                color: view === v.key ? 'var(--text-primary)' : 'var(--text-muted)',
+                                                cursor: 'pointer', fontSize: 12,
+                                                boxShadow: view === v.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                                transition: 'all 0.15s',
+                                            }}
+                                        >
+                                            {v.icon}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="filter-tabs">
+                                    {FILTERS.map(f => (
+                                        <button
+                                            key={f}
+                                            className={`ftab ${filter === f ? 'active' : ''}`}
+                                            onClick={() => setFilter(f)}
+                                        >
+                                            {f}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
@@ -209,15 +237,52 @@ export default function Dashboard() {
                                 </div>
                             </div>
                         ) : (
-                            filtered.map((c, i) => (
-                                <CommitmentRow
-                                    key={c.id}
-                                    commitment={c}
-                                    index={i}
-                                    onUpdate={fetchData}
-                                    members={members}
-                                />
-                            ))
+                            view === 'flat' ? (
+                                filtered.map((c, i) => (
+                                    <CommitmentRow
+                                        key={c.id}
+                                        commitment={c}
+                                        index={i}
+                                        onUpdate={fetchData}
+                                        members={members}
+                                    />
+                                ))
+                            ) : (
+                                Object.entries(
+                                    filtered.reduce((acc, c) => {
+                                        const key = c.meeting_id || 'no-meeting';
+                                        const title = c.meeting_title || 'Untitled Meeting';
+                                        if (!acc[key]) acc[key] = { title, commitments: [] };
+                                        acc[key].commitments.push(c);
+                                        return acc;
+                                    }, {})
+                                ).map(([meetingId, group], gi) => (
+                                    <div key={meetingId}>
+                                        <div style={{
+                                            display: 'flex', alignItems: 'center', gap: 8,
+                                            padding: '10px 20px 6px',
+                                            borderTop: gi > 0 ? '1px solid var(--border)' : 'none',
+                                        }}>
+                                            <span style={{ fontSize: 13 }}>📋</span>
+                                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>
+                                                {group.title}
+                                            </span>
+                                            <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                                                {group.commitments.length} items
+                                            </span>
+                                        </div>
+                                        {group.commitments.map((c, i) => (
+                                            <CommitmentRow
+                                                key={c.id}
+                                                commitment={c}
+                                                index={i}
+                                                onUpdate={fetchData}
+                                                members={members}
+                                            />
+                                        ))}
+                                    </div>
+                                ))
+                            )
                         )}
                     </div>
                 </Panel>
@@ -278,7 +343,7 @@ export default function Dashboard() {
                 </Panel>
             </PanelGroup>
 
-            {localStorage.getItem('userRole') !== 'member' && (
+            {currentRole !== 'member' && (
                 <motion.button
                     className="fab"
                     onClick={() => setModalOpen(true)}

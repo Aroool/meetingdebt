@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../supabase';
 import LogoTransition from './LogoTransition';
-import axios from 'axios';
-import API from '../config';
+import api from '../api';
 
 // These pages handle their own logic — don't redirect from them
 const SKIP_WORKSPACE_CHECK = [
@@ -54,7 +53,7 @@ export default function ProtectedRoute({ children }) {
 
             if (!workspaceId) {
                 try {
-                    const { data } = await axios.get(`${API}/workspaces?userId=${session.user.id}`);
+                    const { data } = await api.get('/workspaces');
                     if (data.length > 0) {
                         // Find manager workspace first, fall back to first
                         const preferred = data.find(w => w.role === 'manager') || data[0];

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
-import API from '../config';
+import api from '../api';
+import { getStatusKey } from '../utils';
 
 const STATUSES = [
     { key: 'pending', label: 'Pending', cls: 'pill-amber' },
@@ -23,14 +23,7 @@ function getAvatarColor(name) {
 }
 
 function getStatus(commitment) {
-    if (commitment.status === 'completed') return 'completed';
-    if (commitment.status === 'blocked') return 'blocked';
-    if (commitment.status === 'overdue') return 'overdue';
-    if (commitment.deadline) {
-        const due = new Date(commitment.deadline);
-        if (!isNaN(due) && due < new Date()) return 'overdue';
-    }
-    return 'pending';
+    return getStatusKey(commitment);
 }
 
 function getPillConfig(status) {
@@ -70,7 +63,7 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
         setSaving(true);
         setLocalStatus(newStatus);
         try {
-            await axios.patch(`${API}/commitments/${commitment.id}`, { status: newStatus });
+            await api.patch(`/commitments/${commitment.id}`, { status: newStatus });
             onUpdate && onUpdate();
         } catch (err) {
             console.error(err);
@@ -84,7 +77,7 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
         setReassignOpen(false);
         setReassigning(true);
         try {
-            await axios.patch(`${API}/commitments/${commitment.id}`, {
+            await api.patch(`/commitments/${commitment.id}`, {
                 assigned_to: userId || null
             });
             onUpdate && onUpdate();
@@ -175,14 +168,23 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
                                     exit={{ opacity: 0, scale: 0.92, y: -4 }}
                                     transition={{ duration: 0.15 }}
                                     style={{
-                                        position: 'absolute',
-                                        right: 0,
-                                        top: 'calc(100% + 6px)',
+                                        position: 'fixed',
+                                        top: (() => {
+                                            const el = reassignRef.current;
+                                            if (!el) return 0;
+                                            const rect = el.getBoundingClientRect();
+                                            return rect.bottom + 6;
+                                        })(),
+                                        right: (() => {
+                                            const el = reassignRef.current;
+                                            if (!el) return 0;
+                                            return window.innerWidth - el.getBoundingClientRect().right;
+                                        })(),
                                         background: 'var(--bg-card)',
                                         border: '1px solid var(--border)',
                                         borderRadius: 10,
                                         padding: 4,
-                                        zIndex: 100,
+                                        zIndex: 9999,
                                         minWidth: 180,
                                         boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
                                     }}
@@ -285,40 +287,85 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
 
                 {/* Status dropdown */}
                 <div ref={dropdownRef} style={{ position: 'relative' }}>
-                    <motion.span
-                        className={`pill ${config.cls}`}
-                        style={{ cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
-                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                    <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: index * 0.05 + 0.15, type: 'spring', stiffness: 300 }}
+                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                        style={{
+                            fontSize: 11, fontWeight: 700,
+                            padding: '3px 10px', borderRadius: 20,
+                            border: 'none', cursor: 'pointer',
+                            fontFamily: 'inherit',
+                            display: 'flex', alignItems: 'center', gap: 4,
+                            background: config.cls === 'pill-green' ? 'var(--accent-light)' :
+                                config.cls === 'pill-red' ? 'var(--red-light)' :
+                                    config.cls === 'pill-blue' ? 'var(--blue-light)' : 'var(--amber-light)',
+                            color: config.cls === 'pill-green' ? 'var(--accent-text)' :
+                                config.cls === 'pill-red' ? 'var(--red)' :
+                                    config.cls === 'pill-blue' ? 'var(--blue)' : 'var(--amber)',
+                        }}
                     >
                         {saving ? '...' : config.label}
                         <span style={{ fontSize: 8, opacity: 0.7 }}>▼</span>
-                    </motion.span>
+                    </motion.button>
 
                     <AnimatePresence>
                         {dropdownOpen && (
                             <motion.div
-                                className="status-dropdown"
                                 initial={{ opacity: 0, scale: 0.92, y: -4 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.92, y: -4 }}
                                 transition={{ duration: 0.15 }}
+                                style={{
+                                    position: 'fixed',
+                                    top: (() => {
+                                        const el = dropdownRef.current;
+                                        if (!el) return 0;
+                                        return el.getBoundingClientRect().bottom + 6;
+                                    })(),
+                                    right: (() => {
+                                        const el = dropdownRef.current;
+                                        if (!el) return 0;
+                                        return window.innerWidth - el.getBoundingClientRect().right;
+                                    })(),
+                                    background: 'var(--bg-card)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 10,
+                                    padding: 4,
+                                    zIndex: 9999,
+                                    minWidth: 130,
+                                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                                }}
                             >
+                                <div style={{ padding: '4px 10px 4px', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Status
+                                </div>
                                 {STATUSES.map(s => (
                                     <div
                                         key={s.key}
-                                        className={`status-option ${localStatus === s.key ? 'active' : ''}`}
                                         onClick={() => changeStatus(s.key)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                            padding: '7px 10px', borderRadius: 7,
+                                            cursor: 'pointer', fontSize: 12,
+                                            color: 'var(--text-primary)',
+                                            background: localStatus === s.key ? 'var(--accent-light)' : 'transparent',
+                                            transition: 'background 0.1s',
+                                        }}
+                                        onMouseEnter={e => { if (localStatus !== s.key) e.currentTarget.style.background = 'var(--bg)'; }}
+                                        onMouseLeave={e => { if (localStatus !== s.key) e.currentTarget.style.background = 'transparent'; }}
                                     >
-                                        <span className={`pill ${s.cls}`} style={{ fontSize: 10, padding: '2px 8px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <span style={{
+                                                width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                                                background: s.cls === 'pill-green' ? '#16a34a' :
+                                                    s.cls === 'pill-red' ? '#ef4444' :
+                                                        s.cls === 'pill-blue' ? '#3b82f6' : '#f59e0b'
+                                            }} />
                                             {s.label}
-                                        </span>
+                                        </div>
                                         {localStatus === s.key && (
-                                            <span style={{ fontSize: 11, color: 'var(--accent)' }}>✓</span>
+                                            <span style={{ color: 'var(--accent)', fontSize: 11 }}>✓</span>
                                         )}
                                     </div>
                                 ))}

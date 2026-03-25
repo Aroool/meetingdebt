@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
-import API from '../config';
-import { supabase } from '../supabase';
+import api from '../api';
 
 export default function NewMeetingModal({ isOpen, onClose, onSuccess }) {
     const [step, setStep] = useState('input'); // 'input' | 'confirm'
@@ -59,21 +57,16 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess }) {
         }, 800);
 
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const userId = session?.user?.id;
-
             // Fetch workspace members for matching display
             let members = [];
             if (workspaceId) {
-                const membersRes = await axios.get(`${API}/workspaces/${workspaceId}/members`);
+                const membersRes = await api.get(`/workspaces/${workspaceId}/members`);
                 members = membersRes.data;
             }
 
-            const { data } = await axios.post(`${API}/extract-preview`, {
+            const { data } = await api.post('/extract-preview', {
                 transcript,
                 meetingTitle: title || 'Untitled Meeting',
-                ownerEmail: session?.user?.email,
-                userId,
                 workspaceId,
             });
 
@@ -93,28 +86,19 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess }) {
         } catch (err) {
             clearInterval(interval);
             setLoading(false);
-            if (err.code === 'ERR_NETWORK' || err.response === undefined) {
-                reset();
-                onSuccess && onSuccess();
-                onClose();
-            } else {
-                setError('Something went wrong. Is the backend running?');
-            }
+            setError(err.response?.data?.error || 'Something went wrong. Is the backend running?');
         }
     }
 
     async function handleConfirm() {
         setSaving(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-
-            await axios.post(`${API}/save-commitments`, {
+            await api.post('/save-commitments', {
                 meeting: extracted.meeting,
                 commitments: extracted.commitments.map((c, i) => ({
                     ...c,
                     assigned_to: assignments[i] || null,
                 })),
-                userId: session?.user?.id,
                 workspaceId,
             });
 
@@ -127,13 +111,7 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess }) {
         }
     }
 
-    const avatarColors = [
-        { bg: '#dbeafe', color: '#1d4ed8' },
-        { bg: '#ede9fe', color: '#7c3aed' },
-        { bg: '#fef3c7', color: '#92400e' },
-        { bg: '#ffe4e6', color: '#be123c' },
-        { bg: '#ccfbf1', color: '#0f766e' },
-    ];
+
 
     return (
         <AnimatePresence>

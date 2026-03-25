@@ -3,19 +3,46 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
 import NotificationBell from './NotificationBell';
+import axios from 'axios';
+import API from '../config';
 
+function getRoleFromStorage() {
+    return localStorage.getItem('userRole') || 'solo';
+}
+
+function getIsSolo() {
+    return localStorage.getItem('soloMode') === 'true';
+}
 
 export default function Navbar() {
     const [dark, setDark] = useState(false);
     const [user, setUser] = useState(null);
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [role, setRole] = useState(getRoleFromStorage);
+    const [isSolo, setIsSolo] = useState(getIsSolo);
+    const [workspaceName, setWorkspaceName] = useState(localStorage.getItem('workspaceName') || '');
+    const [workspaces, setWorkspaces] = useState([]);
     const dropdownRef = useRef(null);
     const location = useLocation();
     const navigate = useNavigate();
-    const role = localStorage.getItem('userRole') || 'solo';
-    const isSolo = localStorage.getItem('soloMode') === 'true';
-    const workspaceName = localStorage.getItem('workspaceName') || '';
 
+    async function fetchWorkspaces(userId) {
+        if (!userId) return;
+        try {
+            const { data } = await axios.get(`${API}/workspaces?userId=${userId}`);
+            setWorkspaces(data);
+        } catch (err) { }
+    }
+
+    useEffect(() => {
+        function handleSwitch() {
+            setRole(getRoleFromStorage());
+            setIsSolo(getIsSolo());
+            setWorkspaceName(localStorage.getItem('workspaceName') || '');
+        }
+        window.addEventListener('workspaceSwitched', handleSwitch);
+        return () => window.removeEventListener('workspaceSwitched', handleSwitch);
+    }, []);
 
     useEffect(() => {
         document.body.classList.toggle('dark', dark);
@@ -24,9 +51,13 @@ export default function Navbar() {
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
             setUser(session?.user);
+            fetchWorkspaces(session?.user?.id);
         });
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (_, session) => setUser(session?.user)
+            (_, session) => {
+                setUser(session?.user);
+                fetchWorkspaces(session?.user?.id);
+            }
         );
         return () => subscription.unsubscribe();
     }, []);
@@ -41,15 +72,29 @@ export default function Navbar() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    function handleSwitchWorkspace(ws) {
+        localStorage.setItem('workspaceId', ws.id);
+        localStorage.setItem('workspaceName', ws.name);
+        localStorage.setItem('userRole', ws.role);
+        localStorage.removeItem('soloMode');
+        setRole(ws.role);
+        setIsSolo(false);
+        setWorkspaceName(ws.name);
+        window.dispatchEvent(new Event('workspaceSwitched'));
+        setDropdownOpen(false);
+        navigate('/dashboard');
+    }
+
     async function handleLogout() {
         await supabase.auth.signOut();
         localStorage.clear();
-        navigate('/login');
+        navigate('/');
     }
 
     const name = user?.user_metadata?.full_name ||
         user?.email?.split('@')[0] || 'Account';
     const email = user?.email || '';
+    const activeWsId = localStorage.getItem('workspaceId');
 
     return (
         <nav className="navbar">
@@ -63,24 +108,20 @@ export default function Navbar() {
                     className={`nav-link ${location.pathname === '/dashboard' ? 'active' : ''}`}>
                     Dashboard
                 </Link>
-
                 <Link to="/commitments"
                     className={`nav-link ${location.pathname === '/commitments' ? 'active' : ''}`}>
                     {role === 'member' ? 'My Tasks' : 'Commitments'}
                 </Link>
-
                 <Link to="/meetings"
                     className={`nav-link ${location.pathname === '/meetings' ? 'active' : ''}`}>
                     Meetings
                 </Link>
-
                 {!isSolo && (
                     <Link to="/workspace"
                         className={`nav-link ${location.pathname === '/workspace' ? 'active' : ''}`}>
                         Team
                     </Link>
                 )}
-
                 {isSolo && (
                     <Link to="/workspace"
                         className={`nav-link ${location.pathname === '/workspace' ? 'active' : ''}`}
@@ -101,11 +142,15 @@ export default function Navbar() {
                     {dark ? '☀️' : '🌙'}
                 </motion.button>
 
-                {/* Avatar with dropdown */}
                 <div ref={dropdownRef} style={{ position: 'relative' }}>
                     <motion.div
                         className="user-avatar"
-                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                        onClick={async () => {
+                            setDropdownOpen(!dropdownOpen);
+                            // Refetch workspaces every time dropdown opens
+                            const { data: { session } } = await supabase.auth.getSession();
+                            if (session?.user?.id) fetchWorkspaces(session.user.id);
+                        }}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         style={{ cursor: 'pointer' }}
@@ -121,45 +166,39 @@ export default function Navbar() {
                                 exit={{ opacity: 0, scale: 0.95, y: -8 }}
                                 transition={{ duration: 0.15 }}
                                 style={{
-                                    position: 'absolute',
-                                    top: 'calc(100% + 8px)',
-                                    right: 0,
-                                    background: 'var(--bg-card)',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: 12,
-                                    padding: 8,
-                                    minWidth: 220,
-                                    zIndex: 100,
-                                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                                    position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                                    background: 'var(--bg-card)', border: '1px solid var(--border)',
+                                    borderRadius: 12, padding: 8, minWidth: 240,
+                                    zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
                                 }}
                             >
-                                {/* User info header */}
+                                {/* User info */}
                                 <div style={{
                                     padding: '8px 10px 12px',
-                                    borderBottom: '1px solid var(--border)',
-                                    marginBottom: 6,
+                                    borderBottom: '1px solid var(--border)', marginBottom: 6,
                                 }}>
                                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
                                         {name}
                                     </div>
-                                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{email}</div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>{email}</div>
                                     {workspaceName && (
-                                        <div style={{ marginTop: 6 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                             <span style={{
-                                                fontSize: 10, fontWeight: 700, padding: '2px 8px',
-                                                borderRadius: 20,
-                                                background: role === 'manager' ? 'var(--accent-light)' : 'var(--blue-light)',
-                                                color: role === 'manager' ? 'var(--accent-text)' : 'var(--blue)'
+                                                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+                                                background: role === 'manager' ? 'var(--accent-light)' : role === 'member' ? 'var(--blue-light)' : '#EEEDFE',
+                                                color: role === 'manager' ? 'var(--accent-text)' : role === 'member' ? 'var(--blue)' : '#3C3489',
                                             }}>
                                                 {role}
                                             </span>
-                                            <div style={{
-                                                fontSize: 11, color: 'var(--text-muted)', marginTop: 3,
-                                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180
-                                            }}>
+                                            <span style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>
                                                 {workspaceName}
-                                            </div>
+                                            </span>
                                         </div>
+                                    )}
+                                    {isSolo && !workspaceName && (
+                                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#EEEDFE', color: '#3C3489' }}>
+                                            solo
+                                        </span>
                                     )}
                                 </div>
 
@@ -167,17 +206,14 @@ export default function Navbar() {
                                 {[
                                     { icon: '👤', label: 'View profile', action: () => { navigate('/profile'); setDropdownOpen(false); } },
                                     { icon: '⚙️', label: 'Settings', action: () => { navigate('/profile?tab=settings'); setDropdownOpen(false); } },
-                                    { icon: '🏢', label: 'Team', action: () => { navigate('/workspace'); setDropdownOpen(false); }, hide: isSolo && role !== 'member' },
-                                ].filter(item => !item.hide).map(item => (
+                                ].map(item => (
                                     <div
                                         key={item.label}
                                         onClick={item.action}
                                         style={{
                                             display: 'flex', alignItems: 'center', gap: 10,
-                                            padding: '8px 10px', borderRadius: 8,
-                                            cursor: 'pointer', fontSize: 13,
-                                            color: 'var(--text-primary)',
-                                            transition: 'background 0.1s',
+                                            padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
+                                            fontSize: 13, color: 'var(--text-primary)', transition: 'background 0.1s',
                                         }}
                                         onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
@@ -186,59 +222,88 @@ export default function Navbar() {
                                         {item.label}
                                     </div>
                                 ))}
-                                {/* Workspace switcher — only show if multiple workspaces
-                                {workspaces.length > 1 && (
+
+                                {/* Workspace switcher */}
+                                {workspaces.length >= 0 && (
                                     <>
                                         <div style={{ height: 1, background: 'var(--border)', margin: '6px 0' }} />
-                                        <div style={{ padding: '4px 10px 4px', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                            Switch workspace
+                                        <div style={{
+                                            padding: '4px 10px 6px',
+                                            fontSize: 10, fontWeight: 700,
+                                            color: 'var(--text-muted)',
+                                            textTransform: 'uppercase', letterSpacing: '0.05em',
+                                        }}>
+                                            Workspaces
                                         </div>
+
                                         {workspaces.map(ws => {
-                                            const isActive = localStorage.getItem('workspaceId') === ws.id;
+                                            const isActive = activeWsId === ws.id;
                                             return (
                                                 <div
                                                     key={ws.id}
-                                                    onClick={() => {
-                                                        if (!isActive) {
-                                                            localStorage.setItem('workspaceId', ws.id);
-                                                            localStorage.setItem('workspaceName', ws.name);
-                                                            localStorage.setItem('userRole', ws.role);
-                                                            localStorage.removeItem('soloMode');
-                                                            setDropdownOpen(false);
-                                                            window.location.href = '/dashboard';
-                                                        }
-                                                    }}
+                                                    onClick={() => !isActive && handleSwitchWorkspace(ws)}
                                                     style={{
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                        display: 'flex', alignItems: 'center', gap: 10,
                                                         padding: '7px 10px', borderRadius: 8,
                                                         cursor: isActive ? 'default' : 'pointer',
                                                         background: isActive ? 'var(--accent-light)' : 'transparent',
-                                                        fontSize: 13, color: isActive ? 'var(--accent-text)' : 'var(--text-primary)',
                                                         transition: 'background 0.1s',
                                                     }}
                                                     onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--bg)'; }}
                                                     onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
                                                 >
-                                                    <span>{ws.name}</span>
-                                                    {isActive && <span style={{ fontSize: 10, fontWeight: 700 }}>active</span>}
+                                                    <div style={{
+                                                        width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                                                        background: ws.role === 'manager' ? 'var(--accent-light)' : 'var(--blue-light)',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        fontSize: 12,
+                                                    }}>
+                                                        {ws.role === 'manager' ? '🏢' : '👤'}
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{
+                                                            fontSize: 12, fontWeight: isActive ? 600 : 400,
+                                                            color: isActive ? 'var(--accent-text)' : 'var(--text-primary)',
+                                                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                                        }}>
+                                                            {ws.name}
+                                                        </div>
+                                                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{ws.role}</div>
+                                                    </div>
+                                                    {isActive && (
+                                                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a', flexShrink: 0 }} />
+                                                    )}
+                                                    {!isActive && (
+                                                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>→</span>
+                                                    )}
                                                 </div>
                                             );
                                         })}
-                                    </>
-                                )} */}
 
-                                {/* Divider */}
-                                <div style={{ height: 1, background: 'var(--border)', margin: '6px 0' }} />
+                                        <div
+                                            onClick={() => { navigate('/create-workspace'); setDropdownOpen(false); }}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 10,
+                                                padding: '7px 10px', borderRadius: 8, cursor: 'pointer',
+                                                fontSize: 12, color: 'var(--accent)', transition: 'background 0.1s',
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-light)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            <span style={{ fontSize: 16 }}>＋</span>
+                                            Create new workspace
+                                        </div>
+                                    </>
+                                )}
 
                                 {/* Sign out */}
+                                <div style={{ height: 1, background: 'var(--border)', margin: '6px 0' }} />
                                 <div
                                     onClick={handleLogout}
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: 10,
-                                        padding: '8px 10px', borderRadius: 8,
-                                        cursor: 'pointer', fontSize: 13,
-                                        color: 'var(--red)',
-                                        transition: 'background 0.1s',
+                                        padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
+                                        fontSize: 13, color: 'var(--red)', transition: 'background 0.1s',
                                     }}
                                     onMouseEnter={e => e.currentTarget.style.background = 'var(--red-light)'}
                                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
