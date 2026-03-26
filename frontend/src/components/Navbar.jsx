@@ -41,7 +41,11 @@ export default function Navbar() {
             setWorkspaceName(localStorage.getItem('workspaceName') || '');
         }
         window.addEventListener('workspaceSwitched', handleSwitch);
-        return () => window.removeEventListener('workspaceSwitched', handleSwitch);
+        window.addEventListener('profileUpdated', handleSwitch);
+        return () => {
+            window.removeEventListener('workspaceSwitched', handleSwitch);
+            window.removeEventListener('profileUpdated', handleSwitch);
+        };
     }, []);
 
     useEffect(() => {
@@ -155,7 +159,12 @@ export default function Navbar() {
                         whileTap={{ scale: 0.95 }}
                         style={{ cursor: 'pointer' }}
                     >
-                        {name.charAt(0).toUpperCase()}
+                        {(() => {
+                            const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+                            return avatarUrl
+                                ? <img src={avatarUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                                : name.charAt(0).toUpperCase();
+                        })()}
                     </motion.div>
 
                     <AnimatePresence>

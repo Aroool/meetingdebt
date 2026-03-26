@@ -94,11 +94,9 @@ export default function NotificationBell() {
                 whileTap={{ scale: 0.95 }}
                 onClick={() => { setOpen(!open); if (!open) fetchNotifications(); }}
                 style={{
-                    width: 34, height: 34, borderRadius: 8,
-                    border: '1px solid var(--border)',
-                    background: 'transparent', cursor: 'pointer',
+                    background: 'none', border: 'none', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    position: 'relative', fontSize: 15,
+                    position: 'relative', fontSize: 18, padding: 4,
                 }}
             >
                 🔔

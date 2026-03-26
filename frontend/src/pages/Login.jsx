@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '../supabase';
+import api from '../api';
 import LogoTransition from '../components/LogoTransition';
 
 export default function Login() {
@@ -9,20 +10,32 @@ export default function Login() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const navigate = useNavigate();
     const [showTransition, setShowTransition] = useState(false);
+    const navigate = useNavigate();
 
     async function handleLogin(e) {
         e.preventDefault();
         setLoading(true);
         setError('');
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
             setError(error.message);
             setLoading(false);
-        } else {
-            setShowTransition(true);
+            return;
         }
+        // Check if existing user has workspaces
+        try {
+            const res = await api.get(`/workspaces?userId=${data.user.id}`);
+            if (res.data && res.data.length > 0) {
+                const lastWsId = localStorage.getItem('workspaceId');
+                const ws = res.data.find(w => w.id === lastWsId) || res.data[0];
+                localStorage.setItem('workspaceId', ws.id);
+                localStorage.setItem('workspaceName', ws.name);
+                localStorage.setItem('userRole', ws.role);
+                localStorage.removeItem('soloMode');
+            }
+        } catch (err) { }
+        setShowTransition(true);
     }
 
     async function handleGoogle() {
@@ -34,9 +47,7 @@ export default function Login() {
     }
 
     if (showTransition) {
-        return (
-            <LogoTransition onComplete={() => navigate('/dashboard')} />
-        );
+        return <LogoTransition onComplete={() => navigate('/dashboard')} />;
     }
 
     return (
@@ -51,7 +62,6 @@ export default function Login() {
                     <div className="logo-dot" />
                     Meeting<span className="logo-debt">Debt</span>
                 </div>
-
                 <div className="auth-title">Welcome back</div>
                 <div className="auth-sub">Sign in to your account</div>
 
@@ -69,29 +79,13 @@ export default function Login() {
 
                 <form onSubmit={handleLogin}>
                     <label className="field-label">Email</label>
-                    <input
-                        className="field-input"
-                        type="email"
-                        placeholder="you@company.com"
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        required
-                    />
-
+                    <input className="field-input" type="email" placeholder="you@company.com"
+                        value={email} onChange={e => setEmail(e.target.value)} required />
                     <label className="field-label">Password</label>
-                    <input
-                        className="field-input"
-                        type="password"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        required
-                    />
-
+                    <input className="field-input" type="password" placeholder="••••••••"
+                        value={password} onChange={e => setPassword(e.target.value)} required />
                     {error && <div className="auth-error">{error}</div>}
-
-                    <button className="btn-extract" type="submit" disabled={loading}
-                        style={{ marginTop: 4 }}>
+                    <button className="btn-extract" type="submit" disabled={loading} style={{ marginTop: 4 }}>
                         {loading ? 'Signing in...' : 'Sign in →'}
                     </button>
                 </form>
