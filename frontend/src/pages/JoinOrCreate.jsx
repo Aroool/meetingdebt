@@ -10,14 +10,24 @@ export default function JoinOrCreate() {
         localStorage.setItem('soloMode', 'true');
         localStorage.removeItem('workspaceId');
         localStorage.removeItem('workspaceName');
-        navigate('/dashboard');
+        const theme = localStorage.getItem('theme');
+        if (!theme) {
+            navigate('/theme-picker');
+        } else {
+            navigate('/dashboard');
+        }
     }
 
     useEffect(() => {
         const workspaceId = localStorage.getItem('workspaceId');
         const soloMode = localStorage.getItem('soloMode');
         if (workspaceId || soloMode) {
-            navigate('/dashboard');
+            const theme = localStorage.getItem('theme');
+            if (!theme) {
+                navigate('/theme-picker');
+            } else {
+                navigate('/dashboard');
+            }
         }
     }, [navigate]);
 

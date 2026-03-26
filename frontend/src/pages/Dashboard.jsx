@@ -43,23 +43,32 @@ export default function Dashboard() {
         try {
             const workspaceId = localStorage.getItem('workspaceId');
             const role = localStorage.getItem('userRole') || 'solo';
-            let cParams = {}, mParams = {};
-            if (workspaceId && (role === 'manager' || role === 'member')) {
-                cParams = { workspaceId };
-                mParams = { workspaceId };
-            }
-            const [cm, mm] = await Promise.all([
-                api.get('/commitments', { params: cParams }),
-                api.get('/meetings', { params: mParams }),
+            const params = (workspaceId && (role === 'manager' || role === 'member'))
+                ? { workspaceId }
+                : {};
+
+            const [cm, mm] = await Promise.allSettled([
+                api.get('/commitments', { params }),
+                api.get('/meetings', { params }),
             ]);
-            setCommitments(cm.data);
-            setMeetings(mm.data);
-            if (workspaceId && role === 'manager') {
-                const mr = await api.get(`/workspaces/${workspaceId}/members`);
-                setMembers(mr.data);
+
+            if (cm.status === 'fulfilled') setCommitments(cm.value.data);
+            else console.error('Commitments failed:', cm.reason);
+
+            if (mm.status === 'fulfilled') setMeetings(mm.value.data);
+            else console.error('Meetings failed:', mm.reason);
+
+            if (params.workspaceId && role === 'manager') {
+                try {
+                    const mr = await api.get(`/workspaces/${workspaceId}/members`);
+                    setMembers(mr.data);
+                } catch (err) { console.error('Members failed:', err); }
             }
-        } catch (err) { console.error(err); }
-        finally { setLoading(false); }
+        } catch (err) {
+            console.error('fetchData error:', err);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => { fetchData(); }, [fetchData]);

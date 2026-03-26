@@ -35,6 +35,11 @@ export default function Login() {
                 localStorage.removeItem('soloMode');
             }
         } catch (err) { }
+        const savedTheme = data.user?.user_metadata?.theme || localStorage.getItem('theme');
+        if (savedTheme) {
+            localStorage.setItem('theme', savedTheme);
+            document.body.classList.toggle('dark', savedTheme === 'dark');
+        }
         setShowTransition(true);
     }
 

@@ -34,6 +34,22 @@ app.use(generalLimiter);
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
+async function logActivity(workspaceId, userId, actorName, type, message, meta = {}) {
+    try {
+        await supabase.from('activity_log').insert({
+            workspace_id: workspaceId,
+            user_id: userId,
+            actor_name: actorName,
+            type,
+            message,
+            meta,
+            created_at: new Date().toISOString(),
+        });
+    } catch (err) {
+        console.error('Activity log error:', err);
+    }
+}
+
 // ─── AUTH MIDDLEWARE ──────────────────────────────────────────────────────────
 async function requireAuth(req, res, next) {
     const authHeader = req.headers.authorization;
@@ -291,6 +307,11 @@ app.post('/save-commitments', requireAuth, async (req, res) => {
                 console.error('Assignment email failed:', emailErr.message);
             }
         }
+        await logActivity(
+            workspaceId, userId, 'Manager', 'meeting_created',
+            `created meeting "${meeting.title}" with ${data.length} commitments`,
+            { meetingId: meeting.id, count: data.length }
+        );
 
         return res.json({ success: true, commitments: data });
 
@@ -341,6 +362,19 @@ app.get('/meetings', requireAuth, async (req, res) => {
 
         const { data, error } = await query;
         if (error) throw error;
+        if (status && data.workspace_id) {
+            const statusLabel = status === 'completed' ? 'Done' : status === 'blocked' ? 'Blocked' : status === 'overdue' ? 'Overdue' : 'Pending';
+            await logActivity(data.workspace_id, userId, data.owner || 'Someone', 'status_changed',
+                `marked "${(data.task || '').substring(0, 40)}" as ${statusLabel}`,
+                { commitmentId: req.params.id, status }
+            );
+        }
+        if (assigned_to !== undefined && data.workspace_id) {
+            await logActivity(data.workspace_id, userId, 'Manager', 'task_reassigned',
+                `reassigned "${(data.task || '').substring(0, 40)}"`,
+                { commitmentId: req.params.id }
+            );
+        }
         return res.json(data);
     } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -377,9 +411,7 @@ app.get('/commitments', requireAuth, async (req, res) => {
             .select('*, meetings(title)')
             .order('created_at', { ascending: false });
 
-        if (workspaceId && userId) {
-            query = query.eq('workspace_id', workspaceId).eq('assigned_to', userId);
-        } else if (workspaceId) {
+        if (workspaceId) {
             query = query.eq('workspace_id', workspaceId);
         } else if (userId) {
             query = query.eq('user_id', userId);
@@ -712,6 +744,12 @@ app.post('/workspaces/:workspaceId/invite', requireAuth, async (req, res) => {
       `
         });
 
+        await logActivity(
+            workspaceId, invitedBy, 'Manager', 'member_invited',
+            `invited ${email} to the workspace`,
+            { email }
+        );
+
         return res.json({ success: true, invite });
     } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -897,6 +935,26 @@ app.post('/profile/delete-account', requireAuth, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5001;
+
+app.get('/activity', async (req, res) => {
+    try {
+        const { workspaceId, limit = 10 } = req.query;
+        if (!workspaceId) return res.json([]);
+
+        const { data, error } = await supabase
+            .from('activity_log')
+            .select('*')
+            .eq('workspace_id', workspaceId)
+            .order('created_at', { ascending: false })
+            .limit(parseInt(limit));
+
+        if (error) throw error;
+        return res.json(data);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`MeetingDebt backend running on port ${PORT}`);
 });

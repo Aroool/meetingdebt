@@ -29,19 +29,25 @@
 }
 
 .dark {
-    --bg: #0f172a;
-    --bg-card: #1e293b;
-    --bg-input: #0f172a;
-    --border: #334155;
-    --border-hover: #475569;
-    --text-primary: #f1f5f9;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
-    --accent-light: #14532d33;
+    --bg: #080808;
+    --bg-card: #0d0d0d;
+    --bg-input: #111111;
+    --border: #ffffff15;
+    --border-hover: #ffffff25;
+    --text-primary: #f0f0f0;
+    --text-secondary: #aaaaaa;
+    --text-muted: #666666;
+    --accent: #16a34a;
+    --accent-hover: #15803d;
+    --accent-light: #16a34a12;
     --accent-text: #4ade80;
-    --red-light: #450a0a44;
-    --amber-light: #451a0344;
-    --blue-light: #1e3a5f44;
+    --red: #f87171;
+    --red-light: #ef444410;
+    --amber: #fbbf24;
+    --amber-light: #f59e0b10;
+    --blue: #60a5fa;
+    --blue-light: #3b82f610;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 body {

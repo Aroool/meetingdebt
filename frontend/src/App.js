@@ -13,8 +13,17 @@ import AcceptInvite from './pages/AcceptInvite';
 import JoinOrCreate from './pages/JoinOrCreate';
 import EnterInvite from './pages/EnterInvite';
 import Profile from './pages/Profile';
+import ThemePicker from './pages/ThemePicker';
+import { useEffect } from 'react';
+
+
 
 function App() {
+  useEffect(() => {
+    const theme = localStorage.getItem('theme');
+    if (theme === 'dark') document.body.classList.add('dark');
+  }, []);
+
   return (
     <div className="app">
       <Routes>
@@ -22,6 +31,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/invite/:token" element={<AcceptInvite />} />
+        <Route path="/theme-picker" element={<ProtectedRoute><ThemePicker /></ProtectedRoute>} />
         <Route path="/create-workspace" element={
           <ProtectedRoute>
             <CreateWorkspace />
