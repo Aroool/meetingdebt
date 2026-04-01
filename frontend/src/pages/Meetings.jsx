@@ -59,13 +59,13 @@ export default function Meetings() {
         }
         const activeList = tab === 'team' ? teamMeetings : personalMeetings;
         if (activeList.length > 0) setSelected(activeList[0]);
-    }, [teamMeetings, personalMeetings, location.state]);
+    }, [teamMeetings, personalMeetings, location.state, tab]);
 
     useEffect(() => {
         const list = tab === 'team' ? teamMeetings : personalMeetings;
         if (list.length > 0) setSelected(list[0]);
         else setSelected(null);
-    }, [tab]);
+    }, [tab, teamMeetings, personalMeetings]);
 
     const activeMeetings = tab === 'team' ? teamMeetings : personalMeetings;
     const selectedCommitments = commitments.filter(c => c.meeting_id === selected?.id);

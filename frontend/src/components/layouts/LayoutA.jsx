@@ -145,7 +145,7 @@ function ProfilePopup({ userName, currentRole, workspaceName, onClose }) {
 
 export default function LayoutA({ data, onUpdate, onOpenPicker }) {
     const {
-        commitments, meetings, members, loading,
+        commitments, members, loading,
         overdue, pending, blocked, done, total,
         userName, workspaceName, currentRole,
     } = data;
@@ -163,7 +163,7 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
     const progressRefs = useRef([]);
     const hiddenAtRef = useRef(null);
     const hasAnimatedRef = useRef(!!sessionStorage.getItem('layoutA_animated'));
-    const navigate = useNavigate();
+
 
     // Track tab visibility — only animate if away 2+ mins
     useEffect(() => {

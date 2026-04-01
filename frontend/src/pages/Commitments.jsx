@@ -2,10 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api';
 import CommitmentRow from '../components/CommitmentRow';
-import API from '../config';
 import { supabase } from '../supabase';
 
-const FILTERS = ['All', 'Overdue', 'Pending', 'Done', 'Blocked'];
+
 const SORT_OPTIONS = [
     { key: 'newest', label: 'Newest first' },
     { key: 'oldest', label: 'Oldest first' },
