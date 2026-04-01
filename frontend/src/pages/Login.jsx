@@ -99,7 +99,17 @@ export default function Login() {
                     <input className="field-input" type="password" placeholder="••••••••"
                         value={password} onChange={e => setPassword(e.target.value)} required />
                     {error && <div className="auth-error">{error}</div>}
-                    <button className="btn-extract" type="submit" disabled={loading} style={{ marginTop: 4 }}>
+                    <button type="submit" disabled={loading}
+                        style={{
+                            width: '100%', padding: '12px', borderRadius: 10,
+                            background: '#16a34a', color: '#fff', border: 'none',
+                            fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                            fontFamily: 'inherit', transition: 'opacity 0.15s',
+                            marginTop: 4, opacity: loading ? 0.7 : 1,
+                        }}
+                        onMouseEnter={e => { if (!loading) e.currentTarget.style.opacity = '0.85'; }}
+                        onMouseLeave={e => e.currentTarget.style.opacity = loading ? '0.7' : '1'}
+                    >
                         {loading ? 'Signing in...' : 'Sign in →'}
                     </button>
                 </form>
