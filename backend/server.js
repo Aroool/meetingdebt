@@ -7,6 +7,7 @@ const nodemailer = require('nodemailer');
 const cron = require('node-cron');
 const rateLimit = require('express-rate-limit');
 
+
 const app = express();
 
 // CORS — lock to frontend origin
@@ -190,13 +191,16 @@ app.post('/extract-preview', aiLimiter, requireAuth, async (req, res) => {
                 content: `You are analyzing a meeting transcript.
 Extract all action items, decisions, and blockers.
 For each item identify the real name of the person responsible.
+Today's date is ${new Date().toISOString().split('T')[0]}.
+Convert all relative deadlines like "tomorrow", "Wednesday", "end of week", "Friday" into real ISO dates (YYYY-MM-DD) based on today's date.
+If no deadline is mentioned, use null.
 Return ONLY valid JSON, nothing else:
 {
   "commitments": [
     {
       "task": "description",
       "owner": "name of person",
-      "deadline": "deadline or null",
+      "deadline": "YYYY-MM-DD or null",
       "type": "action_item or decision or blocker"
     }
   ]
@@ -362,19 +366,6 @@ app.get('/meetings', requireAuth, async (req, res) => {
 
         const { data, error } = await query;
         if (error) throw error;
-        if (status && data.workspace_id) {
-            const statusLabel = status === 'completed' ? 'Done' : status === 'blocked' ? 'Blocked' : status === 'overdue' ? 'Overdue' : 'Pending';
-            await logActivity(data.workspace_id, userId, data.owner || 'Someone', 'status_changed',
-                `marked "${(data.task || '').substring(0, 40)}" as ${statusLabel}`,
-                { commitmentId: req.params.id, status }
-            );
-        }
-        if (assigned_to !== undefined && data.workspace_id) {
-            await logActivity(data.workspace_id, userId, 'Manager', 'task_reassigned',
-                `reassigned "${(data.task || '').substring(0, 40)}"`,
-                { commitmentId: req.params.id }
-            );
-        }
         return res.json(data);
     } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -954,6 +945,256 @@ app.get('/activity', async (req, res) => {
         return res.status(500).json({ error: err.message });
     }
 });
+
+// Create personal task
+app.post('/personal-tasks', requireAuth, async (req, res) => {
+    try {
+        const { task, deadline, notes, workspaceId } = req.body;
+        const userId = req.userId;
+
+        // Get user's name from auth
+        const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+        const ownerName = user?.user_metadata?.first_name
+            || user?.user_metadata?.full_name?.split(' ')[0]
+            || user?.email?.split('@')[0]
+            || 'Me';
+
+        const { data, error } = await supabase
+            .from('commitments')
+            .insert({
+                task,
+                deadline: deadline || null,
+                notes: notes || null,
+                status: 'pending',
+                user_id: userId,
+                workspace_id: workspaceId || null,
+                meeting_id: null,
+                is_personal: true,
+                owner: ownerName,
+                assigned_to: userId,
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return res.json(data);
+    } catch (err) {
+        console.error('Personal task error:', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete personal task
+app.delete('/personal-tasks/:id', requireAuth, async (req, res) => {
+    try {
+        const { error } = await supabase
+            .from('commitments')
+            .delete()
+            .eq('id', req.params.id)
+            .eq('user_id', req.userId)
+            .eq('is_personal', true);
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+// Get personal tasks
+app.get('/personal-tasks', requireAuth, async (req, res) => {
+    try {
+        const userId = req.userId;
+        const { data, error } = await supabase
+            .from('commitments')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('is_personal', true)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        return res.json(data);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+// ── DAILY NUDGE EMAIL ──
+async function sendDailyNudges() {
+    try {
+        console.log('Running daily nudge job...');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = today.toISOString().split('T')[0];
+
+        // Get all non-completed commitments
+        const { data: commitments, error } = await supabase
+            .from('commitments')
+            .select('*, meetings(title)')
+            .neq('status', 'completed')
+            .not('assigned_to', 'is', null);
+
+        if (error) throw error;
+        if (!commitments?.length) return;
+
+        // Group by assigned_to user
+        const byUser = commitments.reduce((acc, c) => {
+            if (!acc[c.assigned_to]) acc[c.assigned_to] = [];
+            acc[c.assigned_to].push(c);
+            return acc;
+        }, {});
+
+        for (const [userId, tasks] of Object.entries(byUser)) {
+            try {
+                // Get user email
+                const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+                if (!user?.email) continue;
+
+                const name = user.user_metadata?.first_name
+                    || user.user_metadata?.full_name?.split(' ')[0]
+                    || user.email.split('@')[0];
+
+                // Split into overdue and due today
+                const overdue = tasks.filter(c => {
+                    if (!c.deadline) return false;
+                    const d = new Date(c.deadline);
+                    return !isNaN(d) && d < new Date();
+                });
+
+                const dueToday = tasks.filter(c => {
+                    if (!c.deadline) return false;
+                    const d = new Date(c.deadline);
+                    if (isNaN(d)) return false;
+                    return d.toISOString().split('T')[0] === todayStr && d >= new Date();
+                });
+
+                const upcoming = tasks.filter(c => {
+                    if (!c.deadline) return false;
+                    const d = new Date(c.deadline);
+                    if (isNaN(d)) return false;
+                    return d > new Date() && d.toISOString().split('T')[0] !== todayStr;
+                });
+
+                // Skip if nothing to report
+                if (!overdue.length && !dueToday.length && !upcoming.length) continue;
+
+                const taskRow = (t, urgent = false) => `
+          <tr>
+            <td style="padding:10px 16px;border-bottom:1px solid #f1f5f9">
+              <div style="font-size:13px;font-weight:500;color:${urgent ? '#ef4444' : '#0f172a'}">${t.task}</div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:3px">
+                ${t.meetings?.title || t.meeting_id ? (t.meetings?.title || 'Meeting') : 'Personal task'}
+                ${t.deadline && !isNaN(new Date(t.deadline)) ? ` · ${new Date(t.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+              </div>
+            </td>
+            <td style="padding:10px 16px;border-bottom:1px solid #f1f5f9;text-align:right;white-space:nowrap">
+              <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${urgent ? '#fef2f2' : '#fffbeb'};color:${urgent ? '#ef4444' : '#f59e0b'}">
+                ${urgent ? 'Overdue' : 'Due today'}
+              </span>
+            </td>
+          </tr>
+        `;
+
+                const upcomingRow = (t) => `
+          <tr>
+            <td style="padding:10px 16px;border-bottom:1px solid #f1f5f9">
+              <div style="font-size:13px;font-weight:500;color:#0f172a">${t.task}</div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:3px">
+                ${t.meetings?.title || 'Personal task'}
+                
+                
+              </div>
+            </td>
+            <td style="padding:10px 16px;border-bottom:1px solid #f1f5f9;text-align:right">
+              <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#f0fdf4;color:#16a34a">Upcoming</span>
+            </td>
+          </tr>
+        `;
+
+                const html = `
+          <div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px">
+            <div style="margin-bottom:24px;display:flex;align-items:center;gap:8px">
+              <div style="width:8px;height:8px;border-radius:50%;background:#16a34a"></div>
+              <span style="font-size:16px;font-weight:800;color:#0f172a">Meeting<span style="color:#16a34a">Debt</span></span>
+            </div>
+
+            <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:6px">
+              Your tasks for today, ${name}
+            </h2>
+            <p style="font-size:13px;color:#94a3b8;margin-bottom:28px">
+              ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
+
+            ${overdue.length > 0 ? `
+              <div style="margin-bottom:20px">
+                <div style="font-size:11px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">
+                  Overdue — ${overdue.length} task${overdue.length > 1 ? 's' : ''}
+                </div>
+                <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
+                  ${overdue.map(t => taskRow(t, true)).join('')}
+                </table>
+              </div>
+            ` : ''}
+
+            ${dueToday.length > 0 ? `
+              <div style="margin-bottom:20px">
+                <div style="font-size:11px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">
+                  Due today — ${dueToday.length} task${dueToday.length > 1 ? 's' : ''}
+                </div>
+                <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
+                  ${dueToday.map(t => taskRow(t, false)).join('')}
+                </table>
+              </div>
+            ` : ''}
+
+            ${upcoming.length > 0 ? `
+              <div style="margin-bottom:20px">
+                <div style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">
+                  Upcoming — ${upcoming.length} task${upcoming.length > 1 ? 's' : ''}
+                </div>
+                <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
+                  ${upcoming.map(t => upcomingRow(t)).join('')}
+                </table>
+              </div>
+            ` : ''}
+
+            <a href="${process.env.FRONTEND_URL}/dashboard"
+              style="display:inline-block;background:#16a34a;color:#fff;padding:12px 28px;border-radius:9px;text-decoration:none;font-size:14px;font-weight:600;margin-top:8px">
+              View dashboard →
+            </a>
+
+            <p style="font-size:11px;color:#cbd5e1;margin-top:32px">
+              MeetingDebt · You're receiving this because you have open commitments.
+            </p>
+          </div>
+        `;
+
+                await transporter.sendMail({
+                    from: `MeetingDebt <${process.env.SENDGRID_FROM_EMAIL}>`,
+                    to: user.email,
+                    subject: `Your tasks for today, ${name} — ${overdue.length > 0 ? `${overdue.length} overdue` : `${dueToday.length} due today`}`,
+                    html,
+                });
+
+                console.log(`Nudge sent to ${user.email}`);
+            } catch (userErr) {
+                console.error(`Failed for user ${userId}:`, userErr.message);
+            }
+        }
+    } catch (err) {
+        console.error('Daily nudge error:', err.message);
+    }
+}
+
+// Run every day at 9am
+cron.schedule('0 9 * * *', sendDailyNudges, {
+    timezone: 'America/New_York'
+});
+
+// Also expose a manual trigger endpoint for testing
+app.get('/trigger-nudge', async (req, res) => {
+    await sendDailyNudges();
+    return res.json({ success: true, message: 'Nudge job triggered' });
+});
+
 
 app.listen(PORT, () => {
     console.log(`MeetingDebt backend running on port ${PORT}`);

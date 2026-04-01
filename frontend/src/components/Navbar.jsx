@@ -116,6 +116,10 @@ export default function Navbar() {
                     className={`nav-link ${location.pathname === '/commitments' ? 'active' : ''}`}>
                     {role === 'member' ? 'My Tasks' : 'Commitments'}
                 </Link>
+                <Link to="/my-tasks"
+                    className={`nav-link ${location.pathname === '/my-tasks' ? 'active' : ''}`}>
+                    Personal
+                </Link>
                 <Link to="/meetings"
                     className={`nav-link ${location.pathname === '/meetings' ? 'active' : ''}`}>
                     Meetings

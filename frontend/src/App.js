@@ -15,6 +15,7 @@ import EnterInvite from './pages/EnterInvite';
 import Profile from './pages/Profile';
 import ThemePicker from './pages/ThemePicker';
 import { useEffect } from 'react';
+import MyTasks from './pages/MyTasks';
 
 
 
@@ -77,6 +78,13 @@ function App() {
             <Profile />
           </ProtectedRoute>
         } />
+        <Route path="/my-tasks" element={
+          <ProtectedRoute>
+            <Navbar />
+            <MyTasks />
+          </ProtectedRoute>
+        } />
+
       </Routes>
     </div>
   );

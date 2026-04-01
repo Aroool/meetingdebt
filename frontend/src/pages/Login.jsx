@@ -40,7 +40,16 @@ export default function Login() {
             localStorage.setItem('theme', savedTheme);
             document.body.classList.toggle('dark', savedTheme === 'dark');
         }
-        setShowTransition(true);
+        const lastTransition = localStorage.getItem('lastTransition');
+        const now = Date.now();
+        const twoMins = 2 * 60 * 1000;
+
+        if (!lastTransition || now - parseInt(lastTransition) > twoMins) {
+            localStorage.setItem('lastTransition', now.toString());
+            setShowTransition(true);
+        } else {
+            navigate('/dashboard');
+        }
     }
 
     async function handleGoogle() {

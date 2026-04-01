@@ -4,7 +4,6 @@ import { supabase } from '../supabase';
 import LogoTransition from './LogoTransition';
 import api from '../api';
 
-// These pages handle their own logic — don't redirect from them
 const SKIP_WORKSPACE_CHECK = [
     '/join-or-create',
     '/create-workspace',
@@ -35,17 +34,14 @@ export default function ProtectedRoute({ children }) {
 
             setUser(session.user);
 
-            // Don't do workspace check on setup pages
             if (shouldSkip) {
                 setLoading(false);
                 return;
             }
 
-            // Check if user has a workspace
             const workspaceId = localStorage.getItem('workspaceId');
             const soloMode = localStorage.getItem('soloMode');
 
-            // Solo users don't need a workspace
             if (soloMode === 'true') {
                 setLoading(false);
                 return;
@@ -55,7 +51,6 @@ export default function ProtectedRoute({ children }) {
                 try {
                     const { data } = await api.get('/workspaces');
                     if (data.length > 0) {
-                        // Find manager workspace first, fall back to first
                         const preferred = data.find(w => w.role === 'manager') || data[0];
                         localStorage.setItem('workspaceId', preferred.id);
                         localStorage.setItem('workspaceName', preferred.name);
@@ -78,7 +73,13 @@ export default function ProtectedRoute({ children }) {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (event, session) => {
                 if (event === 'SIGNED_IN' && session) {
-                    setShowTransition(true);
+                    const lastTransition = sessionStorage.getItem('lastTransition');
+                    const now = Date.now();
+                    const twoMins = 2 * 60 * 1000;
+                    if (!lastTransition || now - parseInt(lastTransition) > twoMins) {
+                        sessionStorage.setItem('lastTransition', now.toString());
+                        setShowTransition(true);
+                    }
                     setUser(session.user);
                 } else if (!session) {
                     navigate('/login');

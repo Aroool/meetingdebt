@@ -72,44 +72,6 @@ const LAYOUTS = [
             </div>
         ),
     },
-    {
-        key: 'C',
-        name: 'Focus Mode',
-        desc: 'Clean task list with right-side stats panel. Minimal distractions.',
-        preview: (
-            <div style={{ display: 'flex', height: 140, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
-                <div style={{ flex: 1, background: 'var(--bg)', padding: 10, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    <div style={{ height: 10, background: 'var(--border)', borderRadius: 4, width: '40%', marginBottom: 6 }} />
-                    <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
-                        {['All', 'Due', 'Done'].map(f => (
-                            <div key={f} style={{ height: 14, width: 28, borderRadius: 20, background: f === 'All' ? 'var(--border)' : 'transparent', border: '1px solid var(--border)' }} />
-                        ))}
-                    </div>
-                    {[1, 2, 3, 4, 5].map(i => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 0', borderBottom: '0.5px solid var(--border)' }}>
-                            <div style={{ width: 10, height: 10, borderRadius: 3, border: '1px solid var(--border)', flexShrink: 0, background: i === 1 ? '#16a34a' : 'transparent' }} />
-                            <div style={{ height: 4, background: 'var(--border)', borderRadius: 4, flex: 1, opacity: i === 1 ? 0.4 : 1 }} />
-                            <div style={{ height: 10, width: 28, background: i === 3 ? '#FCEBEB' : '#FAEEDA', borderRadius: 20 }} />
-                        </div>
-                    ))}
-                </div>
-                <div style={{ width: 70, background: 'var(--bg-card)', borderLeft: '1px solid var(--border)', padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ height: 4, background: 'var(--border)', borderRadius: 4, width: '70%' }} />
-                    {[80, 30, 60].map((pct, i) => (
-                        <div key={i}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
-                                <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--border)' }} />
-                                <div style={{ height: 3, background: 'var(--border)', borderRadius: 4, flex: 1 }} />
-                            </div>
-                            <div style={{ height: 2, background: 'var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: `${pct}%`, background: '#16a34a', borderRadius: 10 }} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        ),
-    },
 ];
 
 export default function LayoutPicker({ currentLayout, onSelect, onClose }) {
@@ -182,7 +144,7 @@ export default function LayoutPicker({ currentLayout, onSelect, onClose }) {
                 </div>
 
                 {/* Layout options */}
-                <div style={{ padding: '20px 24px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+                <div style={{ padding: '20px 24px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
                     {LAYOUTS.map(layout => {
                         const isActive = currentLayout === layout.key;
                         return (

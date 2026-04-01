@@ -4,7 +4,6 @@ import NewMeetingModal from '../components/NewMeetingModal';
 import LayoutPicker from '../components/LayoutPicker';
 import LayoutA from '../components/layouts/LayoutA';
 import LayoutB from '../components/layouts/LayoutB';
-import LayoutC from '../components/layouts/LayoutC';
 import { motion } from 'framer-motion';
 
 function getStatusKey(c) {
@@ -91,7 +90,7 @@ export default function Dashboard() {
         userName, currentRole, workspaceName,
     };
 
-    const LayoutComponent = layout === 'B' ? LayoutB : layout === 'C' ? LayoutC : LayoutA;
+    const LayoutComponent = layout === 'B' ? LayoutB : LayoutA;
 
     return (
         <div style={{ height: 'calc(100vh - 56px)', background: 'var(--bg)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>

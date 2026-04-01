@@ -162,7 +162,7 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
     const rightRef = useRef(null);
     const progressRefs = useRef([]);
     const hiddenAtRef = useRef(null);
-    const hasAnimatedRef = useRef(false);
+    const hasAnimatedRef = useRef(!!sessionStorage.getItem('layoutA_animated'));
     const navigate = useNavigate();
 
     // Track tab visibility — only animate if away 2+ mins
@@ -174,6 +174,7 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
                 const awayMs = Date.now() - (hiddenAtRef.current || 0);
                 if (awayMs >= 2 * 60 * 1000) {
                     hasAnimatedRef.current = false;
+                    sessionStorage.removeItem('layoutA_animated');
                 }
             }
         }
@@ -192,6 +193,7 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
         if (loading) return;
         if (hasAnimatedRef.current) return;
         hasAnimatedRef.current = true;
+        sessionStorage.setItem('layoutA_animated', '1');
 
         const ctx = gsap.context(() => {
             const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
@@ -473,7 +475,14 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
                         ) : view === 'flat' ? (
                             <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
                                 {filtered.map((c, i) => (
-                                    <CommitmentRow key={c.id} commitment={c} index={i} onUpdate={onUpdate} members={members} />
+                                    <CommitmentRow
+                                        key={c.id}
+                                        commitment={c}
+                                        index={i}
+                                        onUpdate={onUpdate}
+                                        members={members}
+                                        commitments={commitments}
+                                    />
                                 ))}
                             </div>
                         ) : (
