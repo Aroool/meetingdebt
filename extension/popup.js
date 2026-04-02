@@ -99,11 +99,14 @@ function showNotLoggedIn() {
                 Open MeetingDebt
             </a>
             <br/><br/>
-            <button onclick="window.location.reload()" style="background:none;border:1px solid #e2e8f0;border-radius:8px;padding:7px 16px;font-size:12px;color:#64748b;cursor:pointer;font-family:inherit;">
+            <button id="refreshBtn" style="background:none;border:1px solid #e2e8f0;border-radius:8px;padding:7px 16px;font-size:12px;color:#64748b;cursor:pointer;font-family:inherit;">
                 Already signed in? Refresh ↺
             </button>
         </div>
     `;
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+        window.location.reload();
+    });
 }
 
 // ── MAIN UI ──
