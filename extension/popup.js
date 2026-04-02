@@ -13,10 +13,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadAuthState() {
     try {
-        // Get auth from storage
-        const stored = await chrome.storage.local.get([
+        let stored = await chrome.storage.local.get([
             'supabase_token', 'workspaceId', 'workspaceName'
         ]);
+
+        // If no token, wait 1 second and retry once
+        if (!stored.supabase_token) {
+            await new Promise(r => setTimeout(r, 1000));
+            stored = await chrome.storage.local.get([
+                'supabase_token', 'workspaceId', 'workspaceName'
+            ]);
+        }
 
         if (!stored.supabase_token) {
             showNotLoggedIn();
@@ -43,6 +50,22 @@ async function loadAuthState() {
     } catch (err) {
         showNotLoggedIn();
     }
+}
+
+function showNotLoggedIn() {
+    document.getElementById('workspaceName').textContent = 'Not connected';
+    document.getElementById('mainBody').innerHTML = `
+        <div class="not-logged-in">
+            <p>Sign in to MeetingDebt to extract commitments from your meetings.</p>
+            <a href="${APP_URL}/login" target="_blank" class="login-btn">
+                Sign in to MeetingDebt
+            </a>
+            <br/><br/>
+            <button onclick="window.location.reload()" style="background:none;border:1px solid #e2e8f0;border-radius:8px;padding:7px 16px;font-size:12px;color:#64748b;cursor:pointer;font-family:inherit;">
+                Already signed in? Refresh ↺
+            </button>
+        </div>
+    `;
 }
 
 function showNotLoggedIn() {

@@ -41,7 +41,7 @@ export default function Meetings() {
         } finally {
             setLoading(false);
         }
-    }, [workspaceId, role, isSolo]);
+    }, [fetchData, workspaceId, role, isSolo]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
