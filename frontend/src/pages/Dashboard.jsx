@@ -6,6 +6,7 @@ import LayoutA from '../components/layouts/LayoutA';
 import LayoutB from '../components/layouts/LayoutB';
 import { motion } from 'framer-motion';
 import { supabase } from '../supabase';
+const [pendingExtraction, setPendingExtraction] = useState(null);
 
 function getStatusKey(c) {
     if (c.status === 'completed') return 'done';
@@ -75,6 +76,21 @@ export default function Dashboard() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
+    useEffect(() => {
+        if (!window.chrome?.storage?.local) return;
+        window.chrome.storage.local.get(['pendingExtraction'], (result) => {
+            if (!result.pendingExtraction) return;
+            const { timestamp } = result.pendingExtraction;
+            if (Date.now() - timestamp > 5 * 60 * 1000) {
+                window.chrome.storage.local.remove(['pendingExtraction']);
+                return;
+            }
+            window.chrome.storage.local.remove(['pendingExtraction']);
+            setPendingExtraction(result.pendingExtraction);
+            setModalOpen(true);
+        });
+    }, []);
+
     function selectLayout(l) {
         setLayout(l);
         localStorage.setItem('dashboardLayout', l);
@@ -129,7 +145,12 @@ export default function Dashboard() {
                 </motion.button>
             )}
 
-            <NewMeetingModal isOpen={modalOpen} onClose={() => setModalOpen(false)} onSuccess={fetchData} />
+            <NewMeetingModal
+                isOpen={modalOpen}
+                onClose={() => { setModalOpen(false); setPendingExtraction(null); }}
+                onSuccess={fetchData}
+                pendingExtraction={pendingExtraction}
+            />
 
             {pickerOpen && (
                 <LayoutPicker

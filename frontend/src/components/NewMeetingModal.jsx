@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api';
 
-export default function NewMeetingModal({ isOpen, onClose, onSuccess }) {
+export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExtraction }) {
     const [step, setStep] = useState('input'); // 'input' | 'confirm'
     const [title, setTitle] = useState('');
     const [transcript, setTranscript] = useState('');
@@ -13,6 +13,24 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess }) {
     const [assignments, setAssignments] = useState({}); // commitmentIndex -> userId
     const [saving, setSaving] = useState(false);
     const workspaceId = localStorage.getItem('workspaceId');
+    useEffect(() => {
+        if (!pendingExtraction || !isOpen) return;
+        setTitle(pendingExtraction.title || '');
+        const workspaceId = localStorage.getItem('workspaceId');
+        api.get(`/workspaces/${workspaceId}/members`).then(res => {
+            const initialAssignments = {};
+            pendingExtraction.commitments?.forEach((c, i) => {
+                if (c.assigned_to) initialAssignments[i] = c.assigned_to;
+            });
+            setExtracted({
+                commitments: pendingExtraction.commitments || [],
+                meeting: { title: pendingExtraction.title },
+                members: res.data,
+            });
+            setAssignments(initialAssignments);
+            setStep('confirm');
+        });
+    }, [pendingExtraction, isOpen]);
 
     const processingSteps = [
         'Reading transcript...',

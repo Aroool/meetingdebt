@@ -267,7 +267,17 @@ function showSuccess(count, title) {
             </button>
         </div>
     `;
-    document.getElementById('openDashboard').addEventListener('click', () => {
-        chrome.tabs.create({ url: `${APP_URL}/dashboard` });
+    document.getElementById('openDashboard').addEventListener('click', async () => {
+        const tabs = await chrome.tabs.query({});
+        const dashTab = tabs.find(t =>
+            t.url?.includes('meetingdebt.com/dashboard') ||
+            t.url?.includes('localhost:3000/dashboard')
+        );
+        if (dashTab) {
+            chrome.tabs.update(dashTab.id, { active: true });
+            chrome.tabs.reload(dashTab.id);
+        } else {
+            chrome.tabs.create({ url: `${APP_URL}/dashboard` });
+        }
     });
 }
