@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            width: 380px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+            background: #ffffff;
+            color: #0f172a;
+        }
+
+        .header {
+            padding: 16px 20px 14px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .logo-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #16a34a;
+        }
+
+        .logo-debt {
+            color: #16a34a;
+        }
+
+        .workspace-badge {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+            background: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .body {
+            padding: 16px 20px;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            margin-bottom: 14px;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .status-dot.green {
+            background: #16a34a;
+        }
+
+        .status-dot.amber {
+            background: #f59e0b;
+        }
+
+        .status-dot.red {
+            background: #ef4444;
+        }
+
+        .scrape-btn {
+            width: 100%;
+            padding: 11px;
+            border-radius: 10px;
+            border: none;
+            background: #16a34a;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 12px;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            transition: opacity 0.15s;
+        }
+
+        .scrape-btn:hover {
+            opacity: 0.85;
+        }
+
+        .scrape-btn:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .divider-line {
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
+        }
+
+        .divider span {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            font-size: 12px;
+            color: #0f172a;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        textarea:focus {
+            border-color: #16a34a;
+            background: #fff;
+        }
+
+        textarea::placeholder {
+            color: #94a3b8;
+        }
+
+        .meeting-title-input {
+            width: 100%;
+            padding: 9px 12px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            font-size: 12px;
+            color: #0f172a;
+            font-family: inherit;
+            outline: none;
+            margin-bottom: 12px;
+        }
+
+        .meeting-title-input:focus {
+            border-color: #16a34a;
+            background: #fff;
+        }
+
+        .extract-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            background: #0f172a;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            transition: opacity 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+        }
+
+        .extract-btn:hover {
+            opacity: 0.85;
+        }
+
+        .extract-btn:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+
+        .success-state {
+            text-align: center;
+            padding: 24px 0;
+        }
+
+        .success-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+            font-size: 20px;
+        }
+
+        .success-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 6px;
+        }
+
+        .success-sub {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 16px;
+        }
+
+        .open-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 24px;
+            border-radius: 9px;
+            background: #16a34a;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+        }
+
+        .error-msg {
+            font-size: 11px;
+            color: #ef4444;
+            background: #fef2f2;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #fecaca;
+        }
+
+        .not-logged-in {
+            text-align: center;
+            padding: 24px 0;
+        }
+
+        .not-logged-in p {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 14px;
+            line-height: 1.6;
+        }
+
+        .login-btn {
+            display: inline-flex;
+            padding: 10px 24px;
+            border-radius: 9px;
+            background: #16a34a;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+        }
+
+        .char-count {
+            font-size: 10px;
+            color: #94a3b8;
+            text-align: right;
+            margin-top: -10px;
+            margin-bottom: 10px;
+        }
+
+        .footer {
+            padding: 10px 20px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .footer-link {
+            font-size: 11px;
+            color: #94a3b8;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .footer-link:hover {
+            color: #16a34a;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="logo">
+            <div class="logo-dot"></div>
+            Meeting<span class="logo-debt">Debt</span>
+        </div>
+        <div class="workspace-badge" id="workspaceName">Loading...</div>
+    </div>
+
+    <div class="body" id="mainBody">
+        <div id="loadingState" style="text-align:center;padding:24px 0;color:#94a3b8;font-size:13px;">
+            Loading...
+        </div>
+    </div>
+
+    <div class="footer">
+        <a href="https://meetingdebt.com" target="_blank" class="footer-link">meetingdebt.com</a>
+        <a href="https://meetingdebt.com/dashboard" target="_blank" class="footer-link">Open dashboard →</a>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>

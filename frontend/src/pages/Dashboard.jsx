@@ -5,6 +5,7 @@ import LayoutPicker from '../components/LayoutPicker';
 import LayoutA from '../components/layouts/LayoutA';
 import LayoutB from '../components/layouts/LayoutB';
 import { motion } from 'framer-motion';
+import { supabase } from '../supabase';
 
 function getStatusKey(c) {
     if (c.status === 'completed') return 'done';
@@ -23,6 +24,20 @@ export default function Dashboard() {
     const [layout, setLayout] = useState(localStorage.getItem('dashboardLayout') || 'A');
     const [currentRole, setCurrentRole] = useState(localStorage.getItem('userRole') || 'solo');
     const [userName, setUserName] = useState('');
+
+
+    useEffect(() => {
+        // Share auth token with Chrome extension
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.access_token && window.chrome?.storage) {
+                window.chrome.storage.local.set({
+                    supabase_token: session.access_token,
+                    workspaceId: localStorage.getItem('workspaceId'),
+                    workspaceName: localStorage.getItem('workspaceName'),
+                });
+            }
+        });
+    }, []);
 
     useEffect(() => {
         import('../supabase').then(({ supabase }) => {

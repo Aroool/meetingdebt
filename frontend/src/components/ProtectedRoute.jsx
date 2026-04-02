@@ -49,7 +49,9 @@ export default function ProtectedRoute({ children }) {
 
             if (!workspaceId) {
                 try {
-                    const { data } = await api.get('/workspaces');
+                    const { data: { session } } = await supabase.auth.getSession();
+                    const { data } = await api.get(`/workspaces?userId=${session?.user?.id}`);
+                    console.log('workspaces found:', data);
                     if (data.length > 0) {
                         const preferred = data.find(w => w.role === 'manager') || data[0];
                         localStorage.setItem('workspaceId', preferred.id);

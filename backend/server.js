@@ -12,7 +12,12 @@ const app = express();
 
 // CORS — lock to frontend origin
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: [
+        'https://meetingdebt.com',
+        'https://www.meetingdebt.com',
+        'https://meetingdebt.vercel.app',
+        'http://localhost:3000'
+    ],
     credentials: true,
 }));
 app.use(express.json({ limit: '1mb' }));

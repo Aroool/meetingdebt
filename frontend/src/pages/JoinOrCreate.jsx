@@ -20,6 +20,13 @@ export default function JoinOrCreate() {
 
     useEffect(() => {
         const workspaceId = localStorage.getItem('workspaceId');
+        if (workspaceId) {
+            navigate('/dashboard');
+        }
+    }, [navigate]);
+
+    useEffect(() => {
+        const workspaceId = localStorage.getItem('workspaceId');
         const soloMode = localStorage.getItem('soloMode');
         if (workspaceId || soloMode) {
             const theme = localStorage.getItem('theme');

@@ -1,0 +1,46 @@
+{
+    "manifest_version": 3,
+    "name": "MeetingDebt",
+    "version": "1.0.0",
+    "description": "Extract commitments from meetings and track them in MeetingDebt",
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "storage",
+        "tabs"
+    ],
+    "host_permissions": [
+        "https://meet.google.com/*",
+        "https://app.zoom.us/*",
+        "https://teams.microsoft.com/*",
+        "https://www.microsoft.com/*",
+        "https://meetingdebt.com/*",
+        "https://meetingdebt-production.up.railway.app/*"
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icon16.png",
+            "48": "icon48.png",
+            "128": "icon128.png"
+        }
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://meet.google.com/*",
+                "https://app.zoom.us/*",
+                "https://teams.microsoft.com/*"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "run_at": "document_idle"
+        }
+    ],
+    "icons": {
+        "16": "icon16.png",
+        "48": "icon48.png",
+        "128": "icon128.png"
+    }
+}
