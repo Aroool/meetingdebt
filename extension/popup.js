@@ -9,15 +9,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadAuthState();
 });
 
+// ── FIND MEETINGDEBT TAB ──
+async function findMeetingDebtTab() {
+    const allTabs = await chrome.tabs.query({});
+    return allTabs.find(t =>
+        t.url?.includes('meetingdebt.com') ||
+        t.url?.includes('localhost:3000')
+    ) || null;
+}
+
+// ── LOAD AUTH STATE ──
 async function loadAuthState() {
     try {
-        // First try to read directly from open meetingdebt.com tab
-        const allTabs = await chrome.tabs.query({ url: 'https://meetingdebt.com/*' });
+        const mdTab = await findMeetingDebtTab();
 
-        if (allTabs.length > 0) {
+        if (mdTab) {
             try {
                 const results = await chrome.scripting.executeScript({
-                    target: { tabId: allTabs[0].id },
+                    target: { tabId: mdTab.id },
                     func: () => {
                         const projectRef = 'nxdgzrhvdwlxovdozaiw';
                         const raw = localStorage.getItem(`sb-${projectRef}-auth-token`);
@@ -36,27 +45,12 @@ async function loadAuthState() {
                     workspaceId = result.workspaceId;
                     workspaceName = result.workspaceName;
 
-                    const tabs = await chrome.tabs.query({});
-                    const dashTab = tabs.find(t =>
-                        t.url?.includes('meetingdebt.com') ||
-                        t.url?.includes('localhost:3000')
-                    );
-
-                    if (dashTab) {
-                        await chrome.scripting.executeScript({
-                            target: { tabId: dashTab.id },
-                            func: (data) => {
-                                localStorage.setItem('pendingExtraction', JSON.stringify(data));
-                            },
-                            args: [{
-                                transcript,
-                                title,
-                                workspaceId,
-                                commitments: data.commitments,
-                                timestamp: Date.now(),
-                            }]
-                        });
-                    }
+                    // Cache in extension storage for next time
+                    await chrome.storage.local.set({
+                        supabase_token: authToken,
+                        workspaceId,
+                        workspaceName,
+                    });
                 }
             } catch (e) {
                 console.log('scripting error:', e);
@@ -95,11 +89,12 @@ async function loadAuthState() {
     }
 }
 
+// ── NOT LOGGED IN ──
 function showNotLoggedIn() {
     document.getElementById('workspaceName').textContent = 'Not connected';
     document.getElementById('mainBody').innerHTML = `
         <div class="not-logged-in">
-            <p>Open MeetingDebt in a tab and sign in, then click Refresh below.</p>
+            <p>Open MeetingDebt in a tab and sign in, then click Refresh.</p>
             <a href="${APP_URL}/login" target="_blank" class="login-btn">
                 Open MeetingDebt
             </a>
@@ -111,8 +106,10 @@ function showNotLoggedIn() {
     `;
 }
 
+// ── MAIN UI ──
 function showMainUI(isMeetPage, tab) {
     const platform = getPlatform(tab?.url || '');
+    const meetingTitle = getMeetingTitle(tab?.url || '', tab?.title || '');
 
     document.getElementById('mainBody').innerHTML = `
         <div class="status-bar">
@@ -138,7 +135,7 @@ function showMainUI(isMeetPage, tab) {
             class="meeting-title-input"
             id="meetingTitle"
             placeholder="Meeting title (e.g. Friday Sprint Review)"
-            value="${getMeetingTitle(tab?.url || '', tab?.title || '')}"
+            value="${escapeHtml(meetingTitle)}"
         />
 
         <textarea
@@ -171,20 +168,7 @@ function showMainUI(isMeetPage, tab) {
     extractBtn.addEventListener('click', handleExtract);
 }
 
-function getPlatform(url) {
-    if (url.includes('meet.google.com')) return 'Google Meet';
-    if (url.includes('zoom.us')) return 'Zoom';
-    if (url.includes('teams.microsoft.com')) return 'Teams';
-    return 'Meeting';
-}
-
-function getMeetingTitle(url, tabTitle) {
-    if (url.includes('meet.google.com')) return tabTitle.replace(' - Google Meet', '').trim();
-    if (url.includes('zoom.us')) return tabTitle.replace(' - Zoom', '').trim();
-    if (url.includes('teams.microsoft.com')) return tabTitle.replace(' | Microsoft Teams', '').trim();
-    return '';
-}
-
+// ── SCRAPE ──
 async function handleScrape() {
     const btn = document.getElementById('scrapeBtn');
     btn.disabled = true;
@@ -194,12 +178,12 @@ async function handleScrape() {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         const response = await chrome.tabs.sendMessage(tab.id, { action: 'scrapeTranscript' });
 
-        if (response?.transcript) {
+        if (response?.transcript && response.transcript.length > 20) {
             const textarea = document.getElementById('transcriptInput');
             textarea.value = response.transcript;
             const len = response.transcript.length;
             document.getElementById('charCount').textContent = `${len} characters`;
-            document.getElementById('extractBtn').disabled = len < 20;
+            document.getElementById('extractBtn').disabled = false;
             btn.textContent = '✓ Transcript captured!';
             btn.style.background = '#f0fdf4';
             btn.style.color = '#16a34a';
@@ -210,27 +194,34 @@ async function handleScrape() {
             btn.disabled = false;
         }
     } catch (err) {
-        btn.textContent = 'Could not scrape — paste manually';
+        btn.textContent = 'Could not scrape — paste manually below';
         btn.style.background = '#fef2f2';
         btn.style.color = '#ef4444';
         btn.disabled = false;
     }
 }
 
+// ── EXTRACT ──
 async function handleExtract() {
     const transcript = document.getElementById('transcriptInput').value.trim();
-    const title = document.getElementById('meetingTitle').value.trim() || 'Meeting';
+    const title = document.getElementById('meetingTitle').value.trim() || 'Untitled Meeting';
     const btn = document.getElementById('extractBtn');
     const errorMsg = document.getElementById('errorMsg');
 
     if (!transcript || transcript.length < 20) return;
+
     if (!workspaceId) {
-        showError('No workspace found. Please open MeetingDebt first.');
+        showError('No workspace found. Open MeetingDebt dashboard first.');
+        return;
+    }
+
+    if (!authToken) {
+        showError('Not authenticated. Please refresh and sign in.');
         return;
     }
 
     btn.disabled = true;
-    btn.textContent = 'Extracting with AI...';
+    btn.textContent = '⚡ Extracting with AI...';
     errorMsg.style.display = 'none';
 
     try {
@@ -243,57 +234,112 @@ async function handleExtract() {
             body: JSON.stringify({ transcript, workspaceId }),
         });
 
-        if (!res.ok) throw new Error('Extraction failed');
+        if (res.status === 401) {
+            // Token expired — clear cache and ask to re-login
+            await chrome.storage.local.clear();
+            showError('Session expired. Please refresh MeetingDebt and try again.');
+            btn.disabled = false;
+            btn.textContent = 'Extract commitments →';
+            return;
+        }
+
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
         const data = await res.json();
+        const commitments = data.commitments || [];
 
-        await chrome.storage.local.set({
-            pendingExtraction: {
-                transcript,
-                title,
-                workspaceId,
-                commitments: data.commitments,
-                timestamp: Date.now(),
+        if (commitments.length === 0) {
+            showError('No commitments found in transcript. Try adding more detail.');
+            btn.disabled = false;
+            btn.textContent = 'Extract commitments →';
+            return;
+        }
+
+        // Write to meetingdebt tab's localStorage so dashboard picks it up
+        const mdTab = await findMeetingDebtTab();
+
+        const extractionPayload = {
+            transcript,
+            title,
+            workspaceId,
+            commitments,
+            timestamp: Date.now(),
+        };
+
+        if (mdTab) {
+            try {
+                await chrome.scripting.executeScript({
+                    target: { tabId: mdTab.id },
+                    func: (payload) => {
+                        localStorage.setItem('pendingExtraction', JSON.stringify(payload));
+                    },
+                    args: [extractionPayload]
+                });
+                // Reload dashboard to trigger useEffect
+                await chrome.tabs.reload(mdTab.id);
+                // Switch to dashboard tab
+                await chrome.tabs.update(mdTab.id, { active: true });
+            } catch (scriptErr) {
+                console.log('script inject error:', scriptErr);
             }
-        });
+        } else {
+            // No dashboard tab open — open one, it'll read from storage on load
+            // Store in extension storage as fallback
+            await chrome.storage.local.set({ pendingExtraction: extractionPayload });
+            chrome.tabs.create({ url: `${APP_URL}/dashboard` });
+        }
 
-        showSuccess(data.commitments?.length || 0, title);
+        showSuccess(commitments.length, title);
+
     } catch (err) {
+        console.log('extract error:', err);
         showError('Extraction failed. Check your connection and try again.');
         btn.disabled = false;
         btn.textContent = 'Extract commitments →';
     }
 }
 
-function showError(msg) {
-    const errorMsg = document.getElementById('errorMsg');
-    errorMsg.textContent = msg;
-    errorMsg.style.display = 'block';
-}
-
+// ── SUCCESS ──
 function showSuccess(count, title) {
     document.getElementById('mainBody').innerHTML = `
         <div class="success-state">
             <div class="success-icon">✓</div>
             <div class="success-title">${count} commitments extracted!</div>
             <div class="success-sub">
-                From "${title}". Open the dashboard to review and confirm assignments.
+                From "${escapeHtml(title)}". The dashboard is opening the confirmation modal now.
             </div>
-            <button class="open-btn" id="openDashboard">
-                Open dashboard →
-            </button>
         </div>
     `;
-    document.getElementById('openDashboard').addEventListener('click', async () => {
-        const tabs = await chrome.tabs.query({});
-        const dashTab = tabs.find(t =>
-            t.url?.includes('meetingdebt.com/dashboard') ||
-            t.url?.includes('localhost:3000/dashboard')
-        );
-        if (dashTab) {
-            chrome.tabs.update(dashTab.id, { active: true });
-            chrome.tabs.reload(dashTab.id);
-        } else {
-            chrome.tabs.create({ url: `${APP_URL}/dashboard` });
-        }
-    });
+}
+
+// ── HELPERS ──
+function showError(msg) {
+    const errorMsg = document.getElementById('errorMsg');
+    if (errorMsg) {
+        errorMsg.textContent = msg;
+        errorMsg.style.display = 'block';
+    }
+}
+
+function getPlatform(url) {
+    if (url.includes('meet.google.com')) return 'Google Meet';
+    if (url.includes('zoom.us')) return 'Zoom';
+    if (url.includes('teams.microsoft.com')) return 'Microsoft Teams';
+    return 'Meeting';
+}
+
+function getMeetingTitle(url, tabTitle) {
+    if (!tabTitle) return '';
+    if (url.includes('meet.google.com')) return tabTitle.replace(' - Google Meet', '').trim();
+    if (url.includes('zoom.us')) return tabTitle.replace(' - Zoom', '').trim();
+    if (url.includes('teams.microsoft.com')) return tabTitle.replace(' | Microsoft Teams', '').trim();
+    return '';
+}
+
+function escapeHtml(str) {
+    return (str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 }

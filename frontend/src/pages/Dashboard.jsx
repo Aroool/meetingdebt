@@ -76,19 +76,34 @@ export default function Dashboard() {
     useEffect(() => { fetchData(); }, [fetchData]);
 
     useEffect(() => {
+        // Check localStorage first (set by extension via scripting)
         const raw = localStorage.getItem('pendingExtraction');
-        if (!raw) return;
-        try {
-            const extraction = JSON.parse(raw);
-            if (Date.now() - extraction.timestamp > 5 * 60 * 1000) {
-                localStorage.removeItem('pendingExtraction');
-                return;
-            }
+        if (raw) {
+            try {
+                const extraction = JSON.parse(raw);
+                if (Date.now() - extraction.timestamp < 5 * 60 * 1000) {
+                    localStorage.removeItem('pendingExtraction');
+                    setPendingExtraction(extraction);
+                    setModalOpen(true);
+                    return;
+                }
+            } catch (e) { }
             localStorage.removeItem('pendingExtraction');
-            setPendingExtraction(extraction);
-            setModalOpen(true);
-        } catch (e) {
-            localStorage.removeItem('pendingExtraction');
+        }
+
+        // Fallback: check chrome.storage (when dashboard was opened fresh by extension)
+        if (window.chrome?.storage?.local) {
+            window.chrome.storage.local.get(['pendingExtraction'], (result) => {
+                if (!result.pendingExtraction) return;
+                const extraction = result.pendingExtraction;
+                if (Date.now() - extraction.timestamp < 5 * 60 * 1000) {
+                    window.chrome.storage.local.remove(['pendingExtraction']);
+                    setPendingExtraction(extraction);
+                    setModalOpen(true);
+                } else {
+                    window.chrome.storage.local.remove(['pendingExtraction']);
+                }
+            });
         }
     }, []);
 
