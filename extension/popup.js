@@ -4,43 +4,69 @@ const APP_URL = 'https://meetingdebt.com';
 let authToken = null;
 let workspaceId = null;
 let workspaceName = null;
-let currentTranscript = '';
 
-// ── INIT ──
 document.addEventListener('DOMContentLoaded', async () => {
     await loadAuthState();
 });
 
 async function loadAuthState() {
     try {
-        let stored = await chrome.storage.local.get([
-            'supabase_token', 'workspaceId', 'workspaceName'
-        ]);
+        // First try to read directly from open meetingdebt.com tab
+        const allTabs = await chrome.tabs.query({ url: 'https://meetingdebt.com/*' });
 
-        // If no token, wait 1 second and retry once
-        if (!stored.supabase_token) {
-            await new Promise(r => setTimeout(r, 1000));
-            stored = await chrome.storage.local.get([
-                'supabase_token', 'workspaceId', 'workspaceName'
-            ]);
+        if (allTabs.length > 0) {
+            try {
+                const results = await chrome.scripting.executeScript({
+                    target: { tabId: allTabs[0].id },
+                    func: () => {
+                        const projectRef = 'nxdgzrhvdwlxovdozaiw';
+                        const raw = localStorage.getItem(`sb-${projectRef}-auth-token`);
+                        const parsed = raw ? JSON.parse(raw) : null;
+                        return {
+                            token: parsed?.access_token || null,
+                            workspaceId: localStorage.getItem('workspaceId'),
+                            workspaceName: localStorage.getItem('workspaceName'),
+                        };
+                    }
+                });
+
+                const result = results?.[0]?.result;
+                if (result?.token) {
+                    authToken = result.token;
+                    workspaceId = result.workspaceId;
+                    workspaceName = result.workspaceName;
+
+                    await chrome.storage.local.set({
+                        supabase_token: authToken,
+                        workspaceId,
+                        workspaceName,
+                    });
+                }
+            } catch (e) {
+                console.log('scripting error:', e);
+            }
         }
 
-        if (!stored.supabase_token) {
+        // Fall back to cached storage
+        if (!authToken) {
+            const stored = await chrome.storage.local.get([
+                'supabase_token', 'workspaceId', 'workspaceName'
+            ]);
+            authToken = stored.supabase_token;
+            workspaceId = stored.workspaceId;
+            workspaceName = stored.workspaceName;
+        }
+
+        if (!authToken) {
             showNotLoggedIn();
             return;
         }
 
-        authToken = stored.supabase_token;
-        workspaceId = stored.workspaceId;
-        workspaceName = stored.workspaceName;
-
         document.getElementById('workspaceName').textContent =
             workspaceName || 'No workspace';
 
-        // Check current tab
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         const url = tab?.url || '';
-
         const isMeetPage =
             url.includes('meet.google.com') ||
             url.includes('zoom.us') ||
@@ -48,6 +74,7 @@ async function loadAuthState() {
 
         showMainUI(isMeetPage, tab);
     } catch (err) {
+        console.log('loadAuthState error:', err);
         showNotLoggedIn();
     }
 }
@@ -56,26 +83,14 @@ function showNotLoggedIn() {
     document.getElementById('workspaceName').textContent = 'Not connected';
     document.getElementById('mainBody').innerHTML = `
         <div class="not-logged-in">
-            <p>Sign in to MeetingDebt to extract commitments from your meetings.</p>
+            <p>Open MeetingDebt in a tab and sign in, then click Refresh below.</p>
             <a href="${APP_URL}/login" target="_blank" class="login-btn">
-                Sign in to MeetingDebt
+                Open MeetingDebt
             </a>
             <br/><br/>
             <button onclick="window.location.reload()" style="background:none;border:1px solid #e2e8f0;border-radius:8px;padding:7px 16px;font-size:12px;color:#64748b;cursor:pointer;font-family:inherit;">
                 Already signed in? Refresh ↺
             </button>
-        </div>
-    `;
-}
-
-function showNotLoggedIn() {
-    document.getElementById('workspaceName').textContent = 'Not connected';
-    document.getElementById('mainBody').innerHTML = `
-        <div class="not-logged-in">
-            <p>Sign in to MeetingDebt to extract commitments from your meetings.</p>
-            <a href="${APP_URL}/login" target="_blank" class="login-btn">
-                Sign in to MeetingDebt
-            </a>
         </div>
     `;
 }
@@ -96,7 +111,6 @@ function showMainUI(isMeetPage, tab) {
             <button class="scrape-btn" id="scrapeBtn">
                 ⚡ Auto-scrape transcript
             </button>
-
             <div class="divider">
                 <div class="divider-line"></div>
                 <span>or paste manually</span>
@@ -124,7 +138,6 @@ function showMainUI(isMeetPage, tab) {
         </button>
     `;
 
-    // Events
     if (isMeetPage) {
         document.getElementById('scrapeBtn').addEventListener('click', handleScrape);
     }
@@ -137,7 +150,6 @@ function showMainUI(isMeetPage, tab) {
         const len = textarea.value.trim().length;
         charCount.textContent = `${len} characters`;
         extractBtn.disabled = len < 20;
-        currentTranscript = textarea.value;
     });
 
     extractBtn.addEventListener('click', handleExtract);
@@ -169,7 +181,6 @@ async function handleScrape() {
         if (response?.transcript) {
             const textarea = document.getElementById('transcriptInput');
             textarea.value = response.transcript;
-            currentTranscript = response.transcript;
             const len = response.transcript.length;
             document.getElementById('charCount').textContent = `${len} characters`;
             document.getElementById('extractBtn').disabled = len < 20;
@@ -219,7 +230,6 @@ async function handleExtract() {
         if (!res.ok) throw new Error('Extraction failed');
         const data = await res.json();
 
-        // Save commitments to storage for dashboard to pick up
         await chrome.storage.local.set({
             pendingExtraction: {
                 transcript,
