@@ -36,11 +36,27 @@ async function loadAuthState() {
                     workspaceId = result.workspaceId;
                     workspaceName = result.workspaceName;
 
-                    await chrome.storage.local.set({
-                        supabase_token: authToken,
-                        workspaceId,
-                        workspaceName,
-                    });
+                    const tabs = await chrome.tabs.query({});
+                    const dashTab = tabs.find(t =>
+                        t.url?.includes('meetingdebt.com') ||
+                        t.url?.includes('localhost:3000')
+                    );
+
+                    if (dashTab) {
+                        await chrome.scripting.executeScript({
+                            target: { tabId: dashTab.id },
+                            func: (data) => {
+                                localStorage.setItem('pendingExtraction', JSON.stringify(data));
+                            },
+                            args: [{
+                                transcript,
+                                title,
+                                workspaceId,
+                                commitments: data.commitments,
+                                timestamp: Date.now(),
+                            }]
+                        });
+                    }
                 }
             } catch (e) {
                 console.log('scripting error:', e);

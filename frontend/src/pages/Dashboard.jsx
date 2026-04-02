@@ -76,18 +76,20 @@ export default function Dashboard() {
     useEffect(() => { fetchData(); }, [fetchData]);
 
     useEffect(() => {
-        if (!window.chrome?.storage?.local) return;
-        window.chrome.storage.local.get(['pendingExtraction'], (result) => {
-            if (!result.pendingExtraction) return;
-            const { timestamp } = result.pendingExtraction;
-            if (Date.now() - timestamp > 5 * 60 * 1000) {
-                window.chrome.storage.local.remove(['pendingExtraction']);
+        const raw = localStorage.getItem('pendingExtraction');
+        if (!raw) return;
+        try {
+            const extraction = JSON.parse(raw);
+            if (Date.now() - extraction.timestamp > 5 * 60 * 1000) {
+                localStorage.removeItem('pendingExtraction');
                 return;
             }
-            window.chrome.storage.local.remove(['pendingExtraction']);
-            setPendingExtraction(result.pendingExtraction);
+            localStorage.removeItem('pendingExtraction');
+            setPendingExtraction(extraction);
             setModalOpen(true);
-        });
+        } catch (e) {
+            localStorage.removeItem('pendingExtraction');
+        }
     }, []);
 
     function selectLayout(l) {
