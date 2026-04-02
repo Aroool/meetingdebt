@@ -13,8 +13,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function findMeetingDebtTab() {
     const allTabs = await chrome.tabs.query({});
     return allTabs.find(t =>
-        t.url?.includes('meetingdebt.com') ||
-        t.url?.includes('localhost:3000')
+        (t.url?.includes('meetingdebt.com') || t.url?.includes('localhost:3000')) &&
+        !t.url?.includes('namecheap') // exclude namecheap
     ) || null;
 }
 
