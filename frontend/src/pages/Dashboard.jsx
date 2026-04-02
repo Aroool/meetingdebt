@@ -5,8 +5,7 @@ import LayoutPicker from '../components/LayoutPicker';
 import LayoutA from '../components/layouts/LayoutA';
 import LayoutB from '../components/layouts/LayoutB';
 import { motion } from 'framer-motion';
-import { supabase } from '../supabase';
-const [pendingExtraction, setPendingExtraction] = useState(null);
+
 
 function getStatusKey(c) {
     if (c.status === 'completed') return 'done';
@@ -25,7 +24,7 @@ export default function Dashboard() {
     const [layout, setLayout] = useState(localStorage.getItem('dashboardLayout') || 'A');
     const [currentRole, setCurrentRole] = useState(localStorage.getItem('userRole') || 'solo');
     const [userName, setUserName] = useState('');
-
+    const [pendingExtraction, setPendingExtraction] = useState(null);
 
 
     useEffect(() => {

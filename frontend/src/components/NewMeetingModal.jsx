@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api';
+
 
 export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExtraction }) {
     const [step, setStep] = useState('input'); // 'input' | 'confirm'
@@ -13,6 +14,7 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExt
     const [assignments, setAssignments] = useState({}); // commitmentIndex -> userId
     const [saving, setSaving] = useState(false);
     const workspaceId = localStorage.getItem('workspaceId');
+
     useEffect(() => {
         if (!pendingExtraction || !isOpen) return;
         setTitle(pendingExtraction.title || '');
