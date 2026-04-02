@@ -26,18 +26,6 @@ export default function Dashboard() {
     const [userName, setUserName] = useState('');
 
 
-    useEffect(() => {
-        // Share auth token with Chrome extension
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.access_token && window.chrome?.storage) {
-                window.chrome.storage.local.set({
-                    supabase_token: session.access_token,
-                    workspaceId: localStorage.getItem('workspaceId'),
-                    workspaceName: localStorage.getItem('workspaceName'),
-                });
-            }
-        });
-    }, []);
 
     useEffect(() => {
         import('../supabase').then(({ supabase }) => {

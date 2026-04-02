@@ -42,5 +42,27 @@
         "16": "icon16.png",
         "48": "icon48.png",
         "128": "icon128.png"
-    }
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://meet.google.com/*",
+                "https://app.zoom.us/*",
+                "https://teams.microsoft.com/*"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "run_at": "document_idle"
+        },
+        {
+            "matches": [
+                "https://meetingdebt.com/*"
+            ],
+            "js": [
+                "auth-sync.js"
+            ],
+            "run_at": "document_idle"
+        }
+    ]
 }
