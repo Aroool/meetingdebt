@@ -114,7 +114,7 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExt
         setSaving(true);
         try {
             await api.post('/save-commitments', {
-                meeting: extracted.meeting,
+                meeting: { ...extracted.meeting, title: title || extracted.meeting?.title || 'Untitled Meeting' },
                 commitments: extracted.commitments.map((c, i) => ({
                     ...c,
                     assigned_to: assignments[i] || null,
@@ -124,9 +124,8 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExt
 
             reset();
             onClose();
-            setTimeout(() => {
-                onSuccess && onSuccess();
-            }, 300);
+            await new Promise(r => setTimeout(r, 500));
+            onSuccess && onSuccess();
         } catch (err) {
             setSaving(false);
             setError('Failed to save. Try again.');
