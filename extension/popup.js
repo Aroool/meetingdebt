@@ -234,7 +234,7 @@ async function handleExtract() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`,
             },
-            body: JSON.stringify({ transcript, workspaceId }),
+            body: JSON.stringify({ transcript, workspaceId, meetingTitle: title })
         });
 
         if (res.status === 401) {

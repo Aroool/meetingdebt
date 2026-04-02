@@ -123,8 +123,10 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExt
             });
 
             reset();
-            onSuccess && onSuccess();
             onClose();
+            setTimeout(() => {
+                onSuccess && onSuccess();
+            }, 300);
         } catch (err) {
             setSaving(false);
             setError('Failed to save. Try again.');
