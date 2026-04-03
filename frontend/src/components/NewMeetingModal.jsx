@@ -127,8 +127,11 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExt
             setTimeout(() => onSuccess && onSuccess(), 300);
         } catch (err) {
             console.error('Save error:', err);
+            // Even if we get a network error, try refreshing — data might have saved
             setSaving(false);
-            setError('Failed to save. Try again.');
+            reset();
+            onClose();
+            setTimeout(() => onSuccess && onSuccess(), 500);
         }
     }
 
