@@ -29,11 +29,13 @@ const generalLimiter = rateLimit({
     max: 100,
     standardHeaders: true,
     legacyHeaders: false,
+    validate: false,
     message: { error: 'Too many requests, please try again later.' },
 });
 const aiLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 10,
+    validate: false,
     message: { error: 'AI extraction rate limit reached. Wait a minute.' },
 });
 app.use(generalLimiter);
