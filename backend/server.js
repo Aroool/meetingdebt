@@ -307,14 +307,14 @@ app.post('/save-commitments', requireAuth, async (req, res) => {
                 console.error('Notification insert failed:', notifErr.message);
             }
 
-            // Send assignment email
+            // Send assignment email - don't await, run in background
             try {
-                await transporter.sendMail({
+                transporter.sendMail({
                     from: `MeetingDebt <${process.env.SENDGRID_FROM_EMAIL}>`,
                     to: member.email,
                     subject: `New task assigned: ${commitment.task}`,
                     html: assignmentEmail(commitment, meeting, member.name)
-                });
+                }).catch(err => console.log('Email failed:', err.message));
             } catch (emailErr) {
                 console.error('Assignment email failed:', emailErr.message);
             }

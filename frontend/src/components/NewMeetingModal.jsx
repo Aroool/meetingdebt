@@ -135,8 +135,6 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExt
         }
     }
 
-
-
     return (
         <AnimatePresence>
             {isOpen && (
