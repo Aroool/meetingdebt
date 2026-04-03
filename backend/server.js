@@ -1008,6 +1008,30 @@ app.delete('/personal-tasks/:id', requireAuth, async (req, res) => {
     }
 });
 
+app.delete('/meetings/:id', requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.userId;
+
+        // Delete commitments first
+        await supabase.from('commitments').delete().eq('meeting_id', id);
+
+        // Delete the meeting
+        const { error } = await supabase.from('meetings').delete()
+            .eq('id', id).eq('user_id', userId);
+
+        if (error) throw error;
+
+        // Log activity
+        await logActivity(null, userId, 'Manager', 'meeting_deleted',
+            `deleted a meeting`, { meetingId: id });
+
+        return res.json({ success: true });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // Get personal tasks
 app.get('/personal-tasks', requireAuth, async (req, res) => {
     try {

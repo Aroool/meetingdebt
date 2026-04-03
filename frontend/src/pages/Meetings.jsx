@@ -4,14 +4,23 @@ import { useLocation } from 'react-router-dom';
 import api from '../api';
 import CommitmentRow from '../components/CommitmentRow';
 
+function getStatus(c) {
+    if (c.status === 'completed') return 'done';
+    if (c.status === 'blocked') return 'blocked';
+    if (c.deadline && new Date(c.deadline) < new Date()) return 'overdue';
+    return 'pending';
+}
+
 export default function Meetings() {
     const [teamMeetings, setTeamMeetings] = useState([]);
     const [personalMeetings, setPersonalMeetings] = useState([]);
     const [commitments, setCommitments] = useState([]);
     const [members, setMembers] = useState([]);
-    const [selected, setSelected] = useState(null);
     const [tab, setTab] = useState('team');
     const [loading, setLoading] = useState(true);
+    const [expandedIds, setExpandedIds] = useState(new Set());
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const [deleting, setDeleting] = useState(false);
     const location = useLocation();
 
     const role = localStorage.getItem('userRole') || 'solo';
@@ -31,44 +40,57 @@ export default function Meetings() {
                     ? api.get(`/workspaces/${workspaceId}/members`)
                     : Promise.resolve({ data: [] }),
             ]);
-
             setTeamMeetings(teamRes.data);
             setPersonalMeetings([]);
             setCommitments(commitmentsRes.data);
             setMembers(membersRes.data);
+
+            // Auto-expand first meeting
+            if (teamRes.data.length > 0) {
+                setExpandedIds(new Set([teamRes.data[0].id]));
+            }
         } catch (err) {
             console.error(err);
         } finally {
             setLoading(false);
         }
-    }, [fetchData, workspaceId, role, isSolo]);
+    }, [workspaceId, role, isSolo]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
+    // Handle navigation state
     useEffect(() => {
-        const allMeetings = [...teamMeetings, ...personalMeetings];
-        if (allMeetings.length === 0) return;
         const stateId = location.state?.selectedMeetingId;
         if (stateId) {
-            const target = allMeetings.find(m => m.id === stateId);
-            if (target) {
-                setTab(teamMeetings.find(m => m.id === stateId) ? 'team' : 'personal');
-                setSelected(target);
-                return;
-            }
+            setExpandedIds(new Set([stateId]));
+            const isTeam = teamMeetings.find(m => m.id === stateId);
+            if (isTeam) setTab('team');
         }
-        const activeList = tab === 'team' ? teamMeetings : personalMeetings;
-        if (activeList.length > 0) setSelected(activeList[0]);
-    }, [teamMeetings, personalMeetings, location.state, tab]);
+    }, [teamMeetings, personalMeetings, location.state]);
 
-    useEffect(() => {
-        const list = tab === 'team' ? teamMeetings : personalMeetings;
-        if (list.length > 0) setSelected(list[0]);
-        else setSelected(null);
-    }, [tab, teamMeetings, personalMeetings]);
+    function toggleExpand(id) {
+        setExpandedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }
+
+    async function handleDelete(meeting) {
+        setDeleting(true);
+        try {
+            await api.delete(`/meetings/${meeting.id}`);
+            setDeleteConfirm(null);
+            await fetchData();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setDeleting(false);
+        }
+    }
 
     const activeMeetings = tab === 'team' ? teamMeetings : personalMeetings;
-    const selectedCommitments = commitments.filter(c => c.meeting_id === selected?.id);
     const showTabs = !isSolo && workspaceId;
 
     function formatDate(d) {
@@ -115,6 +137,65 @@ export default function Meetings() {
                 </motion.div>
             )}
 
+            {/* Delete confirmation modal */}
+            <AnimatePresence>
+                {deleteConfirm && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            onClick={() => setDeleteConfirm(null)}
+                            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 98, backdropFilter: 'blur(2px)' }}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            style={{
+                                position: 'fixed', top: '50%', left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                background: 'var(--bg-card)', border: '1px solid var(--border)',
+                                borderRadius: 16, padding: 24, width: 360, zIndex: 99,
+                                boxShadow: '0 16px 48px rgba(0,0,0,0.16)',
+                            }}
+                        >
+                            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
+                                Delete this meeting?
+                            </div>
+                            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6, lineHeight: 1.6 }}>
+                                <strong style={{ color: 'var(--text-primary)' }}>{deleteConfirm.title}</strong>
+                            </div>
+                            <div style={{ fontSize: 12, color: 'var(--red)', marginBottom: 20, padding: '8px 12px', background: 'var(--red-light)', borderRadius: 8 }}>
+                                This will permanently delete the meeting and all its commitments. This cannot be undone.
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                    onClick={() => setDeleteConfirm(null)}
+                                    style={{
+                                        flex: 1, padding: '9px', borderRadius: 9,
+                                        border: '1px solid var(--border)', background: 'transparent',
+                                        fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+                                        color: 'var(--text-primary)',
+                                    }}>
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(deleteConfirm)}
+                                    disabled={deleting}
+                                    style={{
+                                        flex: 1, padding: '9px', borderRadius: 9,
+                                        border: 'none', background: 'var(--red)',
+                                        color: '#fff', fontSize: 13, fontWeight: 600,
+                                        cursor: 'pointer', fontFamily: 'inherit',
+                                        opacity: deleting ? 0.7 : 1,
+                                    }}>
+                                    {deleting ? 'Deleting...' : 'Delete meeting'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
             {loading ? (
                 <div className="empty-state"><div className="empty-title">Loading...</div></div>
             ) : activeMeetings.length === 0 ? (
@@ -129,77 +210,133 @@ export default function Meetings() {
                     </div>
                 </div>
             ) : (
-                <div className="meetings-layout">
-                    <div className="meetings-list">
-                        <AnimatePresence mode="wait">
-                            <motion.div key={tab}
-                                initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: 8 }} transition={{ duration: 0.15 }}>
-                                {activeMeetings.map((m, i) => {
-                                    const count = commitments.filter(c => c.meeting_id === m.id).length;
-                                    return (
-                                        <motion.div key={m.id}
-                                            className={`meeting-list-item ${selected?.id === m.id ? 'active' : ''}`}
-                                            initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: i * 0.04 }}
-                                            onClick={() => setSelected(m)}>
-                                            <div className="mli-top">
-                                                <div className="mli-title">{m.title}</div>
-                                                <div className="meeting-badge">{count} items</div>
-                                            </div>
-                                            <div className="mli-date">{formatDate(m.created_at)}</div>
-                                        </motion.div>
-                                    );
-                                })}
-                            </motion.div>
-                        </AnimatePresence>
-                    </div>
+                <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+                >
+                    {activeMeetings.map((m, i) => {
+                        const mCommitments = commitments.filter(c => c.meeting_id === m.id);
+                        const isExpanded = expandedIds.has(m.id);
+                        const overdue = mCommitments.filter(c => getStatus(c) === 'overdue').length;
+                        const done = mCommitments.filter(c => getStatus(c) === 'done').length;
 
-                    <AnimatePresence mode="wait">
-                        {selected ? (
-                            <motion.div key={selected.id} className="meeting-detail"
-                                initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: 10 }} transition={{ duration: 0.2 }}>
-                                <div className="card">
-                                    <div className="card-header">
-                                        <div>
-                                            <div className="card-title">{selected.title}</div>
-                                            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                                                {formatDate(selected.created_at)}
-                                                <span style={{
-                                                    marginLeft: 8, fontSize: 10, fontWeight: 700,
-                                                    padding: '1px 7px', borderRadius: 20,
-                                                    background: 'var(--accent-light)', color: 'var(--accent-text)',
-                                                }}>team</span>
+                        return (
+                            <motion.div
+                                key={m.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.05 }}
+                                style={{
+                                    background: 'var(--bg-card)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 12,
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                {/* Meeting header */}
+                                <div
+                                    onClick={() => toggleExpand(m.id)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '14px 16px', cursor: 'pointer',
+                                        transition: 'background 0.15s',
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                >
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {m.title}
+                                        </div>
+                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            {formatDate(m.created_at)}
+                                            <span>·</span>
+                                            <span>{mCommitments.length} commitments</span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 12 }}>
+                                        {overdue > 0 && (
+                                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--red-light)', color: 'var(--red)' }}>
+                                                {overdue} late
+                                            </span>
+                                        )}
+                                        {done > 0 && (
+                                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent-text)' }}>
+                                                {done} done
+                                            </span>
+                                        )}
+                                        <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--bg)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                                            {mCommitments.length}
+                                        </span>
+
+                                        {/* Delete button — manager only */}
+                                        {role === 'manager' && (
+                                            <button
+                                                onClick={e => { e.stopPropagation(); setDeleteConfirm(m); }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-light)'; e.currentTarget.style.color = 'var(--red)'; e.currentTarget.style.borderColor = 'var(--red)'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                                                style={{
+                                                    width: 28, height: 28, borderRadius: 7,
+                                                    border: '1px solid var(--border)',
+                                                    background: 'transparent',
+                                                    color: 'var(--text-muted)',
+                                                    cursor: 'pointer', fontSize: 13,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    transition: 'all 0.15s', fontFamily: 'inherit',
+                                                }}>
+                                                ×
+                                            </button>
+                                        )}
+
+                                        {/* Chevron */}
+                                        <div style={{
+                                            fontSize: 10, color: 'var(--text-muted)',
+                                            transition: 'transform 0.2s',
+                                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                        }}>
+                                            ▼
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Commitments — collapsible */}
+                                <AnimatePresence initial={false}>
+                                    {isExpanded && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                            style={{ overflow: 'hidden' }}
+                                        >
+                                            <div style={{ borderTop: '1px solid var(--border)' }}>
+                                                {mCommitments.length === 0 ? (
+                                                    <div style={{ padding: '24px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+                                                        No commitments extracted
+                                                    </div>
+                                                ) : (
+                                                    mCommitments.map((c, idx) => (
+                                                        <CommitmentRow
+                                                            key={c.id}
+                                                            commitment={c}
+                                                            index={idx}
+                                                            onUpdate={fetchData}
+                                                            members={members}
+                                                            commitments={commitments}
+                                                        />
+                                                    ))
+                                                )}
                                             </div>
-                                        </div>
-                                        <div className="meeting-badge">{selectedCommitments.length} commitments</div>
-                                    </div>
-                                    {selectedCommitments.length === 0 ? (
-                                        <div className="empty-state">
-                                            <div className="empty-title">No commitments extracted</div>
-                                        </div>
-                                    ) : (
-                                        selectedCommitments.map((c, i) => (
-                                            <CommitmentRow key={c.id} commitment={c} index={i}
-                                                onUpdate={fetchData} members={members} commitments={commitments} />
-                                        ))
+                                        </motion.div>
                                     )}
-                                </div>
+                                </AnimatePresence>
                             </motion.div>
-                        ) : (
-                            <motion.div key="empty" className="meeting-detail"
-                                initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                                <div className="card">
-                                    <div className="empty-state" style={{ padding: '64px 20px' }}>
-                                        <div className="empty-title">Select a meeting</div>
-                                        <div className="empty-sub">Click any meeting on the left to see its commitments</div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
+                        );
+                    })}
+                </motion.div>
             )}
         </div>
     );
