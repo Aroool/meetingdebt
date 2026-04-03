@@ -113,6 +113,7 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExt
     async function handleConfirm() {
         setSaving(true);
         try {
+            console.log('Saving...', { meeting: extracted.meeting, commitments: extracted.commitments, workspaceId });
             await api.post('/save-commitments', {
                 meeting: { ...extracted.meeting, title: title || extracted.meeting?.title || 'Untitled Meeting' },
                 commitments: extracted.commitments.map((c, i) => ({
@@ -121,12 +122,11 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExt
                 })),
                 workspaceId,
             });
-
             reset();
             onClose();
-            await new Promise(r => setTimeout(r, 500));
-            onSuccess && onSuccess();
+            setTimeout(() => onSuccess && onSuccess(), 300);
         } catch (err) {
+            console.error('Save error:', err);
             setSaving(false);
             setError('Failed to save. Try again.');
         }
