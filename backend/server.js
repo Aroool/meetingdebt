@@ -1051,6 +1051,7 @@ app.get('/personal-tasks', requireAuth, async (req, res) => {
 
 app.post('/feedback', requireAuth, async (req, res) => {
     try {
+        console.log('Feedback POST hit:', req.body);
         const { uiRating, easeRating, painPoint, comments, name, role, email, workspaceId } = req.body;
         const { error } = await supabase.from('feedback').insert({
             ui_rating: uiRating,
