@@ -1053,7 +1053,7 @@ app.post('/feedback', requireAuth, async (req, res) => {
     try {
         console.log('Feedback POST hit:', req.body);
         const { uiRating, easeRating, painPoint, comments, name, role, email, workspaceId } = req.body;
-        const { error } = await supabase.from('feedback').insert({
+        const { data, error } = await supabase.from('feedback').insert({
             ui_rating: uiRating,
             ease_rating: easeRating,
             pain_point: painPoint,
@@ -1064,9 +1064,11 @@ app.post('/feedback', requireAuth, async (req, res) => {
             workspace_id: workspaceId,
             created_at: new Date().toISOString(),
         });
+        console.log('Supabase result:', { data, error });
         if (error) throw error;
         return res.json({ success: true });
     } catch (err) {
+        console.error('Feedback error:', err.message);
         return res.status(500).json({ error: err.message });
     }
 });
