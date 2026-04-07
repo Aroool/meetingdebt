@@ -130,6 +130,10 @@ export default function Navbar() {
                         Team
                     </Link>
                 )}
+                <Link to="/feedback"
+                    className={`nav-link ${location.pathname === '/feedback' ? 'active' : ''}`}>
+                    Feedback
+                </Link>
                 {isSolo && (
                     <Link to="/workspace"
                         className={`nav-link ${location.pathname === '/workspace' ? 'active' : ''}`}

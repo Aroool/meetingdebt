@@ -7,7 +7,8 @@
         "activeTab",
         "scripting",
         "storage",
-        "tabs"
+        "tabs",
+        "notifications"
     ],
     "host_permissions": [
         "https://meet.google.com/*",
@@ -15,7 +16,8 @@
         "https://teams.microsoft.com/*",
         "https://www.microsoft.com/*",
         "https://meetingdebt.com/*",
-        "https://meetingdebt-production.up.railway.app/*"
+        "https://meetingdebt-production.up.railway.app/*",
+        "http://localhost:3000/*"
     ],
     "action": {
         "default_popup": "popup.html",
@@ -25,23 +27,8 @@
             "128": "icon128.png"
         }
     },
-    "content_scripts": [
-        {
-            "matches": [
-                "https://meet.google.com/*",
-                "https://app.zoom.us/*",
-                "https://teams.microsoft.com/*"
-            ],
-            "js": [
-                "content.js"
-            ],
-            "run_at": "document_idle"
-        }
-    ],
-    "icons": {
-        "16": "icon16.png",
-        "48": "icon48.png",
-        "128": "icon128.png"
+    "background": {
+        "service_worker": "background.js"
     },
     "content_scripts": [
         {
@@ -57,12 +44,18 @@
         },
         {
             "matches": [
-                "https://meetingdebt.com/*"
+                "https://meetingdebt.com/*",
+                "http://localhost:3000/*"
             ],
             "js": [
                 "auth-sync.js"
             ],
             "run_at": "document_idle"
         }
-    ]
+    ],
+    "icons": {
+        "16": "icon16.png",
+        "48": "icon48.png",
+        "128": "icon128.png"
+    }
 }

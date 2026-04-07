@@ -1049,6 +1049,27 @@ app.get('/personal-tasks', requireAuth, async (req, res) => {
     }
 });
 
+app.post('/feedback', requireAuth, async (req, res) => {
+    try {
+        const { uiRating, easeRating, painPoint, comments, name, role, email, workspaceId } = req.body;
+        const { error } = await supabase.from('feedback').insert({
+            ui_rating: uiRating,
+            ease_rating: easeRating,
+            pain_point: painPoint,
+            comments,
+            name,
+            role,
+            email,
+            workspace_id: workspaceId,
+            created_at: new Date().toISOString(),
+        });
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // ── DAILY NUDGE EMAIL ──
 async function sendDailyNudges() {
     try {

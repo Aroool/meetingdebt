@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { gsap } from 'gsap';
 import api from '../../api';
 import CommitmentRow from '../CommitmentRow';
@@ -36,12 +37,7 @@ function ActivityItem({ item }) {
     const s = map[item.type] || { icon: '·', bg: 'var(--bg)', color: 'var(--text-muted)' };
     return (
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 0', borderBottom: '1px solid var(--border)', minHeight: 48 }}>
-            <div style={{
-                width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                background: s.bg, color: s.color,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, fontWeight: 700,
-            }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, background: s.bg, color: s.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>
                 {s.icon}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -49,9 +45,7 @@ function ActivityItem({ item }) {
                     <strong style={{ fontWeight: 600 }}>{item.actor_name}</strong>{' '}
                     <span style={{ color: 'var(--text-secondary)' }}>{item.message}</span>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                    {timeAgo(item.created_at)}
-                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{timeAgo(item.created_at)}</div>
             </div>
         </div>
     );
@@ -61,40 +55,22 @@ function TaskFocusItem({ c }) {
     const isOverdue = getStatus(c) === 'overdue';
     return (
         <div style={{
-            padding: '10px 12px',
-            display: 'flex', alignItems: 'center', gap: 10,
-            borderRadius: 8,
-            background: isOverdue ? 'var(--red-light)' : 'var(--bg)',
+            padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10,
+            borderRadius: 8, background: isOverdue ? 'var(--red-light)' : 'var(--bg)',
             border: `1px solid ${isOverdue ? 'var(--red)30' : 'var(--border)'}`,
-            marginBottom: 6,
-            transition: 'transform 0.15s',
-            cursor: 'default',
+            marginBottom: 6, transition: 'transform 0.15s', cursor: 'default',
         }}
             onMouseEnter={e => e.currentTarget.style.transform = 'translateX(3px)'}
             onMouseLeave={e => e.currentTarget.style.transform = 'translateX(0)'}
         >
-            <div style={{
-                width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
-                background: avColor(c.owner) + '20', color: avColor(c.owner),
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 9, fontWeight: 800,
-            }}>
+            <div style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, background: avColor(c.owner) + '20', color: avColor(c.owner), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800 }}>
                 {initials(c.owner)}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {c.task}
-                </div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.task}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.owner}</div>
             </div>
-            <div style={{
-                height: 20, padding: '0 9px', borderRadius: 999,
-                background: isOverdue ? 'var(--red-light)' : 'var(--amber-light)',
-                color: isOverdue ? 'var(--red)' : 'var(--amber)',
-                fontSize: 10, fontWeight: 600,
-                display: 'flex', alignItems: 'center',
-                border: `1px solid ${isOverdue ? 'var(--red)' : 'var(--amber)'}20`,
-            }}>
+            <div style={{ height: 20, padding: '0 9px', borderRadius: 999, background: isOverdue ? 'var(--red-light)' : 'var(--amber-light)', color: isOverdue ? 'var(--red)' : 'var(--amber)', fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center', border: `1px solid ${isOverdue ? 'var(--red)' : 'var(--amber)'}20` }}>
                 {isOverdue ? 'Overdue' : 'Today'}
             </div>
         </div>
@@ -104,38 +80,20 @@ function TaskFocusItem({ c }) {
 function ProfilePopup({ userName, currentRole, workspaceName, onClose }) {
     return (
         <>
-            <div onClick={onClose} style={{
-                position: 'fixed', inset: 0, zIndex: 99,
-            }} />
-            <div style={{
-                position: 'absolute', top: 52, left: 0, zIndex: 100,
-                background: 'var(--bg-card)', border: '1px solid var(--border)',
-                borderRadius: 14, padding: 20, width: 240,
-                boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-            }}>
+            <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
+            <div style={{ position: 'absolute', top: 52, left: 0, zIndex: 100, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, width: 240, boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                    <div style={{
-                        width: 44, height: 44, borderRadius: 12,
-                        background: 'var(--accent-light)', color: 'var(--accent-text)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 18, fontWeight: 900,
-                    }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--accent-light)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900 }}>
                         {userName?.charAt(0)?.toUpperCase() || 'A'}
                     </div>
                     <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
-                            {userName || 'User'}
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                            {currentRole || 'member'}
-                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{userName || 'User'}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{currentRole || 'member'}</div>
                     </div>
                 </div>
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Workspace</div>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                        {workspaceName || 'Personal'}
-                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{workspaceName || 'Personal'}</div>
                 </div>
             </div>
         </>
@@ -143,17 +101,17 @@ function ProfilePopup({ userName, currentRole, workspaceName, onClose }) {
 }
 
 export default function LayoutA({ data, onUpdate, onOpenPicker }) {
-    const {
-        commitments, members, loading,
-        overdue, pending, blocked, done, total,
-        userName, workspaceName, currentRole,
-    } = data;
+    const { commitments, members, loading, overdue, pending, blocked, done, total, userName, workspaceName, currentRole } = data;
 
     const [filter, setFilter] = useState('All');
     const [personFilter, setPersonFilter] = useState(null);
     const [view, setView] = useState(localStorage.getItem('commitmentsView') || 'grouped');
     const [activity, setActivity] = useState([]);
     const [showProfile, setShowProfile] = useState(false);
+    const [expandedMeetings, setExpandedMeetings] = useState(new Set());
+    const expandInitialized = useRef(false);
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const [deleting, setDeleting] = useState(false);
 
     const headerRef = useRef(null);
     const leftRef = useRef(null);
@@ -163,8 +121,6 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
     const hiddenAtRef = useRef(null);
     const hasAnimatedRef = useRef(!!sessionStorage.getItem('layoutA_animated'));
 
-
-    // Track tab visibility — only animate if away 2+ mins
     useEffect(() => {
         function handleVisibility() {
             if (document.hidden) {
@@ -181,6 +137,14 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
         return () => document.removeEventListener('visibilitychange', handleVisibility);
     }, []);
 
+    // Auto-expand all meetings on first load
+    useEffect(() => {
+        if (expandInitialized.current || commitments.length === 0) return;
+        expandInitialized.current = true;
+        const ids = new Set(commitments.map(c => c.meeting_id).filter(Boolean));
+        setExpandedMeetings(ids);
+    }, [commitments]);
+
     useEffect(() => {
         const workspaceId = localStorage.getItem('workspaceId');
         if (!workspaceId) return;
@@ -193,7 +157,6 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
         if (hasAnimatedRef.current) return;
         hasAnimatedRef.current = true;
         sessionStorage.setItem('layoutA_animated', '1');
-
         const ctx = gsap.context(() => {
             const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
             tl
@@ -202,14 +165,12 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
                 .fromTo(centerRef.current, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4 }, '-=0.3')
                 .fromTo(rightRef.current, { opacity: 0, x: 12 }, { opacity: 1, x: 0, duration: 0.4 }, '-=0.3');
             progressRefs.current.filter(Boolean).forEach((bar, i) => {
-                gsap.fromTo(bar, { width: '0%' },
-                    { width: bar.dataset.width, duration: 1, ease: 'power2.out', delay: 0.7 + i * 0.1 });
+                gsap.fromTo(bar, { width: '0%' }, { width: bar.dataset.width, duration: 1, ease: 'power2.out', delay: 0.7 + i * 0.1 });
             });
         });
         return () => ctx.revert();
     }, [loading]);
 
-    // Make sure elements are visible even if animation skipped
     useEffect(() => {
         if (loading) return;
         if (!hasAnimatedRef.current) return;
@@ -217,6 +178,28 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
             if (ref.current) ref.current.style.opacity = '1';
         });
     }, [loading]);
+
+    function toggleMeeting(id) {
+        setExpandedMeetings(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }
+
+    async function handleDeleteMeeting(meetingId) {
+        setDeleting(true);
+        try {
+            await api.delete(`/meetings/${meetingId}`);
+            setDeleteConfirm(null);
+            onUpdate();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setDeleting(false);
+        }
+    }
 
     const todayTasks = commitments.filter(c => {
         const s = getStatus(c);
@@ -248,19 +231,8 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
         }, {})
     ).sort((a, b) => (b.overdue * 2 + b.pending) - (a.overdue * 2 + a.pending)).slice(0, 5);
 
-    const card = (extra = {}) => ({
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        borderRadius: 12,
-        ...extra,
-    });
-
-    const sectionLabel = (color = 'var(--text-muted)') => ({
-        fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
-        textTransform: 'uppercase', letterSpacing: '0.08em',
-        display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12,
-    });
-
+    const card = (extra = {}) => ({ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, ...extra });
+    const sectionLabel = () => ({ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 });
     const statPills = [
         { label: 'Pending', value: pending, color: 'var(--amber)', bg: 'var(--amber-light)' },
         { label: 'Overdue', value: overdue, color: 'var(--red)', bg: 'var(--red-light)' },
@@ -271,87 +243,71 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg)', overflow: 'hidden' }}>
 
+            {/* Delete confirmation modal */}
+            <AnimatePresence>
+                {deleteConfirm && (
+                    <>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            onClick={() => setDeleteConfirm(null)}
+                            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 98, backdropFilter: 'blur(2px)' }} />
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                            style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, width: 360, zIndex: 99, boxShadow: '0 16px 48px rgba(0,0,0,0.16)' }}>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Delete this meeting?</div>
+                            <div style={{ fontSize: 12, color: 'var(--red)', marginBottom: 20, padding: '8px 12px', background: 'var(--red-light)', borderRadius: 8 }}>
+                                This will permanently delete the meeting and all its commitments.
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button onClick={() => setDeleteConfirm(null)}
+                                    style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-primary)' }}>
+                                    Cancel
+                                </button>
+                                <button onClick={() => handleDeleteMeeting(deleteConfirm)} disabled={deleting}
+                                    style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--red)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: deleting ? 0.7 : 1 }}>
+                                    {deleting ? 'Deleting...' : 'Delete meeting'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
             {/* ── HEADER ── */}
-            <div ref={headerRef} style={{
-                ...card(), borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none',
-                padding: '12px 24px', flexShrink: 0, opacity: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            }}>
+            <div ref={headerRef} style={{ ...card(), borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none', padding: '12px 24px', flexShrink: 0, opacity: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
-                    {/* Avatar — click for profile popup */}
-                    <div
-                        onClick={() => setShowProfile(v => !v)}
-                        style={{
-                            width: 36, height: 36, borderRadius: 10,
-                            background: 'var(--accent-light)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 15, fontWeight: 900, color: 'var(--accent-text)',
-                            cursor: 'pointer', transition: 'opacity 0.15s',
-                            border: '1px solid var(--border)',
-                        }}
+                    <div onClick={() => setShowProfile(v => !v)}
+                        style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 900, color: 'var(--accent-text)', cursor: 'pointer', transition: 'opacity 0.15s', border: '1px solid var(--border)' }}
                         onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
-                        onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                    >
+                        onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
                         {userName?.charAt(0)?.toUpperCase() || 'A'}
                     </div>
-
-                    {showProfile && (
-                        <ProfilePopup
-                            userName={userName}
-                            currentRole={currentRole}
-                            workspaceName={workspaceName}
-                            onClose={() => setShowProfile(false)}
-                        />
-                    )}
-
+                    {showProfile && <ProfilePopup userName={userName} currentRole={currentRole} workspaceName={workspaceName} onClose={() => setShowProfile(false)} />}
                     <div>
                         <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: -0.3 }}>
                             {userName ? `${userName}'s workspace` : 'Your workspace'}
-                            <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8 }}>
-                                · {workspaceName || 'Personal'}
-                            </span>
+                            <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8 }}>· {workspaceName || 'Personal'}</span>
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
                             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                            <span style={{
-                                fontSize: 10, fontWeight: 600, padding: '1px 8px', borderRadius: 999,
-                                background: 'var(--bg)', color: 'var(--text-muted)',
-                                border: '1px solid var(--border)',
-                            }}>
+                            <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 8px', borderRadius: 999, background: 'var(--bg)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
                                 {currentRole || 'manager'}
                             </span>
                         </div>
                     </div>
                 </div>
-
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button onClick={onOpenPicker}
                         onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)50'}
                         onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: 6,
-                            padding: '6px 14px', borderRadius: 8,
-                            border: '1px solid var(--border)', background: 'var(--bg)',
-                            cursor: 'pointer', fontFamily: 'inherit', fontSize: 13,
-                            color: 'var(--text-muted)', transition: 'border-color 0.15s',
-                        }}>
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: 'var(--text-muted)', transition: 'border-color 0.15s' }}>
                         ⊞
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent-text)' }}>
-                            Command
-                        </span>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent-text)' }}>Command</span>
                     </button>
                     <div style={{ display: 'flex', gap: 2, background: 'var(--bg)', borderRadius: 8, padding: 3, border: '1px solid var(--border)' }}>
                         {[{ key: 'grouped', icon: '⊞' }, { key: 'flat', icon: '☰' }].map(v => (
-                            <button key={v.key}
-                                onClick={() => { setView(v.key); localStorage.setItem('commitmentsView', v.key); }}
-                                style={{
-                                    padding: '5px 10px', borderRadius: 6, border: 'none',
-                                    background: view === v.key ? 'var(--bg-card)' : 'transparent',
-                                    color: view === v.key ? 'var(--text-primary)' : 'var(--text-muted)',
-                                    cursor: 'pointer', fontSize: 13, fontFamily: 'inherit',
-                                    boxShadow: view === v.key ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
-                                    transition: 'all 0.15s',
-                                }}>{v.icon}</button>
+                            <button key={v.key} onClick={() => { setView(v.key); localStorage.setItem('commitmentsView', v.key); }}
+                                style={{ padding: '5px 10px', borderRadius: 6, border: 'none', background: view === v.key ? 'var(--bg-card)' : 'transparent', color: view === v.key ? 'var(--text-primary)' : 'var(--text-muted)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', boxShadow: view === v.key ? '0 1px 3px rgba(0,0,0,0.06)' : 'none', transition: 'all 0.15s' }}>
+                                {v.icon}
+                            </button>
                         ))}
                     </div>
                 </div>
@@ -362,15 +318,11 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
 
                 {/* ── LEFT ── */}
                 <div ref={leftRef} style={{ display: 'flex', flexDirection: 'column', gap: 12, overflow: 'hidden', opacity: 0 }}>
-
-                    {/* Today's Focus */}
                     <div style={{ ...card({ padding: 16 }), flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
                         <div style={sectionLabel()}>
                             <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--red)' }} />
                             Today's Focus
-                            <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
-                                {todayTasks.length} tasks
-                            </span>
+                            <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>{todayTasks.length} tasks</span>
                         </div>
                         <div style={{ flex: 1, overflowY: 'auto' }}>
                             {todayTasks.length === 0 ? (
@@ -382,7 +334,6 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
                         </div>
                     </div>
 
-                    {/* Accountability */}
                     <div style={{ ...card({ padding: 16 }), flexShrink: 0 }}>
                         <div style={sectionLabel()}>
                             <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#8b5cf6' }} />
@@ -399,27 +350,18 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
                                     onClick={() => setPersonFilter(isActive ? null : p.name)}
                                     onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--bg)'; }}
                                     onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
-                                    style={{
-                                        padding: '6px 8px', borderRadius: 8, cursor: 'pointer',
-                                        background: isActive ? 'var(--accent-light)' : 'transparent',
-                                        transition: 'background 0.15s', marginBottom: 4,
-                                    }}
-                                >
+                                    style={{ padding: '6px 8px', borderRadius: 8, cursor: 'pointer', background: isActive ? 'var(--accent-light)' : 'transparent', transition: 'background 0.15s', marginBottom: 4 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
                                         <div style={{ width: 20, height: 20, borderRadius: '50%', background: avColor(p.name) + '20', color: avColor(p.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 800, flexShrink: 0 }}>
                                             {initials(p.name)}
                                         </div>
-                                        <span style={{ fontSize: 12, fontWeight: 500, color: isActive ? 'var(--accent-text)' : 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {p.name}
-                                        </span>
+                                        <span style={{ fontSize: 12, fontWeight: 500, color: isActive ? 'var(--accent-text)' : 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
                                         {p.overdue > 0 && <span style={{ fontSize: 10, color: 'var(--red)', fontWeight: 700 }}>{p.overdue} late</span>}
                                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{pct}%</span>
                                     </div>
                                     <div style={{ height: 3, background: 'var(--border)', borderRadius: 999, overflow: 'hidden' }}>
-                                        <div ref={el => progressRefs.current[i] = el}
-                                            data-width={`${pct}%`}
-                                            style={{ height: '100%', background: 'var(--accent)', borderRadius: 999, width: '0%' }}
-                                        />
+                                        <div ref={el => progressRefs.current[i] = el} data-width={`${pct}%`}
+                                            style={{ height: '100%', background: 'var(--accent)', borderRadius: 999, width: '0%' }} />
                                     </div>
                                 </div>
                             );
@@ -429,21 +371,11 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
 
                 {/* ── CENTER ── */}
                 <div ref={centerRef} style={{ ...card(), display: 'flex', flexDirection: 'column', overflow: 'hidden', opacity: 0 }}>
-                    <div style={{
-                        padding: '12px 16px', borderBottom: '1px solid var(--border)',
-                        display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
-                    }}>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginRight: 4 }}>Commitments</span>
                         {['All', 'Overdue', 'Pending', 'Done'].map(f => (
                             <button key={f} onClick={() => setFilter(f)}
-                                style={{
-                                    padding: '4px 12px', borderRadius: 999, border: 'none',
-                                    background: filter === f ? 'var(--accent-light)' : 'transparent',
-                                    color: filter === f ? 'var(--accent-text)' : 'var(--text-muted)',
-                                    fontWeight: filter === f ? 700 : 400,
-                                    cursor: 'pointer', fontSize: 12, fontFamily: 'inherit',
-                                    transition: 'all 0.15s',
-                                }}>
+                                style={{ padding: '4px 12px', borderRadius: 999, border: 'none', background: filter === f ? 'var(--accent-light)' : 'transparent', color: filter === f ? 'var(--accent-text)' : 'var(--text-muted)', fontWeight: filter === f ? 700 : 400, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', transition: 'all 0.15s' }}>
                                 {f}
                                 {f === 'Overdue' && overdue > 0 && <span style={{ marginLeft: 4, fontSize: 10, fontWeight: 700, color: 'var(--red)' }}>{overdue}</span>}
                                 {f === 'Pending' && pending > 0 && <span style={{ marginLeft: 4, fontSize: 10, color: 'var(--text-muted)' }}>{pending}</span>}
@@ -467,21 +399,12 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
                                 <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
                                     {personFilter ? `No tasks for ${personFilter}` : filter === 'All' ? 'No commitments yet' : `No ${filter.toLowerCase()} tasks`}
                                 </div>
-                                {filter === 'All' && !personFilter && (
-                                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Click + to add your first meeting</div>
-                                )}
+                                {filter === 'All' && !personFilter && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Click + to add your first meeting</div>}
                             </div>
                         ) : view === 'flat' ? (
                             <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
                                 {filtered.map((c, i) => (
-                                    <CommitmentRow
-                                        key={c.id}
-                                        commitment={c}
-                                        index={i}
-                                        onUpdate={onUpdate}
-                                        members={members}
-                                        commitments={commitments}
-                                    />
+                                    <CommitmentRow key={c.id} commitment={c} index={i} onUpdate={onUpdate} members={members} commitments={commitments} />
                                 ))}
                             </div>
                         ) : (
@@ -496,19 +419,54 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
                             ).map(([mid, group]) => {
                                 const gDone = group.items.filter(c => getStatus(c) === 'done').length;
                                 const gOverdue = group.items.filter(c => getStatus(c) === 'overdue').length;
+                                const isExpanded = expandedMeetings.has(mid);
                                 return (
-                                    <div key={mid} style={{ marginBottom: 20 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '0 2px' }}>
-                                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{group.title}</span>
-                                            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent-text)' }}>{group.items.length}</span>
-                                            {gOverdue > 0 && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--red-light)', color: 'var(--red)' }}>{gOverdue} late</span>}
-                                            {gDone > 0 && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent-text)' }}>{gDone} done</span>}
+                                    <div key={mid} style={{ marginBottom: 14 }}>
+                                        {/* Meeting header — clickable */}
+                                        <div
+                                            onClick={() => toggleMeeting(mid)}
+                                            style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: isExpanded ? 8 : 0, padding: '6px 8px', borderRadius: 8, cursor: 'pointer', transition: 'background 0.15s' }}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{group.title}</span>
+                                            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent-text)', flexShrink: 0 }}>{group.items.length}</span>
+                                            {gOverdue > 0 && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--red-light)', color: 'var(--red)', flexShrink: 0 }}>{gOverdue} late</span>}
+                                            {gDone > 0 && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent-text)', flexShrink: 0 }}>{gDone} done</span>}
+
+                                            {/* Delete button — manager only, real meetings only */}
+                                            {mid !== 'no-meeting' && currentRole === 'manager' && (
+                                                <button
+                                                    onClick={e => { e.stopPropagation(); setDeleteConfirm(mid); }}
+                                                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-light)'; e.currentTarget.style.color = 'var(--red)'; e.currentTarget.style.borderColor = 'var(--red)'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                                                    style={{ width: 22, height: 22, borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', fontFamily: 'inherit', flexShrink: 0 }}>
+                                                    ×
+                                                </button>
+                                            )}
+
+                                            {/* Chevron */}
+                                            <div style={{ fontSize: 9, color: 'var(--text-muted)', transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}>▼</div>
                                         </div>
-                                        <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', background: 'var(--bg-card)' }}>
-                                            {group.items.map((c, i) => (
-                                                <CommitmentRow key={c.id} commitment={c} index={i} onUpdate={onUpdate} members={members} />
-                                            ))}
-                                        </div>
+
+                                        {/* Collapsible commitments */}
+                                        <AnimatePresence initial={false}>
+                                            {isExpanded && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    style={{ overflow: 'hidden' }}
+                                                >
+                                                    <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', background: 'var(--bg-card)' }}>
+                                                        {group.items.map((c, i) => (
+                                                            <CommitmentRow key={c.id} commitment={c} index={i} onUpdate={onUpdate} members={members} commitments={commitments} />
+                                                        ))}
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
                                 );
                             })
@@ -518,8 +476,6 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
 
                 {/* ── RIGHT ── */}
                 <div ref={rightRef} style={{ display: 'flex', flexDirection: 'column', gap: 12, overflow: 'hidden', opacity: 0 }}>
-
-                    {/* Activity */}
                     <div style={{ ...card({ padding: 16 }), flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
                         <div style={sectionLabel()}>
                             <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#8b5cf6' }} />
@@ -535,49 +491,29 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
                         </div>
                     </div>
 
-                    {/* Status breakdown + Completion */}
                     <div style={{ ...card({ padding: 16 }), flexShrink: 0 }}>
                         <div style={sectionLabel()}>
                             <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--amber)' }} />
                             Status
                         </div>
-
-                        {/* Vertical stat pills */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
                             {statPills.map(s => (
-                                <div key={s.label} style={{
-                                    display: 'flex', alignItems: 'center', gap: 10,
-                                    padding: '7px 12px', borderRadius: 9,
-                                    background: 'var(--bg)',
-                                    border: '1px solid var(--border)',
-                                }}>
+                                <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 9, background: 'var(--bg)', border: '1px solid var(--border)' }}>
                                     <div style={{ width: 7, height: 7, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
-                                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', flex: 1 }}>
-                                        {s.label}
-                                    </span>
-                                    <span style={{ fontSize: 18, fontWeight: 800, color: s.value > 0 ? s.color : 'var(--text-muted)', lineHeight: 1 }}>
-                                        {s.value}
-                                    </span>
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', flex: 1 }}>{s.label}</span>
+                                    <span style={{ fontSize: 18, fontWeight: 800, color: s.value > 0 ? s.color : 'var(--text-muted)', lineHeight: 1 }}>{s.value}</span>
                                 </div>
                             ))}
                         </div>
-
-                        {/* Completion bar */}
                         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
                             <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 8 }}>
                                 <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--accent-text)', lineHeight: 1 }}>{done}</span>
                                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>/ {total} tasks completed</span>
                             </div>
                             <div style={{ height: 5, background: 'var(--border)', borderRadius: 999, overflow: 'hidden', marginBottom: 6 }}>
-                                <div style={{
-                                    height: '100%', background: 'var(--accent)', borderRadius: 999,
-                                    width: total > 0 ? `${Math.round(done / total * 100)}%` : '0%',
-                                    transition: 'width 1s ease',
-                                }} />
+                                <div style={{ height: '100%', background: 'var(--accent)', borderRadius: 999, width: total > 0 ? `${Math.round(done / total * 100)}%` : '0%', transition: 'width 1s ease' }} />
                             </div>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                {total > 0 ? Math.round(done / total * 100) : 0}% completion rate
-                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{total > 0 ? Math.round(done / total * 100) : 0}% completion rate</div>
                         </div>
                     </div>
                 </div>

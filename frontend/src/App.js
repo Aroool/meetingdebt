@@ -16,6 +16,7 @@ import Profile from './pages/Profile';
 import ThemePicker from './pages/ThemePicker';
 import { useEffect } from 'react';
 import MyTasks from './pages/MyTasks';
+import Feedback from './pages/Feedback';
 
 
 
@@ -82,6 +83,12 @@ function App() {
           <ProtectedRoute>
             <Navbar />
             <MyTasks />
+          </ProtectedRoute>
+        } />
+        <Route path="/feedback" element={
+          <ProtectedRoute>
+            <Navbar />
+            <Feedback />
           </ProtectedRoute>
         } />
 
