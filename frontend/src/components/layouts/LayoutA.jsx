@@ -12,7 +12,10 @@ function getStatus(c) {
 }
 
 function timeAgo(d) {
-    const diff = Date.now() - new Date(d).getTime();
+    if (!d) return 'recently';
+    const date = new Date(d);
+    if (Number.isNaN(date.getTime())) return 'recently';
+    const diff = Date.now() - date.getTime();
     const m = Math.floor(diff / 60000);
     const h = Math.floor(m / 60);
     const dy = Math.floor(h / 24);
@@ -31,11 +34,11 @@ function formatHeaderDate() {
 }
 
 const avPalette = ['#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#10b981'];
-function avColor(n) {
-    return avPalette[(n?.charCodeAt(0) || 0) % avPalette.length];
+function avColor(name) {
+    return avPalette[(name?.charCodeAt(0) || 0) % avPalette.length];
 }
-function initials(n) {
-    return n?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
+function initials(name) {
+    return name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
 }
 
 function ActivityItem({ item }) {
@@ -46,7 +49,7 @@ function ActivityItem({ item }) {
         member_invited: { icon: '→', bg: 'var(--amber-light)', color: 'var(--amber)' },
         nudge_sent: { icon: '!', bg: 'var(--red-light)', color: 'var(--red)' },
     };
-    const s = map[item.type] || { icon: '·', bg: 'var(--bg)', color: 'var(--text-muted)' };
+    const s = map[item?.type] || { icon: '·', bg: 'var(--bg)', color: 'var(--text-muted)' };
 
     return (
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '12px 0', borderBottom: '1px solid var(--border)', minHeight: 54 }}>
@@ -55,10 +58,10 @@ function ActivityItem({ item }) {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, color: 'var(--text-primary)', lineHeight: 1.55 }}>
-                    <strong style={{ fontWeight: 700 }}>{item.actor_name}</strong>{' '}
-                    <span style={{ color: 'var(--text-secondary)' }}>{item.message}</span>
+                    <strong style={{ fontWeight: 700 }}>{item?.actor_name || 'Someone'}</strong>{' '}
+                    <span style={{ color: 'var(--text-secondary)' }}>{item?.message || 'updated the workspace'}</span>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{timeAgo(item.created_at)}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{timeAgo(item?.created_at)}</div>
             </div>
         </div>
     );
@@ -71,7 +74,7 @@ function TaskFocusItem({ c }) {
     return (
         <div
             style={{
-                padding: '12px 12px',
+                padding: '12px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10,
@@ -79,7 +82,7 @@ function TaskFocusItem({ c }) {
                 background: isOverdue ? 'var(--red-light)' : 'var(--bg)',
                 border: `1px solid ${isOverdue ? 'var(--red)30' : 'var(--border)'}`,
                 marginBottom: 8,
-                transition: 'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease',
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                 cursor: 'default',
             }}
             onMouseEnter={e => {
@@ -91,14 +94,14 @@ function TaskFocusItem({ c }) {
                 e.currentTarget.style.boxShadow = 'none';
             }}
         >
-            <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, background: avColor(c.owner) + '20', color: avColor(c.owner), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800 }}>
-                {initials(c.owner)}
+            <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, background: avColor(c?.owner) + '20', color: avColor(c?.owner), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800 }}>
+                {initials(c?.owner)}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {c.task}
+                    {c?.task || 'Untitled task'}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{c.owner}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{c?.owner || 'Unassigned'}</div>
             </div>
             <div style={{ height: 22, padding: '0 10px', borderRadius: 999, background: isOverdue ? 'var(--red-light)' : 'var(--amber-light)', color: isOverdue ? 'var(--red)' : 'var(--amber)', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', border: `1px solid ${isOverdue ? 'var(--red)' : 'var(--amber)'}20` }}>
                 {isOverdue ? 'Overdue' : 'Today'}
@@ -110,14 +113,44 @@ function TaskFocusItem({ c }) {
 function ProfilePopup({ userName, currentRole, workspaceName, onClose }) {
     return (
         <>
-            <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
-            <div style={{ position: 'absolute', top: 56, left: 0, zIndex: 100, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: 20, width: 250, boxShadow: '0 14px 40px rgba(0,0,0,0.12)' }}>
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={onClose}
+                style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 99,
+                    background: 'rgba(15, 23, 42, 0.12)',
+                    backdropFilter: 'blur(6px)',
+                }}
+            />
+
+            <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                onClick={e => e.stopPropagation()}
+                style={{
+                    position: 'absolute',
+                    top: 56,
+                    left: 0,
+                    zIndex: 100,
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 18,
+                    padding: 20,
+                    width: 252,
+                    boxShadow: '0 18px 44px rgba(0,0,0,0.14)',
+                }}
+            >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
                     <div style={{ width: 46, height: 46, borderRadius: 14, background: 'var(--accent-light)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 900 }}>
                         {userName?.charAt(0)?.toUpperCase() || 'A'}
                     </div>
-                    <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{userName || 'User'}</div>
+                    <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName || 'User'}</div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{currentRole || 'member'}</div>
                     </div>
                 </div>
@@ -125,8 +158,82 @@ function ProfilePopup({ userName, currentRole, workspaceName, onClose }) {
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Workspace</div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{workspaceName || 'Personal'}</div>
                 </div>
-            </div>
+            </motion.div>
         </>
+    );
+}
+
+function DeleteMeetingModal({ deleteConfirm, deleting, onCancel, onConfirm }) {
+    return (
+        <AnimatePresence>
+            {deleteConfirm && (
+                <>
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={onCancel}
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            background: 'rgba(0,0,0,0.38)',
+                            zIndex: 98,
+                            backdropFilter: 'blur(4px)',
+                        }}
+                    />
+
+                    <div
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            zIndex: 99,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            pointerEvents: 'none',
+                            padding: 20,
+                        }}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.96, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.96, y: 10 }}
+                            transition={{ duration: 0.18 }}
+                            style={{
+                                width: 'min(372px, 100%)',
+                                background: 'var(--bg-card)',
+                                border: '1px solid var(--border)',
+                                borderRadius: 20,
+                                padding: 24,
+                                boxShadow: '0 22px 60px rgba(0,0,0,0.18)',
+                                pointerEvents: 'auto',
+                            }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 10 }}>Delete this meeting?</div>
+                            <div style={{ fontSize: 12.5, color: 'var(--red)', marginBottom: 20, padding: '10px 12px', background: 'var(--red-light)', borderRadius: 12, lineHeight: 1.6 }}>
+                                This will permanently delete the meeting and all of its commitments.
+                            </div>
+                            <div style={{ display: 'flex', gap: 10 }}>
+                                <button
+                                    onClick={onCancel}
+                                    style={{ flex: 1, padding: '10px', borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-primary)', fontWeight: 600 }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={onConfirm}
+                                    disabled={deleting}
+                                    style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', background: 'var(--red)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: deleting ? 0.7 : 1 }}
+                                >
+                                    {deleting ? 'Deleting...' : 'Delete meeting'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                </>
+            )}
+        </AnimatePresence>
     );
 }
 
@@ -175,9 +282,24 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
     }, [commitments]);
 
     useEffect(() => {
+        let ignore = false;
         const workspaceId = localStorage.getItem('workspaceId');
-        if (!workspaceId) return;
-        api.get(`/activity?workspaceId=${workspaceId}&limit=10`).then(r => setActivity(r.data)).catch(() => { });
+        if (!workspaceId) {
+            setActivity([]);
+            return () => { ignore = true; };
+        }
+
+        api.get(`/activity?workspaceId=${workspaceId}&limit=10`)
+            .then(r => {
+                if (!ignore) setActivity(Array.isArray(r.data) ? r.data : []);
+            })
+            .catch(() => {
+                if (!ignore) setActivity([]);
+            });
+
+        return () => {
+            ignore = true;
+        };
     }, [commitments]);
 
     useEffect(() => {
@@ -209,6 +331,31 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
         });
     }, [loading]);
 
+    useEffect(() => {
+        function handleKeyDown(e) {
+            if (e.key !== 'Escape') return;
+            if (deleteConfirm) {
+                setDeleteConfirm(null);
+                return;
+            }
+            if (showProfile) {
+                setShowProfile(false);
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [deleteConfirm, showProfile]);
+
+    useEffect(() => {
+        if (!deleteConfirm && !showProfile) return undefined;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [deleteConfirm, showProfile]);
+
     function toggleMeeting(id) {
         setExpandedMeetings(prev => {
             const next = new Set(prev);
@@ -219,6 +366,7 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
     }
 
     async function handleDeleteMeeting(meetingId) {
+        if (!meetingId) return;
         setDeleting(true);
         try {
             await api.delete(`/meetings/${meetingId}`);
@@ -310,6 +458,7 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
                     .layoutA-grid {
                         grid-template-columns: 1fr !important;
                         overflow-y: auto !important;
+                        padding-right: 18px !important;
                     }
                     .layoutA-col {
                         min-height: auto !important;
@@ -324,47 +473,19 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
                         justify-content: space-between;
                     }
                 }
+                @media (max-width: 640px) {
+                    .layoutA-header-actions {
+                        flex-wrap: wrap;
+                    }
+                }
             `}</style>
 
-            <AnimatePresence>
-                {deleteConfirm && (
-                    <>
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setDeleteConfirm(null)}
-                            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.38)', zIndex: 98, backdropFilter: 'blur(3px)' }}
-                        />
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.96, y: 10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.96, y: 10 }}
-                            style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 24, width: 372, zIndex: 99, boxShadow: '0 22px 60px rgba(0,0,0,0.18)' }}
-                        >
-                            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 10 }}>Delete this meeting?</div>
-                            <div style={{ fontSize: 12.5, color: 'var(--red)', marginBottom: 20, padding: '10px 12px', background: 'var(--red-light)', borderRadius: 12, lineHeight: 1.6 }}>
-                                This will permanently delete the meeting and all of its commitments.
-                            </div>
-                            <div style={{ display: 'flex', gap: 10 }}>
-                                <button
-                                    onClick={() => setDeleteConfirm(null)}
-                                    style={{ flex: 1, padding: '10px', borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-primary)', fontWeight: 600 }}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => handleDeleteMeeting(deleteConfirm)}
-                                    disabled={deleting}
-                                    style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', background: 'var(--red)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: deleting ? 0.7 : 1 }}
-                                >
-                                    {deleting ? 'Deleting...' : 'Delete meeting'}
-                                </button>
-                            </div>
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
+            <DeleteMeetingModal
+                deleteConfirm={deleteConfirm}
+                deleting={deleting}
+                onCancel={() => setDeleteConfirm(null)}
+                onConfirm={() => handleDeleteMeeting(deleteConfirm)}
+            />
 
             <div
                 ref={headerRef}
@@ -393,7 +514,18 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
                     >
                         {userName?.charAt(0)?.toUpperCase() || 'A'}
                     </div>
-                    {showProfile && <ProfilePopup userName={userName} currentRole={currentRole} workspaceName={workspaceName} onClose={() => setShowProfile(false)} />}
+
+                    <AnimatePresence>
+                        {showProfile && (
+                            <ProfilePopup
+                                userName={userName}
+                                currentRole={currentRole}
+                                workspaceName={workspaceName}
+                                onClose={() => setShowProfile(false)}
+                            />
+                        )}
+                    </AnimatePresence>
+
                     <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: -0.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {userName ? `${userName}'s workspace` : 'Your workspace'}
@@ -419,7 +551,7 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
                             e.currentTarget.style.borderColor = 'var(--border)';
                             e.currentTarget.style.transform = 'translateY(0)';
                         }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: 'var(--text-muted)', transition: 'border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: 'var(--text-muted)', transition: 'border-color 0.15s ease, transform 0.15s ease', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}
                     >
                         ⊞
                         <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent-text)' }}>Command</span>
