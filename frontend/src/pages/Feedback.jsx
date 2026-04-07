@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { supabase } from '../supabase';
 import api from '../api';
 
@@ -7,8 +7,8 @@ const ui = {
     card: {
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
-        borderRadius: 16,
-        padding: 18,
+        borderRadius: 18,
+        boxShadow: '0 10px 30px rgba(0,0,0,0.04)',
     },
     sectionTitle: {
         fontSize: 13,
@@ -20,6 +20,7 @@ const ui = {
         fontSize: 12,
         color: 'var(--text-muted)',
         marginBottom: 12,
+        lineHeight: 1.6,
     },
     buttonBase: {
         fontFamily: 'inherit',
@@ -28,43 +29,8 @@ const ui = {
     },
 };
 
-function SectionCard({ children }) {
-    return <div style={ui.card}>{children}</div>;
-}
-
-function ProgressPill({ active, done, index }) {
-    const background = done
-        ? 'var(--accent-light)'
-        : active
-            ? 'rgba(22,163,74,0.10)'
-            : 'var(--bg)';
-
-    const border = done || active
-        ? '1px solid rgba(22,163,74,0.28)'
-        : '1px solid var(--border)';
-
-    const color = done || active ? 'var(--accent-text)' : 'var(--text-muted)';
-
-    return (
-        <div
-            style={{
-                width: 30,
-                height: 30,
-                borderRadius: 999,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background,
-                border,
-                color,
-                fontSize: 12,
-                fontWeight: 700,
-                transition: 'all 0.2s ease',
-            }}
-        >
-            {done ? '✓' : index}
-        </div>
-    );
+function SectionCard({ children, style }) {
+    return <div style={{ ...ui.card, padding: 18, ...style }}>{children}</div>;
 }
 
 function StarRating({ value, onChange }) {
@@ -113,7 +79,7 @@ function ScaleRating({ value, onChange, min = 1, max = 5, minLabel, maxLabel }) 
                             onClick={() => onChange(n)}
                             style={{
                                 ...ui.buttonBase,
-                                height: 38,
+                                height: 40,
                                 borderRadius: 10,
                                 border: active ? '1px solid #16a34a' : '1px solid var(--border)',
                                 background: active ? 'var(--accent-light)' : 'var(--bg)',
@@ -176,65 +142,39 @@ function ChoiceGroup({ options, value, onChange }) {
     );
 }
 
-function ScoreBadge({ label, value, accent = 'var(--accent-text)' }) {
-    return (
-        <div
-            style={{
-                minWidth: 62,
-                padding: '8px 10px',
-                borderRadius: 12,
-                border: '1px solid var(--border)',
-                background: 'var(--bg)',
-                textAlign: 'center',
-            }}
-        >
-            <div style={{ fontSize: 15, fontWeight: 800, color: accent, lineHeight: 1.1 }}>{value}</div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>{label}</div>
-        </div>
-    );
-}
-
-function FeedbackCard({ item, featured = false }) {
+function FeedbackCard({ item }) {
     const initial = item.name?.charAt(0)?.toUpperCase() || 'A';
+
     const painTone =
         item.pain_point === 'Yes, definitely'
-            ? {
-                background: 'var(--accent-light)',
-                color: 'var(--accent-text)',
-            }
+            ? { background: 'var(--accent-light)', color: 'var(--accent-text)' }
             : item.pain_point === 'Somewhat'
-                ? {
-                    background: 'var(--amber-light)',
-                    color: 'var(--amber)',
-                }
-                : {
-                    background: 'var(--red-light)',
-                    color: 'var(--red)',
-                };
+                ? { background: 'var(--amber-light)', color: 'var(--amber)' }
+                : { background: 'var(--red-light)', color: 'var(--red)' };
 
     return (
         <div
             style={{
-                background: 'var(--bg-card)',
-                border: featured ? '1px solid rgba(22,163,74,0.22)' : '1px solid var(--border)',
-                borderRadius: 18,
-                padding: 20,
-                boxShadow: featured ? '0 12px 40px rgba(22,163,74,0.10)' : '0 2px 10px rgba(0,0,0,0.03)',
-                backdropFilter: 'blur(8px)',
+                ...ui.card,
+                padding: 18,
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 14,
             }}
         >
-            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                 <div
                     style={{
-                        width: 44,
-                        height: 44,
+                        width: 42,
+                        height: 42,
                         borderRadius: '50%',
                         background: 'var(--accent-light)',
                         color: 'var(--accent-text)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: 800,
                         flexShrink: 0,
                     }}
@@ -257,13 +197,13 @@ function FeedbackCard({ item, featured = false }) {
                     </div>
                     <div
                         style={{
+                            marginTop: 4,
                             fontSize: 11,
                             color: 'var(--text-muted)',
                             display: 'flex',
                             flexWrap: 'wrap',
-                            alignItems: 'center',
                             gap: 6,
-                            marginTop: 4,
+                            alignItems: 'center',
                         }}
                     >
                         {item.role && <span>{item.role}</span>}
@@ -280,269 +220,103 @@ function FeedbackCard({ item, featured = false }) {
                 </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-                <ScoreBadge
-                    label="UI"
-                    value={`${item.ui_rating || 0}/5`}
-                    accent="#f59e0b"
-                />
-                <ScoreBadge
-                    label="Ease"
-                    value={`${item.ease_rating || 0}/5`}
-                />
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <div
+                    style={{
+                        padding: '7px 10px',
+                        borderRadius: 999,
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg)',
+                        fontSize: 12,
+                        color: 'var(--text-primary)',
+                        fontWeight: 700,
+                    }}
+                >
+                    UI {item.ui_rating || 0}/5
+                </div>
+                <div
+                    style={{
+                        padding: '7px 10px',
+                        borderRadius: 999,
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg)',
+                        fontSize: 12,
+                        color: 'var(--text-primary)',
+                        fontWeight: 700,
+                    }}
+                >
+                    Ease {item.ease_rating || 0}/5
+                </div>
+                <div
+                    style={{
+                        padding: '7px 10px',
+                        borderRadius: 999,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        ...painTone,
+                    }}
+                >
+                    {item.pain_point || 'No response'}
+                </div>
             </div>
 
             <div
                 style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    padding: '5px 10px',
-                    borderRadius: 999,
-                    marginBottom: item.comments ? 12 : 0,
-                    ...painTone,
+                    fontSize: 13,
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.7,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 4,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    minHeight: 88,
                 }}
             >
-                <span>●</span>
-                <span>{item.pain_point || 'No response'}</span>
+                {item.comments ? `“${item.comments}”` : 'No written comment provided.'}
             </div>
-
-            {item.comments && (
-                <div
-                    style={{
-                        fontSize: 13,
-                        color: 'var(--text-secondary)',
-                        lineHeight: 1.65,
-                        borderTop: '1px solid var(--border)',
-                        marginTop: 12,
-                        paddingTop: 12,
-                    }}
-                >
-                    “{item.comments}”
-                </div>
-            )}
         </div>
     );
 }
 
-function FeedbackCarousel({ items, loading }) {
-    const [current, setCurrent] = useState(0);
-    const [direction, setDirection] = useState(1);
-
-    useEffect(() => {
-        if (items.length <= 1) return;
-        const timer = setInterval(() => {
-            setDirection(1);
-            setCurrent((prev) => (prev + 1) % items.length);
-        }, 5000);
-        return () => clearInterval(timer);
-    }, [items.length]);
-
-    useEffect(() => {
-        if (current >= items.length && items.length > 0) {
-            setCurrent(0);
-        }
-    }, [items.length, current]);
-
-    if (loading) {
-        return (
+function EmptyFeedbackState() {
+    return (
+        <SectionCard style={{ padding: 28, textAlign: 'center' }}>
             <div
                 style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 12,
-                    justifyContent: 'center',
-                    height: '100%',
-                    padding: '20px 0',
-                }}
-            >
-                {[1, 2, 3].map((n) => (
-                    <div
-                        key={n}
-                        style={{
-                            borderRadius: 18,
-                            height: n === 2 ? 210 : 120,
-                            background: 'linear-gradient(90deg, var(--bg-card) 0%, rgba(255,255,255,0.45) 50%, var(--bg-card) 100%)',
-                            border: '1px solid var(--border)',
-                            opacity: n === 2 ? 1 : 0.5,
-                        }}
-                    />
-                ))}
-            </div>
-        );
-    }
-
-    if (items.length === 0) {
-        return (
-            <div
-                style={{
-                    display: 'flex',
-                    flexDirection: 'column',
+                    width: 56,
+                    height: 56,
+                    borderRadius: '50%',
+                    background: 'var(--accent-light)',
+                    color: 'var(--accent-text)',
+                    display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    textAlign: 'center',
-                    height: '100%',
-                    gap: 12,
-                    padding: 20,
+                    fontSize: 24,
+                    fontWeight: 800,
+                    marginBottom: 14,
                 }}
             >
-                <div
-                    style={{
-                        width: 64,
-                        height: 64,
-                        borderRadius: '50%',
-                        background: 'var(--accent-light)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'var(--accent-text)',
-                        fontSize: 28,
-                        fontWeight: 700,
-                    }}
-                >
-                    ★
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>No feedback yet</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 240 }}>
-                    Once people submit their thoughts, they’ll appear here in a moving vertical stack.
-                </div>
+                ★
             </div>
-        );
-    }
-
-    const prev = (current - 1 + items.length) % items.length;
-    const next = (current + 1) % items.length;
-
-    return (
-        <div
-            style={{
-                position: 'relative',
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-                padding: '18px 0 10px',
-            }}
-        >
-            <div
-                style={{
-                    position: 'absolute',
-                    top: 0,
-                    right: 0,
-                    fontSize: 11,
-                    color: 'var(--text-muted)',
-                    fontWeight: 600,
-                }}
-            >
-                {current + 1} / {items.length}
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
+                No feedback yet
             </div>
-
-            <div style={{ position: 'relative', width: '100%', height: 380 }}>
-                {items.length > 1 && (
-                    <motion.div
-                        key={`prev-${current}`}
-                        initial={{ opacity: 0.18, y: -20, scale: 0.94 }}
-                        animate={{ opacity: 0.32, y: -38, scale: 0.94 }}
-                        transition={{ duration: 0.35 }}
-                        style={{
-                            position: 'absolute',
-                            top: -22,
-                            left: 0,
-                            right: 0,
-                            filter: 'blur(2.5px)',
-                            transformOrigin: 'center top',
-                            pointerEvents: 'none',
-                        }}
-                    >
-                        <FeedbackCard item={items[prev]} />
-                    </motion.div>
-                )}
-
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={current}
-                        initial={{ y: direction > 0 ? 90 : -90, opacity: 0, scale: 0.97 }}
-                        animate={{ y: 42, opacity: 1, scale: 1 }}
-                        exit={{ y: direction > 0 ? -90 : 90, opacity: 0, scale: 0.97 }}
-                        transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
-                        style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            zIndex: 2,
-                        }}
-                    >
-                        <FeedbackCard item={items[current]} featured />
-                    </motion.div>
-                </AnimatePresence>
-
-                {items.length > 1 && (
-                    <motion.div
-                        key={`next-${current}`}
-                        initial={{ opacity: 0.2, y: 22, scale: 0.94 }}
-                        animate={{ opacity: 0.34, y: 130, scale: 0.94 }}
-                        transition={{ duration: 0.35 }}
-                        style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            filter: 'blur(2.5px)',
-                            transformOrigin: 'center bottom',
-                            pointerEvents: 'none',
-                        }}
-                    >
-                        <FeedbackCard item={items[next]} />
-                    </motion.div>
-                )}
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.7, maxWidth: 320, margin: '0 auto' }}>
+                Once responses start coming in, they’ll show up here as clean, readable cards.
             </div>
-
-            {items.length > 1 && (
-                <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-                    {items.map((_, i) => (
-                        <button
-                            key={i}
-                            type="button"
-                            onClick={() => {
-                                setDirection(i > current ? 1 : -1);
-                                setCurrent(i);
-                            }}
-                            aria-label={`Go to response ${i + 1}`}
-                            style={{
-                                ...ui.buttonBase,
-                                width: i === current ? 22 : 7,
-                                height: 7,
-                                borderRadius: 999,
-                                border: 'none',
-                                background: i === current ? '#16a34a' : 'var(--border)',
-                                padding: 0,
-                            }}
-                        />
-                    ))}
-                </div>
-            )}
-        </div>
+        </SectionCard>
     );
 }
 
 function ThankYouState({ onReset }) {
     return (
         <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
+            initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
             style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: '60vh',
+                ...ui.card,
+                padding: 32,
                 textAlign: 'center',
-                padding: 20,
             }}
         >
             <div
@@ -555,7 +329,7 @@ function ThankYouState({ onReset }) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    marginBottom: 20,
+                    margin: '0 auto 18px',
                     fontSize: 30,
                     color: 'var(--accent-text)',
                     fontWeight: 800,
@@ -563,11 +337,11 @@ function ThankYouState({ onReset }) {
             >
                 ✓
             </div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 10 }}>
-                Thank you!
+            <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--text-primary)', marginBottom: 10 }}>
+                Thanks for the feedback
             </div>
-            <div style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.7, maxWidth: 360 }}>
-                Your feedback helps shape MeetingDebt into something people actually want to use every week.
+            <div style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.8, maxWidth: 420, margin: '0 auto' }}>
+                Your response helps improve how MeetingDebt captures commitments and makes follow-through clearer after meetings.
             </div>
             <button
                 type="button"
@@ -604,8 +378,7 @@ export default function Feedback() {
     const [allFeedback, setAllFeedback] = useState([]);
     const [loadingFeedback, setLoadingFeedback] = useState(true);
 
-    const requiredDone = [form.uiRating > 0, form.easeRating > 0, !!form.painPoint];
-    const completedCount = requiredDone.filter(Boolean).length;
+    const completedCount = [form.uiRating > 0, form.easeRating > 0, !!form.painPoint].filter(Boolean).length;
     const canSubmit = completedCount === 3 && !saving;
 
     const fetchFeedback = async () => {
@@ -625,9 +398,7 @@ export default function Feedback() {
     }, []);
 
     useEffect(() => {
-        if (submitted) {
-            fetchFeedback();
-        }
+        if (submitted) fetchFeedback();
     }, [submitted]);
 
     async function handleSubmit() {
@@ -679,256 +450,302 @@ export default function Feedback() {
     }
 
     return (
-        <div
-            style={{
-                minHeight: 'calc(100vh - 56px)',
-                background: 'var(--bg)',
-                display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1fr) 420px',
-            }}
-        >
+        <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--bg)' }}>
             <style>{`
-        @media (max-width: 980px) {
-          .feedback-shell {
+        @media (max-width: 960px) {
+          .feedback-top-grid {
             grid-template-columns: 1fr !important;
           }
-          .feedback-right {
-            width: 100% !important;
-            border-top: 1px solid var(--border);
+          .feedback-grid {
+            grid-template-columns: 1fr !important;
           }
-          .feedback-left {
-            border-right: none !important;
+        }
+        @media (min-width: 961px) and (max-width: 1180px) {
+          .feedback-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           }
         }
       `}</style>
 
-            <div
-                className="feedback-shell"
-                style={{
-                    display: 'grid',
-                    gridColumn: '1 / -1',
-                    gridTemplateColumns: 'minmax(0, 1fr) 420px',
-                    minHeight: 'calc(100vh - 56px)',
-                }}
-            >
+            <div style={{ maxWidth: 1120, margin: '0 auto', padding: '40px 20px 56px' }}>
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+                    <div
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: '6px 10px',
+                            borderRadius: 999,
+                            background: 'var(--accent-light)',
+                            color: 'var(--accent-text)',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            marginBottom: 16,
+                        }}
+                    >
+                        <span>●</span>
+                        <span>Product feedback</span>
+                    </div>
+
+                    <div style={{ maxWidth: 680 }}>
+                        <div style={{ fontSize: 34, fontWeight: 900, color: 'var(--text-primary)', letterSpacing: -0.9, marginBottom: 10 }}>
+                            Help improve MeetingDebt
+                        </div>
+                        <div style={{ fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.8 }}>
+                            A simple feedback flow designed the way most professional product sites do it: clear form first, social proof second, no distractions.
+                        </div>
+                    </div>
+                </motion.div>
+
                 <div
-                    className="feedback-left"
+                    className="feedback-top-grid"
                     style={{
-                        padding: '32px',
-                        overflowY: 'auto',
-                        borderRight: '1px solid var(--border)',
+                        display: 'grid',
+                        gridTemplateColumns: 'minmax(0, 1.6fr) minmax(280px, 0.8fr)',
+                        gap: 20,
+                        marginTop: 28,
+                        alignItems: 'start',
                     }}
                 >
-                    {submitted ? (
-                        <ThankYouState onReset={resetForm} />
-                    ) : (
-                        <motion.div
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            style={{ maxWidth: 560, margin: '0 auto' }}
-                        >
-                            <div style={{ marginBottom: 28 }}>
-                                <div
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: 8,
-                                        padding: '6px 10px',
-                                        borderRadius: 999,
-                                        background: 'var(--accent-light)',
-                                        color: 'var(--accent-text)',
-                                        fontSize: 11,
-                                        fontWeight: 700,
-                                        marginBottom: 14,
-                                    }}
-                                >
-                                    <span>●</span>
-                                    <span>Product feedback</span>
-                                </div>
+                    <div>
+                        {submitted ? (
+                            <ThankYouState onReset={resetForm} />
+                        ) : (
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                                <SectionCard style={{ padding: 22 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 22 }}>
+                                        <div>
+                                            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)' }}>Share your thoughts</div>
+                                            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.7 }}>
+                                                Takes about a minute. The first three questions are required.
+                                            </div>
+                                        </div>
+                                        <div
+                                            style={{
+                                                padding: '9px 12px',
+                                                borderRadius: 999,
+                                                background: 'var(--bg)',
+                                                border: '1px solid var(--border)',
+                                                fontSize: 12,
+                                                fontWeight: 700,
+                                                color: completedCount === 3 ? 'var(--accent-text)' : 'var(--text-muted)',
+                                            }}
+                                        >
+                                            {completedCount}/3 completed
+                                        </div>
+                                    </div>
 
-                                <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--text-primary)', marginBottom: 8, letterSpacing: -0.7 }}>
-                                    Share your feedback
-                                </div>
-                                <div style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.7, maxWidth: 420 }}>
-                                    Same simple flow, but now a cleaner experience. Takes about 60 seconds.
-                                </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                        <div>
+                                            <div style={ui.sectionTitle}>How would you rate the UI design? *</div>
+                                            <div style={ui.sectionSubtext}>Was it clean, easy to follow, and visually polished?</div>
+                                            <StarRating value={form.uiRating} onChange={(v) => setForm((f) => ({ ...f, uiRating: v }))} />
+                                        </div>
+
+                                        <div>
+                                            <div style={ui.sectionTitle}>How easy was it to use MeetingDebt? *</div>
+                                            <div style={ui.sectionSubtext}>From extracting a meeting to understanding commitments.</div>
+                                            <ScaleRating
+                                                value={form.easeRating}
+                                                onChange={(v) => setForm((f) => ({ ...f, easeRating: v }))}
+                                                minLabel="Very hard"
+                                                maxLabel="Very easy"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <div style={ui.sectionTitle}>Did it solve a real pain point? *</div>
+                                            <div style={ui.sectionSubtext}>Does this actually help with commitments slipping after meetings?</div>
+                                            <ChoiceGroup
+                                                options={['Yes, definitely', 'Somewhat', 'Not really']}
+                                                value={form.painPoint}
+                                                onChange={(v) => setForm((f) => ({ ...f, painPoint: v }))}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <div style={ui.sectionTitle}>What’s your role?</div>
+                                            <div style={ui.sectionSubtext}>Optional, but useful for understanding feedback context.</div>
+                                            <ChoiceGroup
+                                                options={['Manager', 'Team member', 'Founder', 'Other']}
+                                                value={form.role}
+                                                onChange={(v) => setForm((f) => ({ ...f, role: v }))}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <div style={ui.sectionTitle}>Anything else we should improve?</div>
+                                            <div style={ui.sectionSubtext}>Optional notes, suggestions, or missing features.</div>
+                                            <textarea
+                                                value={form.comments}
+                                                onChange={(e) => setForm((f) => ({ ...f, comments: e.target.value }))}
+                                                placeholder="Tell us what felt useful, confusing, or missing..."
+                                                rows={4}
+                                                maxLength={300}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '12px 14px',
+                                                    borderRadius: 12,
+                                                    border: '1px solid var(--border)',
+                                                    background: 'var(--bg)',
+                                                    fontSize: 13,
+                                                    color: 'var(--text-primary)',
+                                                    fontFamily: 'inherit',
+                                                    outline: 'none',
+                                                    resize: 'vertical',
+                                                    lineHeight: 1.65,
+                                                    boxSizing: 'border-box',
+                                                }}
+                                                onFocus={(e) => {
+                                                    e.target.style.borderColor = '#16a34a';
+                                                    e.target.style.boxShadow = '0 0 0 4px rgba(22,163,74,0.08)';
+                                                }}
+                                                onBlur={(e) => {
+                                                    e.target.style.borderColor = 'var(--border)';
+                                                    e.target.style.boxShadow = 'none';
+                                                }}
+                                            />
+                                            <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>
+                                                {form.comments.length}/300
+                                            </div>
+                                        </div>
+
+                                        {error && (
+                                            <div
+                                                style={{
+                                                    fontSize: 13,
+                                                    color: 'var(--red)',
+                                                    padding: '12px 14px',
+                                                    background: 'var(--red-light)',
+                                                    borderRadius: 12,
+                                                    border: '1px solid rgba(239,68,68,0.14)',
+                                                }}
+                                            >
+                                                {error}
+                                            </div>
+                                        )}
+
+                                        <button
+                                            type="button"
+                                            onClick={handleSubmit}
+                                            disabled={!canSubmit}
+                                            style={{
+                                                ...ui.buttonBase,
+                                                width: '100%',
+                                                padding: '15px',
+                                                borderRadius: 14,
+                                                background: canSubmit ? '#16a34a' : 'rgba(22,163,74,0.45)',
+                                                color: '#fff',
+                                                border: 'none',
+                                                fontSize: 15,
+                                                fontWeight: 800,
+                                                opacity: saving ? 0.85 : 1,
+                                                boxShadow: canSubmit ? '0 12px 24px rgba(22,163,74,0.20)' : 'none',
+                                                cursor: canSubmit ? 'pointer' : 'not-allowed',
+                                            }}
+                                        >
+                                            {saving ? 'Submitting...' : 'Submit feedback →'}
+                                        </button>
+                                    </div>
+                                </SectionCard>
+                            </motion.div>
+                        )}
+                    </div>
+
+                    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+                        <SectionCard style={{ padding: 22, position: 'sticky', top: 24 }}>
+                            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 10 }}>
+                                What happens with your feedback
+                            </div>
+                            <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.8, marginBottom: 18 }}>
+                                This page is intentionally simple. The goal is to help people respond quickly and confidently without distracting motion or clutter.
                             </div>
 
-                            <SectionCard>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                                    <div>
-                                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-                                            Required progress
-                                        </div>
-                                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                                            {completedCount} of 3 required steps completed
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: 8 }}>
-                                        <ProgressPill index={1} active={!requiredDone[0]} done={requiredDone[0]} />
-                                        <ProgressPill index={2} active={requiredDone[0] && !requiredDone[1]} done={requiredDone[1]} />
-                                        <ProgressPill index={3} active={requiredDone[0] && requiredDone[1] && !requiredDone[2]} done={requiredDone[2]} />
-                                    </div>
-                                </div>
-                            </SectionCard>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
-                                <SectionCard>
-                                    <div style={ui.sectionTitle}>How would you rate the UI design? *</div>
-                                    <div style={ui.sectionSubtext}>Clean, easy to navigate, and visually polished?</div>
-                                    <StarRating value={form.uiRating} onChange={(v) => setForm((f) => ({ ...f, uiRating: v }))} />
-                                    {form.uiRating > 0 && (
-                                        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--accent-text)', fontWeight: 600 }}>
-                                            {['', 'Needs improvement', 'Below average', 'Good', 'Very good', 'Outstanding'][form.uiRating]}
-                                        </div>
-                                    )}
-                                </SectionCard>
-
-                                <SectionCard>
-                                    <div style={ui.sectionTitle}>How easy was it to use MeetingDebt? *</div>
-                                    <div style={ui.sectionSubtext}>From extracting a meeting to actually seeing commitments.</div>
-                                    <ScaleRating
-                                        value={form.easeRating}
-                                        onChange={(v) => setForm((f) => ({ ...f, easeRating: v }))}
-                                        minLabel="Very hard"
-                                        maxLabel="Very easy"
-                                    />
-                                </SectionCard>
-
-                                <SectionCard>
-                                    <div style={ui.sectionTitle}>Did it solve a real pain point? *</div>
-                                    <div style={ui.sectionSubtext}>Have commitments from meetings ever slipped through the cracks for you?</div>
-                                    <ChoiceGroup
-                                        options={['Yes, definitely', 'Somewhat', 'Not really']}
-                                        value={form.painPoint}
-                                        onChange={(v) => setForm((f) => ({ ...f, painPoint: v }))}
-                                    />
-                                </SectionCard>
-
-                                <SectionCard>
-                                    <div style={ui.sectionTitle}>What’s your role?</div>
-                                    <div style={ui.sectionSubtext}>This helps you understand whose feedback you’re getting.</div>
-                                    <ChoiceGroup
-                                        options={['Manager', 'Team member', 'Founder', 'Other']}
-                                        value={form.role}
-                                        onChange={(v) => setForm((f) => ({ ...f, role: v }))}
-                                    />
-                                </SectionCard>
-
-                                <SectionCard>
-                                    <div style={ui.sectionTitle}>Any suggestions?</div>
-                                    <div style={ui.sectionSubtext}>What would make you use this every week?</div>
-                                    <textarea
-                                        value={form.comments}
-                                        onChange={(e) => setForm((f) => ({ ...f, comments: e.target.value }))}
-                                        placeholder="Tell us what felt useful, missing, or confusing..."
-                                        rows={4}
-                                        maxLength={300}
-                                        style={{
-                                            width: '100%',
-                                            padding: '12px 14px',
-                                            borderRadius: 12,
-                                            border: '1px solid var(--border)',
-                                            background: 'var(--bg)',
-                                            fontSize: 13,
-                                            color: 'var(--text-primary)',
-                                            fontFamily: 'inherit',
-                                            outline: 'none',
-                                            resize: 'vertical',
-                                            lineHeight: 1.6,
-                                            boxSizing: 'border-box',
-                                        }}
-                                        onFocus={(e) => {
-                                            e.target.style.borderColor = '#16a34a';
-                                            e.target.style.boxShadow = '0 0 0 4px rgba(22,163,74,0.08)';
-                                        }}
-                                        onBlur={(e) => {
-                                            e.target.style.borderColor = 'var(--border)';
-                                            e.target.style.boxShadow = 'none';
-                                        }}
-                                    />
-                                    <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>
-                                        {form.comments.length}/300
-                                    </div>
-                                </SectionCard>
-
-                                {error && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {[
+                                    'Used to improve product clarity and flow',
+                                    'Optional comments help identify missing features',
+                                    'Recent responses are shown below as proof and context',
+                                ].map((text) => (
                                     <div
+                                        key={text}
                                         style={{
-                                            fontSize: 13,
-                                            color: 'var(--red)',
-                                            padding: '12px 14px',
-                                            background: 'var(--red-light)',
-                                            borderRadius: 12,
-                                            border: '1px solid rgba(239,68,68,0.14)',
+                                            display: 'flex',
+                                            gap: 10,
+                                            alignItems: 'flex-start',
+                                            padding: '12px 0',
+                                            borderTop: '1px solid var(--border)',
                                         }}
                                     >
-                                        {error}
+                                        <div
+                                            style={{
+                                                width: 22,
+                                                height: 22,
+                                                borderRadius: '50%',
+                                                background: 'var(--accent-light)',
+                                                color: 'var(--accent-text)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: 11,
+                                                fontWeight: 800,
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            ✓
+                                        </div>
+                                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7 }}>{text}</div>
                                     </div>
-                                )}
-
-                                <button
-                                    type="button"
-                                    onClick={handleSubmit}
-                                    disabled={!canSubmit}
-                                    style={{
-                                        ...ui.buttonBase,
-                                        width: '100%',
-                                        padding: '15px',
-                                        borderRadius: 14,
-                                        background: canSubmit ? '#16a34a' : 'rgba(22,163,74,0.45)',
-                                        color: '#fff',
-                                        border: 'none',
-                                        fontSize: 15,
-                                        fontWeight: 800,
-                                        opacity: saving ? 0.85 : 1,
-                                        boxShadow: canSubmit ? '0 10px 24px rgba(22,163,74,0.22)' : 'none',
-                                        cursor: canSubmit ? 'pointer' : 'not-allowed',
-                                    }}
-                                >
-                                    {saving ? 'Submitting...' : 'Submit feedback →'}
-                                </button>
-
-                                <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)' }}>
-                                    Built by Arulprashath Rajarajan · Clark University · Demo day April 28, 2026
-                                </div>
+                                ))}
                             </div>
-                        </motion.div>
-                    )}
+                        </SectionCard>
+                    </motion.div>
                 </div>
 
-                <aside
-                    className="feedback-right"
-                    style={{
-                        width: 420,
-                        padding: '32px 24px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        flexShrink: 0,
-                    }}
-                >
-                    <div style={{ marginBottom: 20 }}>
-                        <div
-                            style={{
-                                fontSize: 11,
-                                fontWeight: 700,
-                                color: 'var(--text-muted)',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.08em',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                            }}
-                        >
-                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />
-                            Feedback wall
+                <div style={{ marginTop: 34 }}>
+                    <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>
+                            What others said
+                        </div>
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.7 }}>
+                            Recent responses shown in a clean static layout, the way most polished product pages handle social proof.
                         </div>
                     </div>
 
-                    <div style={{ flex: 1 }}>
-                        <FeedbackCarousel items={allFeedback} loading={loadingFeedback} />
-                    </div>
-                </aside>
+                    {loadingFeedback ? (
+                        <div className="feedback-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
+                            {[1, 2, 3].map((n) => (
+                                <div
+                                    key={n}
+                                    style={{
+                                        ...ui.card,
+                                        height: 240,
+                                        background: 'linear-gradient(90deg, var(--bg-card) 0%, rgba(255,255,255,0.45) 50%, var(--bg-card) 100%)',
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    ) : allFeedback.length === 0 ? (
+                        <EmptyFeedbackState />
+                    ) : (
+                        <div className="feedback-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
+                            {allFeedback.slice(0, 6).map((item, index) => (
+                                <motion.div
+                                    key={`${item.email || 'anon'}-${item.created_at || index}`}
+                                    initial={{ opacity: 0, y: 14 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: index * 0.04 }}
+                                >
+                                    <FeedbackCard item={item} />
+                                </motion.div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', marginTop: 26 }}>
+                    Built by Arulprashath Rajarajan · Clark University · Demo day April 28, 2026
+                </div>
             </div>
         </div>
     );
