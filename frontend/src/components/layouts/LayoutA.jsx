@@ -691,18 +691,39 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
 
                     <div style={{ flex: 1, overflowY: 'auto', padding: '16px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.01), transparent 80px)' }}>
                         {loading ? (
-                            <div style={{ padding: '56px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Loading...</div>
+                            <div style={{ padding: '56px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                                Loading...
+                            </div>
                         ) : filtered.length === 0 ? (
                             <div style={{ padding: '72px 0', textAlign: 'center' }}>
                                 <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>
                                     {personFilter ? `No tasks for ${personFilter}` : filter === 'All' ? 'No commitments yet' : `No ${filter.toLowerCase()} tasks`}
                                 </div>
-                                {filter === 'All' && !personFilter && <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Click + to add your first meeting</div>}
+                                {filter === 'All' && !personFilter && (
+                                    <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+                                        Click + to add your first meeting
+                                    </div>
+                                )}
                             </div>
                         ) : view === 'flat' ? (
-                            <div style={{ border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', background: 'var(--bg-card)', boxShadow: '0 6px 20px rgba(0,0,0,0.03)' }}>
+                            <div
+                                style={{
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 16,
+                                    overflow: 'hidden',
+                                    background: 'var(--bg-card)',
+                                    boxShadow: '0 6px 20px rgba(0,0,0,0.03)',
+                                }}
+                            >
                                 {filtered.map((c, i) => (
-                                    <CommitmentRow key={c.id} commitment={c} index={i} onUpdate={onUpdate} members={members} commitments={commitments} />
+                                    <CommitmentRow
+                                        key={c.id}
+                                        commitment={c}
+                                        index={i}
+                                        onUpdate={onUpdate}
+                                        members={members}
+                                        commitments={commitments}
+                                    />
                                 ))}
                             </div>
                         ) : (
@@ -710,48 +731,178 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
                                 const gDone = group.items.filter(c => getStatus(c) === 'done').length;
                                 const gOverdue = group.items.filter(c => getStatus(c) === 'overdue').length;
                                 const isExpanded = expandedMeetings.has(mid);
+
                                 return (
-                                    <div key={mid} style={{ marginBottom: 16 }}>
+                                    <div key={mid} style={{ marginBottom: 14 }}>
                                         <div
                                             onClick={() => toggleMeeting(mid)}
-                                            style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: isExpanded ? 10 : 0, padding: '10px 12px', borderRadius: 14, cursor: 'pointer', transition: 'background 0.15s ease, transform 0.15s ease', border: '1px solid transparent' }}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 10,
+                                                padding: '13px 14px',
+                                                borderRadius: 16,
+                                                cursor: 'pointer',
+                                                transition: 'background 0.15s ease, transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease',
+                                                border: '1px solid var(--border)',
+                                                background: isExpanded ? 'var(--bg)' : 'var(--bg-card)',
+                                                boxShadow: isExpanded
+                                                    ? '0 8px 22px rgba(0,0,0,0.03)'
+                                                    : '0 3px 10px rgba(0,0,0,0.02)',
+                                            }}
                                             onMouseEnter={e => {
-                                                e.currentTarget.style.background = 'var(--bg)';
                                                 e.currentTarget.style.transform = 'translateY(-1px)';
+                                                e.currentTarget.style.borderColor = 'var(--border-hover)';
+                                                e.currentTarget.style.boxShadow = '0 10px 24px rgba(0,0,0,0.05)';
                                             }}
                                             onMouseLeave={e => {
-                                                e.currentTarget.style.background = 'transparent';
                                                 e.currentTarget.style.transform = 'translateY(0)';
+                                                e.currentTarget.style.borderColor = 'var(--border)';
+                                                e.currentTarget.style.boxShadow = isExpanded
+                                                    ? '0 8px 22px rgba(0,0,0,0.03)'
+                                                    : '0 3px 10px rgba(0,0,0,0.02)';
                                             }}
                                         >
-                                            <span style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{group.title}</span>
-                                            <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 9px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent-text)', flexShrink: 0 }}>{group.items.length}</span>
-                                            {gOverdue > 0 && <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 9px', borderRadius: 999, background: 'var(--red-light)', color: 'var(--red)', flexShrink: 0 }}>{gOverdue} late</span>}
-                                            {gDone > 0 && <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 9px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent-text)', flexShrink: 0 }}>{gDone} done</span>}
-
-                                            {mid !== 'no-meeting' && currentRole === 'manager' && (
-                                                <button
-                                                    onClick={e => {
-                                                        e.stopPropagation();
-                                                        setDeleteConfirm(mid);
+                                            <div
+                                                style={{
+                                                    width: 28,
+                                                    height: 28,
+                                                    borderRadius: 10,
+                                                    border: '1px solid var(--border)',
+                                                    background: isExpanded ? 'var(--accent-light)' : 'var(--bg)',
+                                                    color: isExpanded ? 'var(--accent-text)' : 'var(--text-muted)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    flexShrink: 0,
+                                                    transition: 'all 0.18s ease',
+                                                    fontSize: 12,
+                                                    fontWeight: 800,
+                                                }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                        transition: 'transform 0.2s ease',
+                                                        lineHeight: 1,
                                                     }}
-                                                    onMouseEnter={e => {
-                                                        e.currentTarget.style.background = 'var(--red-light)';
-                                                        e.currentTarget.style.color = 'var(--red)';
-                                                        e.currentTarget.style.borderColor = 'var(--red)';
-                                                    }}
-                                                    onMouseLeave={e => {
-                                                        e.currentTarget.style.background = 'transparent';
-                                                        e.currentTarget.style.color = 'var(--text-muted)';
-                                                        e.currentTarget.style.borderColor = 'var(--border)';
-                                                    }}
-                                                    style={{ width: 24, height: 24, borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease', fontFamily: 'inherit', flexShrink: 0 }}
                                                 >
-                                                    ×
-                                                </button>
-                                            )}
+                                                    ›
+                                                </div>
+                                            </div>
 
-                                            <div style={{ fontSize: 9, color: 'var(--text-muted)', transition: 'transform 0.2s ease', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}>▼</div>
+                                            <div style={{ minWidth: 0, flex: 1 }}>
+                                                <div
+                                                    style={{
+                                                        fontSize: 14,
+                                                        fontWeight: 800,
+                                                        color: 'var(--text-primary)',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap',
+                                                    }}
+                                                >
+                                                    {group.title}
+                                                </div>
+
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 8,
+                                                        marginTop: 4,
+                                                        flexWrap: 'wrap',
+                                                    }}
+                                                >
+                                                    <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+                                                        {group.items.length} commitment{group.items.length !== 1 ? 's' : ''}
+                                                    </span>
+
+                                                    {gOverdue > 0 && (
+                                                        <span
+                                                            style={{
+                                                                fontSize: 10.5,
+                                                                fontWeight: 800,
+                                                                padding: '3px 8px',
+                                                                borderRadius: 999,
+                                                                background: 'var(--red-light)',
+                                                                color: 'var(--red)',
+                                                            }}
+                                                        >
+                                                            {gOverdue} late
+                                                        </span>
+                                                    )}
+
+                                                    {gDone > 0 && (
+                                                        <span
+                                                            style={{
+                                                                fontSize: 10.5,
+                                                                fontWeight: 800,
+                                                                padding: '3px 8px',
+                                                                borderRadius: 999,
+                                                                background: 'var(--accent-light)',
+                                                                color: 'var(--accent-text)',
+                                                            }}
+                                                        >
+                                                            {gDone} done
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                                                <span
+                                                    style={{
+                                                        fontSize: 11,
+                                                        fontWeight: 800,
+                                                        padding: '5px 10px',
+                                                        borderRadius: 999,
+                                                        background: isExpanded ? 'var(--accent-light)' : 'var(--bg)',
+                                                        color: isExpanded ? 'var(--accent-text)' : 'var(--text-muted)',
+                                                        border: '1px solid var(--border)',
+                                                    }}
+                                                >
+                                                    {group.items.length}
+                                                </span>
+
+                                                {mid !== 'no-meeting' && currentRole === 'manager' && (
+                                                    <button
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            setDeleteConfirm(mid);
+                                                        }}
+                                                        onMouseEnter={e => {
+                                                            e.currentTarget.style.background = 'var(--red-light)';
+                                                            e.currentTarget.style.color = 'var(--red)';
+                                                            e.currentTarget.style.borderColor = 'var(--red)';
+                                                        }}
+                                                        onMouseLeave={e => {
+                                                            e.currentTarget.style.background = 'transparent';
+                                                            e.currentTarget.style.color = 'var(--text-muted)';
+                                                            e.currentTarget.style.borderColor = 'var(--border)';
+                                                        }}
+                                                        style={{
+                                                            width: 28,
+                                                            height: 28,
+                                                            borderRadius: 10,
+                                                            border: '1px solid var(--border)',
+                                                            background: 'transparent',
+                                                            color: 'var(--text-muted)',
+                                                            cursor: 'pointer',
+                                                            fontSize: 12,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            transition: 'all 0.15s ease',
+                                                            fontFamily: 'inherit',
+                                                            flexShrink: 0,
+                                                        }}
+                                                        title="Delete meeting"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
 
                                         <AnimatePresence initial={false}>
@@ -763,9 +914,25 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
                                                     transition={{ duration: 0.22 }}
                                                     style={{ overflow: 'hidden' }}
                                                 >
-                                                    <div style={{ border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', background: 'var(--bg-card)', boxShadow: '0 8px 22px rgba(0,0,0,0.03)' }}>
+                                                    <div style={{ height: 10 }} />
+                                                    <div
+                                                        style={{
+                                                            border: '1px solid var(--border)',
+                                                            borderRadius: 16,
+                                                            overflow: 'hidden',
+                                                            background: 'var(--bg-card)',
+                                                            boxShadow: '0 8px 22px rgba(0,0,0,0.03)',
+                                                        }}
+                                                    >
                                                         {group.items.map((c, i) => (
-                                                            <CommitmentRow key={c.id} commitment={c} index={i} onUpdate={onUpdate} members={members} commitments={commitments} />
+                                                            <CommitmentRow
+                                                                key={c.id}
+                                                                commitment={c}
+                                                                index={i}
+                                                                onUpdate={onUpdate}
+                                                                members={members}
+                                                                commitments={commitments}
+                                                            />
                                                         ))}
                                                     </div>
                                                 </motion.div>
