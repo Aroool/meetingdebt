@@ -1070,6 +1070,19 @@ app.post('/feedback', requireAuth, async (req, res) => {
     }
 });
 
+app.get('/feedback', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('feedback')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        return res.json(data);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // ── DAILY NUDGE EMAIL ──
 async function sendDailyNudges() {
     try {
