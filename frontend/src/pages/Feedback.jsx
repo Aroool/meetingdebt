@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
 import api from '../api';
@@ -329,10 +329,12 @@ function FeedbackCard({ item, featured = false }) {
 
 function FeedbackCarousel({ items, loading }) {
     const [current, setCurrent] = useState(0);
+    const [direction, setDirection] = useState(1);
 
     useEffect(() => {
         if (items.length <= 1) return;
         const timer = setInterval(() => {
+            setDirection(1);
             setCurrent((prev) => (prev + 1) % items.length);
         }, 5000);
         return () => clearInterval(timer);
@@ -344,9 +346,6 @@ function FeedbackCarousel({ items, loading }) {
         }
     }, [items.length, current]);
 
-    const goPrev = () => setCurrent((prev) => (prev - 1 + items.length) % items.length);
-    const goNext = () => setCurrent((prev) => (prev + 1) % items.length);
-
     if (loading) {
         return (
             <div
@@ -356,6 +355,7 @@ function FeedbackCarousel({ items, loading }) {
                     gap: 12,
                     justifyContent: 'center',
                     height: '100%',
+                    padding: '20px 0',
                 }}
             >
                 {[1, 2, 3].map((n) => (
@@ -363,10 +363,10 @@ function FeedbackCarousel({ items, loading }) {
                         key={n}
                         style={{
                             borderRadius: 18,
-                            height: n === 2 ? 180 : 100,
+                            height: n === 2 ? 210 : 120,
                             background: 'linear-gradient(90deg, var(--bg-card) 0%, rgba(255,255,255,0.45) 50%, var(--bg-card) 100%)',
                             border: '1px solid var(--border)',
-                            opacity: n === 2 ? 1 : 0.55,
+                            opacity: n === 2 ? 1 : 0.5,
                         }}
                     />
                 ))}
@@ -406,84 +406,112 @@ function FeedbackCarousel({ items, loading }) {
                 </div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>No feedback yet</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 240 }}>
-                    Once people submit their thoughts, they’ll appear here in the same clean card view.
+                    Once people submit their thoughts, they’ll appear here in a moving vertical stack.
                 </div>
             </div>
         );
     }
 
+    const prev = (current - 1 + items.length) % items.length;
+    const next = (current + 1) % items.length;
+
     return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div
+            style={{
+                position: 'relative',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                padding: '18px 0 10px',
+            }}
+        >
             <div
                 style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 14,
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    fontSize: 11,
+                    color: 'var(--text-muted)',
+                    fontWeight: 600,
                 }}
             >
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
-                    {current + 1} / {items.length}
-                </div>
-
-                {items.length > 1 && (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        <button
-                            type="button"
-                            onClick={goPrev}
-                            style={{
-                                ...ui.buttonBase,
-                                width: 32,
-                                height: 32,
-                                borderRadius: 999,
-                                border: '1px solid var(--border)',
-                                background: 'var(--bg-card)',
-                                color: 'var(--text-primary)',
-                            }}
-                        >
-                            ←
-                        </button>
-                        <button
-                            type="button"
-                            onClick={goNext}
-                            style={{
-                                ...ui.buttonBase,
-                                width: 32,
-                                height: 32,
-                                borderRadius: 999,
-                                border: '1px solid var(--border)',
-                                background: 'var(--bg-card)',
-                                color: 'var(--text-primary)',
-                            }}
-                        >
-                            →
-                        </button>
-                    </div>
-                )}
+                {current + 1} / {items.length}
             </div>
 
-            <div style={{ position: 'relative', flex: 1, minHeight: 360, overflow: 'hidden' }}>
+            <div style={{ position: 'relative', width: '100%', height: 380 }}>
+                {items.length > 1 && (
+                    <motion.div
+                        key={`prev-${current}`}
+                        initial={{ opacity: 0.18, y: -20, scale: 0.94 }}
+                        animate={{ opacity: 0.32, y: -38, scale: 0.94 }}
+                        transition={{ duration: 0.35 }}
+                        style={{
+                            position: 'absolute',
+                            top: -22,
+                            left: 0,
+                            right: 0,
+                            filter: 'blur(2.5px)',
+                            transformOrigin: 'center top',
+                            pointerEvents: 'none',
+                        }}
+                    >
+                        <FeedbackCard item={items[prev]} />
+                    </motion.div>
+                )}
+
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={current}
-                        initial={{ y: 24, opacity: 0, scale: 0.97 }}
-                        animate={{ y: 0, opacity: 1, scale: 1 }}
-                        exit={{ y: -24, opacity: 0, scale: 0.97 }}
-                        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-                        style={{ position: 'absolute', inset: 0 }}
+                        initial={{ y: direction > 0 ? 90 : -90, opacity: 0, scale: 0.97 }}
+                        animate={{ y: 42, opacity: 1, scale: 1 }}
+                        exit={{ y: direction > 0 ? -90 : 90, opacity: 0, scale: 0.97 }}
+                        transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            zIndex: 2,
+                        }}
                     >
                         <FeedbackCard item={items[current]} featured />
                     </motion.div>
                 </AnimatePresence>
+
+                {items.length > 1 && (
+                    <motion.div
+                        key={`next-${current}`}
+                        initial={{ opacity: 0.2, y: 22, scale: 0.94 }}
+                        animate={{ opacity: 0.34, y: 130, scale: 0.94 }}
+                        transition={{ duration: 0.35 }}
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            filter: 'blur(2.5px)',
+                            transformOrigin: 'center bottom',
+                            pointerEvents: 'none',
+                        }}
+                    >
+                        <FeedbackCard item={items[next]} />
+                    </motion.div>
+                )}
             </div>
 
             {items.length > 1 && (
-                <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
                     {items.map((_, i) => (
                         <button
                             key={i}
                             type="button"
-                            onClick={() => setCurrent(i)}
+                            onClick={() => {
+                                setDirection(i > current ? 1 : -1);
+                                setCurrent(i);
+                            }}
                             aria-label={`Go to response ${i + 1}`}
                             style={{
                                 ...ui.buttonBase,
@@ -579,20 +607,6 @@ export default function Feedback() {
     const requiredDone = [form.uiRating > 0, form.easeRating > 0, !!form.painPoint];
     const completedCount = requiredDone.filter(Boolean).length;
     const canSubmit = completedCount === 3 && !saving;
-
-    const averageUI = useMemo(() => {
-        if (!allFeedback.length) return 0;
-        return (
-            allFeedback.reduce((sum, item) => sum + (item.ui_rating || 0), 0) / allFeedback.length
-        ).toFixed(1);
-    }, [allFeedback]);
-
-    const averageEase = useMemo(() => {
-        if (!allFeedback.length) return 0;
-        return (
-            allFeedback.reduce((sum, item) => sum + (item.ease_rating || 0), 0) / allFeedback.length
-        ).toFixed(1);
-    }, [allFeedback]);
 
     const fetchFeedback = async () => {
         setLoadingFeedback(true);
@@ -904,32 +918,10 @@ export default function Feedback() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 8,
-                                marginBottom: 14,
                             }}
                         >
                             <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />
-                            Live responses
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 10 }}>
-                            <div style={{ ...ui.card, padding: 14 }}>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Responses</div>
-                                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginTop: 4 }}>
-                                    {allFeedback.length}
-                                </div>
-                            </div>
-                            <div style={{ ...ui.card, padding: 14 }}>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Avg UI</div>
-                                <div style={{ fontSize: 20, fontWeight: 800, color: '#f59e0b', marginTop: 4 }}>
-                                    {averageUI}
-                                </div>
-                            </div>
-                            <div style={{ ...ui.card, padding: 14 }}>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Avg Ease</div>
-                                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent-text)', marginTop: 4 }}>
-                                    {averageEase}
-                                </div>
-                            </div>
+                            Feedback wall
                         </div>
                     </div>
 
