@@ -6,271 +6,446 @@ import { supabase } from '../supabase';
 
 gsap.registerPlugin(ScrollTrigger);
 
+const testimonials = [
+    {
+        quote:
+            'Replace this with a real user quote about how MeetingDebt helped the team follow through after meetings.',
+        name: 'Pilot User',
+        role: 'Product Manager',
+    },
+    {
+        quote:
+            'Replace this with a real user quote about clearer ownership, fewer dropped tasks, or better accountability.',
+        name: 'Pilot User',
+        role: 'Engineering Lead',
+    },
+    {
+        quote:
+            'Replace this with a real user quote about getting value from meeting transcripts instead of just summaries.',
+        name: 'Pilot User',
+        role: 'Operations Manager',
+    },
+];
+
 export default function Landing() {
     const navigate = useNavigate();
     const containerRef = useRef(null);
     const [dark, setDark] = useState(true);
 
     useEffect(() => {
+        let ignore = false;
         supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session) navigate('/dashboard');
+            if (!ignore && session) navigate('/dashboard');
         });
+        return () => {
+            ignore = true;
+        };
     }, [navigate]);
 
     function scrollTo(id) {
-        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     useEffect(() => {
         const ctx = gsap.context(() => {
-            const heroTl = gsap.timeline({ delay: 0.2 });
-            heroTl
-                .from('.hero-badge', { opacity: 0, y: 20, duration: 0.6, ease: 'power3.out' })
-                .from('.hero-h1 .line1', { opacity: 0, y: 60, duration: 0.8, ease: 'power4.out' }, '-=0.2')
-                .from('.hero-h1 .line2', { opacity: 0, y: 60, duration: 0.8, ease: 'power4.out' }, '-=0.5')
-                .from('.hero-h1 .line3', { opacity: 0, y: 60, duration: 0.8, ease: 'power4.out' }, '-=0.5')
-                .from('.hero-sub', { opacity: 0, y: 30, duration: 0.7, ease: 'power3.out' }, '-=0.4')
-                .from('.hero-btns', { opacity: 0, y: 20, duration: 0.6, ease: 'power3.out' }, '-=0.3')
-                .from('.hero-proof', { opacity: 0, duration: 0.5 }, '-=0.2');
-
-            gsap.to('.orb1', { y: -30, x: 20, duration: 6, repeat: -1, yoyo: true, ease: 'sine.inOut' });
-            gsap.to('.orb2', { y: 20, x: -15, duration: 8, repeat: -1, yoyo: true, ease: 'sine.inOut', delay: 1 });
-            gsap.to('.orb3', { y: -15, duration: 5, repeat: -1, yoyo: true, ease: 'sine.inOut', delay: 2 });
-
-            gsap.to('.orb1', { scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true }, y: -120, ease: 'none' });
-            gsap.to('.orb2', { scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true }, y: -80, ease: 'none' });
-
-            gsap.from('.killer-q1', { scrollTrigger: { trigger: '.killer-section', start: 'top 80%' }, opacity: 0, x: -40, duration: 0.8, ease: 'power3.out' });
-            gsap.from('.killer-q2', { scrollTrigger: { trigger: '.killer-section', start: 'top 80%' }, opacity: 0, x: 40, duration: 0.8, ease: 'power3.out', delay: 0.2 });
-
-            gsap.from('.section-header-howitworks', { scrollTrigger: { trigger: '.how-section', start: 'top 75%' }, opacity: 0, y: 40, duration: 0.7, ease: 'power3.out' });
-            gsap.from('.step-card', { scrollTrigger: { trigger: '.steps-grid', start: 'top 80%' }, opacity: 0, y: 60, stagger: 0.15, duration: 0.7, ease: 'back.out(1.5)' });
-
-            ScrollTrigger.create({
-                trigger: '.demo-section', start: 'top 70%',
-                onEnter: () => {
-                    const tl = gsap.timeline();
-                    tl.from('.demo-left-content', { opacity: 0, x: -50, duration: 0.8, ease: 'power3.out' })
-                        .from('.terminal', { opacity: 0, x: 50, duration: 0.8, ease: 'power3.out' }, '-=0.5')
-                        .from('.t-line', { opacity: 0, y: 10, stagger: 0.15, duration: 0.4, ease: 'power2.out' }, '-=0.2')
-                        .from('.t-extracted', { opacity: 0, y: 20, duration: 0.6, ease: 'power3.out' }, '-=0.1')
-                        .from('.t-task', { opacity: 0, x: -20, stagger: 0.1, duration: 0.4, ease: 'back.out(1.2)' }, '-=0.3');
-                }, once: true
+            gsap.from('.lp-fade-up', {
+                opacity: 0,
+                y: 28,
+                duration: 0.75,
+                stagger: 0.08,
+                ease: 'power3.out',
             });
 
-            gsap.from('.feat-card', { scrollTrigger: { trigger: '.features-section', start: 'top 75%' }, opacity: 0, y: 50, scale: 0.95, stagger: 0.1, duration: 0.6, ease: 'back.out(1.4)' });
-            gsap.from('.vs-them', { scrollTrigger: { trigger: '.vs-section', start: 'top 75%' }, opacity: 0, x: -40, duration: 0.8, ease: 'power3.out' });
-            gsap.from('.vs-us', { scrollTrigger: { trigger: '.vs-section', start: 'top 75%' }, opacity: 0, x: 40, duration: 0.8, ease: 'power3.out', delay: 0.15 });
-            gsap.from('.nudge-left', { scrollTrigger: { trigger: '.nudge-section', start: 'top 75%' }, opacity: 0, x: -50, duration: 0.8, ease: 'power3.out' });
-            gsap.from('.email-mock', { scrollTrigger: { trigger: '.nudge-section', start: 'top 75%' }, opacity: 0, y: 40, rotation: 2, duration: 0.8, ease: 'back.out(1.2)', delay: 0.2 });
-            gsap.from('.em-task', { scrollTrigger: { trigger: '.nudge-section', start: 'top 70%' }, opacity: 0, x: 20, stagger: 0.12, duration: 0.5, ease: 'power2.out', delay: 0.4 });
-            gsap.from('.cta-h2', { scrollTrigger: { trigger: '.cta-section', start: 'top 80%' }, opacity: 0, y: 50, duration: 0.9, ease: 'power4.out' });
-            gsap.from('.cta-sub', { scrollTrigger: { trigger: '.cta-section', start: 'top 80%' }, opacity: 0, y: 30, duration: 0.7, ease: 'power3.out', delay: 0.2 });
-            gsap.from('.cta-btns', { scrollTrigger: { trigger: '.cta-section', start: 'top 80%' }, opacity: 0, y: 20, duration: 0.6, ease: 'power3.out', delay: 0.4 });
-            gsap.from('.contact-section', { scrollTrigger: { trigger: '.contact-section', start: 'top 80%' }, opacity: 0, y: 30, duration: 0.7, ease: 'power3.out' });
+            gsap.utils.toArray('.lp-section-animate').forEach((section) => {
+                gsap.from(section, {
+                    scrollTrigger: {
+                        trigger: section,
+                        start: 'top 82%',
+                    },
+                    opacity: 0,
+                    y: 32,
+                    duration: 0.8,
+                    ease: 'power3.out',
+                });
+            });
+
+            gsap.to('.lp-orb-a', {
+                y: -26,
+                x: 18,
+                duration: 8,
+                repeat: -1,
+                yoyo: true,
+                ease: 'sine.inOut',
+            });
+
+            gsap.to('.lp-orb-b', {
+                y: 20,
+                x: -14,
+                duration: 10,
+                repeat: -1,
+                yoyo: true,
+                ease: 'sine.inOut',
+                delay: 0.8,
+            });
         }, containerRef);
+
         return () => ctx.revert();
     }, []);
 
-    const bg = dark ? '#080808' : '#f8fafc';
-    const cardBg = dark ? '#0f0f0f' : '#ffffff';
-    const border = dark ? '#ffffff0d' : '#e2e8f0';
-    const textPrimary = dark ? '#fff' : '#0f172a';
-    const textMuted = dark ? '#555' : '#64748b';
-    const dividerColor = dark ? '#ffffff08' : '#e2e8f0';
+    const theme = {
+        bg: dark ? '#060806' : '#f7faf7',
+        bgElevated: dark ? '#0b0f0b' : '#ffffff',
+        bgSoft: dark ? '#0f1510' : '#f3f7f3',
+        bgMuted: dark ? '#0d120d' : '#f8faf8',
+        border: dark ? 'rgba(255,255,255,0.08)' : '#dfe7df',
+        borderStrong: dark ? 'rgba(255,255,255,0.14)' : '#cfdccf',
+        text: dark ? '#f5f7f5' : '#111827',
+        textSoft: dark ? '#b2bbb2' : '#667085',
+        textFaint: dark ? '#7d877d' : '#98a2b3',
+        accent: '#16a34a',
+        accentSoft: dark ? 'rgba(22,163,74,0.14)' : '#ecfdf3',
+        accentBorder: dark ? 'rgba(22,163,74,0.32)' : 'rgba(22,163,74,0.18)',
+        shadow: dark ? '0 24px 80px rgba(0,0,0,0.28)' : '0 24px 80px rgba(15,23,42,0.08)',
+        divider: dark ? 'rgba(255,255,255,0.06)' : '#e4ebe4',
+    };
 
     const S = {
-        page: { background: bg, color: textPrimary, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', overflowX: 'hidden', transition: 'background 0.3s, color 0.3s' },
-        nav: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 60px', borderBottom: `0.5px solid ${dividerColor}`, background: dark ? '#080808dd' : '#f8fafc', position: 'sticky', top: 0, zIndex: 100, backdropFilter: 'blur(12px)' },
-        logo: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 800, color: textPrimary },
-        logoDot: { width: 8, height: 8, borderRadius: '50%', background: '#16a34a' },
-        navLinks: { display: 'flex', gap: 28 },
-        navLink: { fontSize: 13, color: textMuted, cursor: 'pointer', transition: 'color 0.15s' },
-        navCta: { fontSize: 13, fontWeight: 700, padding: '8px 20px', borderRadius: 8, background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer' },
-        hero: { minHeight: '90vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '80px 60px', position: 'relative', overflow: 'hidden' },
-        heroBg: { position: 'absolute', inset: 0, pointerEvents: 'none' },
-        orb: (w, h, top, left, right, bottom, color) => ({ position: 'absolute', width: w, height: h, borderRadius: '50%', background: color, top, left, right, bottom }),
-        heroH1: { fontSize: 64, fontWeight: 900, lineHeight: 1.02, letterSpacing: -2.5, color: textPrimary, marginBottom: 20, maxWidth: 800 },
-        btnP: { padding: '14px 32px', borderRadius: 10, background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 700, fontFamily: 'inherit' },
-        btnS: { padding: '14px 32px', borderRadius: 10, background: 'transparent', color: textMuted, border: `0.5px solid ${dark ? '#ffffff20' : '#e2e8f0'}`, cursor: 'pointer', fontSize: 15, fontWeight: 500, fontFamily: 'inherit' },
-        section: (bg2) => ({ padding: '100px 60px', background: bg2 || bg, position: 'relative' }),
-        sLabel: { fontSize: 11, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 },
-        sTitle: { fontSize: 42, fontWeight: 900, letterSpacing: -1.5, lineHeight: 1.05, marginBottom: 16, color: textPrimary },
-        sSub: { fontSize: 15, color: textMuted, maxWidth: 480, lineHeight: 1.7 },
-        card: { background: cardBg, border: `0.5px solid ${border}`, borderRadius: 18, padding: 32 },
-        divider: { height: '0.5px', background: dividerColor, margin: '0 60px' },
+        page: {
+            background: theme.bg,
+            color: theme.text,
+            minHeight: '100vh',
+            fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif",
+            transition: 'background 0.25s ease, color 0.25s ease',
+            overflowX: 'hidden',
+        },
+        shell: {
+            maxWidth: 1180,
+            margin: '0 auto',
+            padding: '0 24px',
+        },
+        nav: {
+            position: 'sticky',
+            top: 0,
+            zIndex: 40,
+            backdropFilter: 'blur(14px)',
+            background: dark ? 'rgba(6,8,6,0.82)' : 'rgba(247,250,247,0.86)',
+            borderBottom: `1px solid ${theme.divider}`,
+        },
+        navInner: {
+            maxWidth: 1180,
+            margin: '0 auto',
+            padding: '16px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 20,
+        },
+        logo: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            fontSize: 18,
+            fontWeight: 800,
+            letterSpacing: -0.4,
+            color: theme.text,
+        },
+        navLinks: {
+            display: 'flex',
+            gap: 22,
+            alignItems: 'center',
+        },
+        navLink: {
+            fontSize: 13,
+            fontWeight: 600,
+            color: theme.textSoft,
+            cursor: 'pointer',
+            transition: 'color 0.15s ease',
+        },
+        navActions: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+        },
+        ghostBtn: {
+            padding: '10px 14px',
+            borderRadius: 12,
+            border: `1px solid ${theme.border}`,
+            background: 'transparent',
+            color: theme.textSoft,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+        },
+        primaryBtn: {
+            padding: '12px 18px',
+            borderRadius: 12,
+            border: 'none',
+            background: theme.accent,
+            color: '#ffffff',
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            boxShadow: '0 12px 28px rgba(22,163,74,0.22)',
+        },
+        hero: {
+            position: 'relative',
+            padding: '84px 0 56px',
+            overflow: 'hidden',
+        },
+        badge: {
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '7px 12px',
+            borderRadius: 999,
+            border: `1px solid ${theme.accentBorder}`,
+            background: theme.accentSoft,
+            color: dark ? '#73e29a' : '#15803d',
+            fontSize: 12,
+            fontWeight: 700,
+            marginBottom: 24,
+        },
+        heroGrid: {
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0,1.05fr) minmax(320px,0.95fr)',
+            gap: 34,
+            alignItems: 'center',
+        },
+        heroTitle: {
+            fontSize: 66,
+            lineHeight: 0.98,
+            letterSpacing: -3,
+            fontWeight: 900,
+            marginBottom: 20,
+            maxWidth: 660,
+            color: theme.text,
+        },
+        heroSub: {
+            fontSize: 17,
+            lineHeight: 1.75,
+            color: theme.textSoft,
+            maxWidth: 590,
+            marginBottom: 28,
+        },
+        heroActions: {
+            display: 'flex',
+            gap: 12,
+            flexWrap: 'wrap',
+            marginBottom: 22,
+        },
+        proofLine: {
+            display: 'flex',
+            gap: 16,
+            flexWrap: 'wrap',
+            fontSize: 12.5,
+            color: theme.textFaint,
+        },
+        heroCard: {
+            background: `linear-gradient(180deg, ${dark ? 'rgba(12,16,12,0.92)' : '#ffffff'} 0%, ${theme.bgElevated} 100%)`,
+            border: `1px solid ${theme.border}`,
+            borderRadius: 24,
+            boxShadow: theme.shadow,
+            overflow: 'hidden',
+        },
+        section: {
+            padding: '72px 0',
+            borderTop: `1px solid ${theme.divider}`,
+        },
+        sectionHead: {
+            marginBottom: 28,
+            maxWidth: 700,
+        },
+        label: {
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+            color: theme.accent,
+            marginBottom: 12,
+        },
+        title: {
+            fontSize: 42,
+            lineHeight: 1.05,
+            letterSpacing: -1.8,
+            fontWeight: 900,
+            color: theme.text,
+            marginBottom: 12,
+        },
+        sub: {
+            fontSize: 15,
+            lineHeight: 1.75,
+            color: theme.textSoft,
+            maxWidth: 640,
+        },
+        card: {
+            background: theme.bgElevated,
+            border: `1px solid ${theme.border}`,
+            borderRadius: 20,
+            padding: 24,
+            boxShadow: dark ? '0 18px 40px rgba(0,0,0,0.18)' : '0 18px 40px rgba(15,23,42,0.05)',
+        },
     };
 
     return (
         <div ref={containerRef} style={S.page}>
+            <style>{`
+        .lp-grid-3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+        .lp-grid-4 { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+        .lp-grid-2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+        .lp-muted-hover:hover { color: ${theme.text}; }
+        .lp-card-hover { transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease; }
+        .lp-card-hover:hover { transform: translateY(-2px); border-color: ${theme.borderStrong}; }
+        @media (max-width: 1100px) {
+          .lp-hero-grid { grid-template-columns: 1fr !important; }
+          .lp-grid-4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        }
+        @media (max-width: 860px) {
+          .lp-nav-links { display: none !important; }
+          .lp-grid-3, .lp-grid-2 { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 720px) {
+          .lp-shell { padding: 0 18px !important; }
+          .lp-nav-inner { padding: 14px 18px !important; }
+          .lp-title { font-size: 42px !important; letter-spacing: -1.8px !important; }
+          .lp-section-title { font-size: 32px !important; letter-spacing: -1.1px !important; }
+          .lp-hero-actions { flex-direction: column; align-items: stretch; }
+          .lp-grid-4 { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
 
-            {/* NAV */}
             <nav style={S.nav}>
-                <div style={S.logo}>
-                    <div style={S.logoDot} />
-                    Meeting<span style={{ color: '#16a34a' }}>Debt</span>
-                </div>
-                <div style={S.navLinks}>
-                    {[
-                        { label: 'How it works', id: 'how-it-works' },
-                        { label: 'Features', id: 'features' },
-                        { label: 'Pricing', id: 'pricing' },
-                        { label: 'Contact', id: 'contact' },
-                    ].map(l => (
-                        <div key={l.label}
-                            onClick={() => scrollTo(l.id)}
-                            style={S.navLink}
-                            onMouseEnter={e => e.currentTarget.style.color = '#16a34a'}
-                            onMouseLeave={e => e.currentTarget.style.color = textMuted}>
-                            {l.label}
-                        </div>
-                    ))}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    {/* Dark/Light toggle */}
-                    <button onClick={() => setDark(d => !d)}
-                        style={{ background: 'none', border: `0.5px solid ${border}`, borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 14, color: textMuted, transition: 'all 0.15s' }}>
-                        {dark ? '☀️' : '🌙'}
-                    </button>
-                    <button style={S.navCta} onClick={() => navigate('/signup')}>
-                        Get started free
-                    </button>
+                <div style={S.navInner} className="lp-nav-inner">
+                    <div style={S.logo}>
+                        <div style={{ width: 9, height: 9, borderRadius: '50%', background: theme.accent }} />
+                        <span>Meeting</span>
+                        <span style={{ color: theme.accent }}>Debt</span>
+                    </div>
+
+                    <div style={S.navLinks} className="lp-nav-links">
+                        {[
+                            ['Product', 'product'],
+                            ['Proof', 'proof'],
+                            ['Trust', 'trust'],
+                            ['Testimonials', 'testimonials'],
+                        ].map(([label, id]) => (
+                            <div
+                                key={id}
+                                onClick={() => scrollTo(id)}
+                                style={S.navLink}
+                                className="lp-muted-hover"
+                            >
+                                {label}
+                            </div>
+                        ))}
+                    </div>
+
+                    <div style={S.navActions}>
+                        <button
+                            onClick={() => setDark((v) => !v)}
+                            style={{ ...S.ghostBtn, padding: '10px 12px', minWidth: 44 }}
+                            aria-label="Toggle theme"
+                        >
+                            {dark ? '☀️' : '🌙'}
+                        </button>
+                        <button style={S.ghostBtn} onClick={() => navigate('/login')}>Sign in</button>
+                        <button style={S.primaryBtn} onClick={() => navigate('/signup')}>Start free</button>
+                    </div>
                 </div>
             </nav>
 
-            {/* HERO */}
-            <section className="hero" style={S.hero}>
-                <div style={S.heroBg}>
-                    <div className="orb1" style={S.orb(700, 700, -250, -150, null, null, '#16a34a06')} />
-                    <div className="orb2" style={S.orb(450, 450, null, null, -80, -80, '#16a34a04')} />
-                    <div className="orb3" style={{ ...S.orb(350, 350, '50%', '50%', null, null, '#3b82f605'), transform: 'translate(-50%, -50%)' }} />
-                </div>
-                <div className="hero-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 20, border: '0.5px solid #16a34a40', background: '#16a34a10', fontSize: 12, color: '#16a34a', fontWeight: 600, marginBottom: 32, position: 'relative', zIndex: 1 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a', animation: 'pulse 2s infinite' }} />
-                    Built for teams that actually follow through
-                </div>
-                <h1 className="hero-h1" style={{ ...S.heroH1, position: 'relative', zIndex: 1 }}>
-                    <div className="line1">Your meetings make promises.</div>
-                    <div className="line2"><span style={{ color: '#16a34a' }}>We make sure</span></div>
-                    <div className="line3" style={{ color: dark ? '#333' : '#94a3b8' }}>they're kept.</div>
-                </h1>
-                <p className="hero-sub" style={{ fontSize: 17, color: textMuted, lineHeight: 1.7, maxWidth: 520, margin: '0 auto 40px', position: 'relative', zIndex: 1 }}>
-                    Paste any meeting transcript. AI extracts every commitment, assigns it, tracks it, and nudges your team until it's done.
-                </p>
-                <div className="hero-btns" style={{ display: 'flex', gap: 12, justifyContent: 'center', position: 'relative', zIndex: 1 }}>
-                    <button style={S.btnP} onClick={() => navigate('/signup')}>Start for free →</button>
-                    <button style={S.btnS} onClick={() => navigate('/login')}>Sign in</button>
-                </div>
-                <div className="hero-proof" style={{ marginTop: 24, fontSize: 12, color: dark ? '#333' : '#94a3b8', position: 'relative', zIndex: 1 }}>
-                    No credit card required · Free for teams up to 5
-                </div>
-            </section>
+            <section style={S.hero}>
+                <div
+                    className="lp-orb-a"
+                    style={{ position: 'absolute', top: -130, left: -80, width: 420, height: 420, borderRadius: '50%', background: 'rgba(22,163,74,0.10)', filter: 'blur(70px)', pointerEvents: 'none' }}
+                />
+                <div
+                    className="lp-orb-b"
+                    style={{ position: 'absolute', right: -100, top: 40, width: 320, height: 320, borderRadius: '50%', background: 'rgba(59,130,246,0.07)', filter: 'blur(80px)', pointerEvents: 'none' }}
+                />
 
-            <div style={S.divider} />
-
-            {/* KILLER LINE */}
-            <section className="killer-section" style={{ padding: '80px 60px', textAlign: 'center', background: bg }}>
-                <div style={{ maxWidth: 700, margin: '0 auto' }}>
-                    <div className="killer-q1" style={{ fontSize: 30, fontWeight: 500, color: textMuted, marginBottom: 8 }}>
-                        "Read.ai tells you what was said."
-                    </div>
-                    <div className="killer-q2" style={{ fontSize: 30, fontWeight: 500, color: textPrimary }}>
-                        <span style={{ color: '#16a34a', fontWeight: 800 }}>MeetingDebt</span> makes sure it actually happens.
-                    </div>
-                </div>
-            </section>
-
-            <div style={S.divider} />
-
-            {/* HOW IT WORKS */}
-            <section id="how-it-works" className="how-section" style={S.section()}>
-                <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-                    <div className="section-header-howitworks">
-                        <div style={S.sLabel}>How it works</div>
-                        <div style={S.sTitle}>Three steps.<br />Zero dropped balls.</div>
-                        <div style={S.sSub}>From messy transcript to tracked commitments in under 60 seconds.</div>
-                    </div>
-                    <div className="steps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20, marginTop: 56 }}>
-                        {[
-                            { n: '01', icon: '📋', title: 'Paste your transcript', desc: 'Copy from Zoom, Meet, Teams, Otter, Read.ai — anywhere. Paste it in. Takes 10 seconds.' },
-                            { n: '02', icon: '⚡', title: 'AI extracts commitments', desc: 'Claude reads every line and pulls out tasks, owners, and deadlines. You review and confirm.' },
-                            { n: '03', icon: '🔔', title: 'Team gets nudged daily', desc: 'Everyone gets emailed their tasks. Overdue? They get nudged. Done? Dashboard updates.' },
-                        ].map(s => (
-                            <div key={s.n} className="step-card" style={{ ...S.card, transition: 'border-color 0.3s, transform 0.3s' }}
-                                onMouseEnter={e => { e.currentTarget.style.borderColor = '#16a34a30'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.transform = 'translateY(0)'; }}>
-                                <div style={{ fontSize: 10, fontWeight: 800, color: '#16a34a', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    {s.n} <div style={{ flex: 1, height: '0.5px', background: '#16a34a20' }} />
-                                </div>
-                                <div style={{ fontSize: 28, marginBottom: 16 }}>{s.icon}</div>
-                                <div style={{ fontSize: 17, fontWeight: 700, color: textPrimary, marginBottom: 10 }}>{s.title}</div>
-                                <div style={{ fontSize: 13, color: textMuted, lineHeight: 1.7 }}>{s.desc}</div>
+                <div style={S.shell} className="lp-shell">
+                    <div style={S.heroGrid} className="lp-hero-grid">
+                        <div>
+                            <div style={S.badge} className="lp-fade-up">
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: theme.accent }} />
+                                Built for teams that need follow-through after the meeting ends
                             </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
 
-            <div style={S.divider} />
+                            <h1 style={S.heroTitle} className="lp-title lp-fade-up">
+                                Turn meeting transcripts into owned, tracked, finished work.
+                            </h1>
 
-            {/* TRANSCRIPT DEMO */}
-            <section className="demo-section" style={S.section(dark ? '#050505' : '#f1f5f9')}>
-                <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' }}>
-                        <div className="demo-left-content">
-                            <div style={S.sLabel}>See it in action</div>
-                            <div style={{ ...S.sTitle, fontSize: 36 }}>From messy transcript<br />to clear ownership.</div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 24 }}>
-                                {[
-                                    { title: 'Smart assignment', desc: 'Automatically matches tasks to the right person based on context.' },
-                                    { title: 'Deadline detection', desc: 'Picks up "by Friday", "end of day", "next sprint" automatically.' },
-                                    { title: 'You confirm everything', desc: "Nothing gets assigned without your approval first." },
-                                ].map(p => (
-                                    <div key={p.title} style={{ display: 'flex', gap: 14 }}>
-                                        <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#16a34a15', border: '0.5px solid #16a34a30', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-                                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#16a34a' }} />
-                                        </div>
-                                        <div style={{ fontSize: 13, color: textMuted, lineHeight: 1.7 }}>
-                                            <strong style={{ color: dark ? '#ccc' : '#0f172a', fontWeight: 600, display: 'block', marginBottom: 2 }}>{p.title}</strong>
-                                            {p.desc}
-                                        </div>
-                                    </div>
-                                ))}
+                            <p style={S.heroSub} className="lp-fade-up">
+                                MeetingDebt extracts commitments from transcripts, assigns ownership, tracks status, and nudges the right people until work is done. It is not another meeting summary tool. It is the accountability layer after the meeting.
+                            </p>
+
+                            <div style={S.heroActions} className="lp-hero-actions lp-fade-up">
+                                <button style={S.primaryBtn} onClick={() => navigate('/signup')}>
+                                    Start for free →
+                                </button>
+                                <button style={S.ghostBtn} onClick={() => scrollTo('product')}>
+                                    See product walkthrough
+                                </button>
+                            </div>
+
+                            <div style={S.proofLine} className="lp-fade-up">
+                                <span>Works with transcripts from Zoom, Meet, Teams, Otter, Read.ai, and more</span>
+                                <span>•</span>
+                                <span>No credit card required</span>
+                                <span>•</span>
+                                <span>Manager visibility built in</span>
                             </div>
                         </div>
-                        <div className="terminal" style={{ background: '#0d0d0d', border: '0.5px solid #ffffff0f', borderRadius: 16, overflow: 'hidden' }}>
-                            <div style={{ padding: '12px 16px', background: '#111', borderBottom: '0.5px solid #ffffff08', display: 'flex', alignItems: 'center', gap: 8 }}>
+
+                        <div style={S.heroCard} className="lp-fade-up">
+                            <div style={{ padding: '16px 18px', borderBottom: `1px solid ${theme.divider}`, display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <div style={{ display: 'flex', gap: 5 }}>
-                                    {['#ff5f57', '#febc2e', '#28c840'].map(c => (
-                                        <div key={c} style={{ width: 10, height: 10, borderRadius: '50%', background: c }} />
+                                    {['#ff5f57', '#febc2e', '#28c840'].map((c) => (
+                                        <div key={c} style={{ width: 9, height: 9, borderRadius: '50%', background: c }} />
                                     ))}
                                 </div>
-                                <div style={{ fontSize: 11, color: '#444', marginLeft: 8, fontFamily: 'monospace' }}>Weekly Sprint Sync — transcript</div>
+                                <div style={{ fontSize: 11.5, color: theme.textFaint, marginLeft: 8 }}>MeetingDebt workflow preview</div>
                             </div>
+
                             <div style={{ padding: 20 }}>
-                                {[
-                                    { speaker: 'John: ', text: '"I\'ll get the API docs done by Wednesday."', highlight: false },
-                                    { speaker: 'Sarah: ', text: '"I can review them by end of Thursday."', highlight: false },
-                                    { speaker: 'Arul: ', text: '"Everything ready for client review Friday."', highlight: true },
-                                    { speaker: 'John: ', text: '"I\'ll deploy to staging tomorrow evening."', highlight: false },
-                                ].map((l, i) => (
-                                    <div key={i} className="t-line" style={{ fontSize: 11, fontFamily: 'monospace', lineHeight: 2 }}>
-                                        <span style={{ color: '#555' }}>{l.speaker}</span>
-                                        <span style={{ color: l.highlight ? '#16a34a' : '#777' }}>{l.text}</span>
+                                <div style={{ ...S.card, padding: 18, marginBottom: 14, background: theme.bgSoft }}>
+                                    <div style={{ fontSize: 11, color: theme.textFaint, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>Transcript input</div>
+                                    <div style={{ fontSize: 12.5, lineHeight: 1.8, color: theme.textSoft, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+                                        <div>John: I&apos;ll finish the API docs by Wednesday.</div>
+                                        <div>Sarah: I can review them by Thursday afternoon.</div>
+                                        <div>Arul: Let&apos;s make sure client review happens Friday.</div>
                                     </div>
-                                ))}
-                                <div className="t-extracted" style={{ marginTop: 16, paddingTop: 16, borderTop: '0.5px solid #ffffff08' }}>
-                                    <div style={{ fontSize: 9, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>AI extracted</div>
+                                </div>
+
+                                <div style={{ fontSize: 11, color: theme.accent, textTransform: 'uppercase', letterSpacing: '0.14em', fontWeight: 800, marginBottom: 10 }}>
+                                    AI extracted commitments
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                     {[
-                                        { av: 'J', bg: '#dbeafe', color: '#1d4ed8', task: 'Write API documentation', due: 'Wed' },
-                                        { av: 'S', bg: '#ede9fe', color: '#7c3aed', task: "Review John's API docs", due: 'Thu' },
-                                        { av: 'A', bg: '#16a34a20', color: '#16a34a', task: 'Everything ready for client review', due: 'Fri' },
-                                        { av: 'J', bg: '#dbeafe', color: '#1d4ed8', task: 'Deploy build to staging', due: 'Tmrw' },
-                                    ].map((t, i) => (
-                                        <div key={i} className="t-task" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: '#161616', borderRadius: 8, marginBottom: 6, border: '0.5px solid #ffffff06' }}>
-                                            <div style={{ width: 18, height: 18, borderRadius: '50%', background: t.bg, color: t.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 800, flexShrink: 0 }}>{t.av}</div>
-                                            <div style={{ fontSize: 11, color: '#bbb', flex: 1 }}>{t.task}</div>
-                                            <div style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#FAEEDA15', color: '#f59e0b', border: '0.5px solid #f59e0b30' }}>{t.due}</div>
+                                        ['John', 'Write API documentation', 'Wed'],
+                                        ['Sarah', 'Review API documentation', 'Thu'],
+                                        ['Arul', 'Prepare client review', 'Fri'],
+                                    ].map(([owner, task, due], i) => (
+                                        <div key={i} style={{ display: 'grid', gridTemplateColumns: '70px 1fr 52px', gap: 10, alignItems: 'center', padding: '11px 12px', borderRadius: 14, border: `1px solid ${theme.border}`, background: theme.bgElevated }}>
+                                            <div style={{ fontSize: 11, fontWeight: 700, color: theme.accent }}>{owner}</div>
+                                            <div style={{ fontSize: 13, color: theme.text }}>{task}</div>
+                                            <div style={{ fontSize: 10, fontWeight: 800, color: '#f59e0b', background: dark ? 'rgba(245,158,11,0.12)' : '#fff7e8', borderRadius: 999, padding: '4px 8px', textAlign: 'center' }}>{due}</div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 10, marginTop: 16 }}>
+                                    {[
+                                        ['Assigned', '3'],
+                                        ['Overdue', '0'],
+                                        ['Done', '0'],
+                                    ].map(([label, value]) => (
+                                        <div key={label} style={{ padding: 12, borderRadius: 14, border: `1px solid ${theme.border}`, background: theme.bgSoft }}>
+                                            <div style={{ fontSize: 11, color: theme.textFaint }}>{label}</div>
+                                            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>{value}</div>
                                         </div>
                                     ))}
                                 </div>
@@ -280,219 +455,199 @@ export default function Landing() {
                 </div>
             </section>
 
-            <div style={S.divider} />
+            <section id="proof" style={S.section} className="lp-section-animate">
+                <div style={S.shell} className="lp-shell">
+                    <div style={S.sectionHead}>
+                        <div style={S.label}>Product proof</div>
+                        <div style={S.title} className="lp-section-title">Built around the part other meeting tools leave behind.</div>
+                        <div style={S.sub}>
+                            Recording and summarizing a meeting is useful. But the real failure happens later: unclear ownership, forgotten deadlines, and no follow-up system. MeetingDebt exists to close that gap.
+                        </div>
+                    </div>
 
-            {/* FEATURES */}
-            <section id="features" className="features-section" style={S.section()}>
-                <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-                    <div style={S.sLabel}>Features</div>
-                    <div style={{ ...S.sTitle, marginBottom: 48 }}>Everything your team needs.</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+                    <div className="lp-grid-4">
                         {[
-                            { icon: '🤖', title: 'AI extraction', desc: "Claude reads your transcript and pulls every commitment, deadline, and owner." },
-                            { icon: '📊', title: 'Live dashboard', desc: "See your whole team's commitments in one place. Filter by person, meeting, or status." },
-                            { icon: '📧', title: 'Daily nudges', desc: 'Automated daily emails keep everyone on track.' },
-                            { icon: '👥', title: 'Team workspaces', desc: 'Invite your team, assign roles, manage multiple workspaces.' },
-                            { icon: '🔁', title: 'Reassign tasks', desc: 'Plans change. Managers can reassign any commitment in one click.' },
-                            { icon: '📈', title: 'Accountability', desc: "See who's delivering and who needs a nudge." },
-                        ].map(f => (
-                            <div key={f.title} className="feat-card" style={{ ...S.card, transition: 'border-color 0.3s, transform 0.3s' }}
-                                onMouseEnter={e => { e.currentTarget.style.borderColor = '#16a34a25'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.transform = 'translateY(0)'; }}>
-                                <div style={{ fontSize: 24, marginBottom: 14 }}>{f.icon}</div>
-                                <div style={{ fontSize: 15, fontWeight: 700, color: textPrimary, marginBottom: 8 }}>{f.title}</div>
-                                <div style={{ fontSize: 12, color: textMuted, lineHeight: 1.7 }}>{f.desc}</div>
+                            {
+                                title: 'Commitment extraction',
+                                body: 'Turn transcripts into explicit tasks, owners, and deadlines instead of leaving action items buried in notes.',
+                            },
+                            {
+                                title: 'Manager visibility',
+                                body: 'See pending, overdue, blocked, and completed work in one place without chasing people manually.',
+                            },
+                            {
+                                title: 'Daily nudges',
+                                body: 'The right people get reminded automatically, so follow-through does not depend on memory.',
+                            },
+                            {
+                                title: 'Shared accountability',
+                                body: 'Every commitment stays attached to a real owner and status, making team execution much easier to manage.',
+                            },
+                        ].map((item) => (
+                            <div key={item.title} style={S.card} className="lp-card-hover">
+                                <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 10 }}>{item.title}</div>
+                                <div style={{ fontSize: 13.5, lineHeight: 1.75, color: theme.textSoft }}>{item.body}</div>
                             </div>
                         ))}
                     </div>
                 </div>
             </section>
 
-            <div style={S.divider} />
+            <section id="product" style={{ ...S.section, background: dark ? '#050705' : '#f4f8f4' }} className="lp-section-animate">
+                <div style={S.shell} className="lp-shell">
+                    <div style={S.sectionHead}>
+                        <div style={S.label}>Product walkthrough</div>
+                        <div style={S.title} className="lp-section-title">Simple workflow. Serious operational value.</div>
+                        <div style={S.sub}>
+                            The product is designed to move from transcript to accountability fast, while still giving managers control before anything is sent to the team.
+                        </div>
+                    </div>
 
-            {/* VS */}
-            <section className="vs-section" style={S.section(dark ? '#050505' : '#f1f5f9')}>
-                <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-                    <div style={S.sLabel}>Why not just use...</div>
-                    <div style={{ ...S.sTitle, fontSize: 36, marginBottom: 48 }}>Other tools stop when<br />the meeting ends.</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-                        <div className="vs-them" style={{ ...S.card, opacity: 0.7 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: textMuted, marginBottom: 18 }}>
-                                Read.ai / Otter / Fireflies
-                            </div>
+                    <div className="lp-grid-2" style={{ alignItems: 'stretch' }}>
+                        <div style={{ ...S.card, display: 'flex', flexDirection: 'column', gap: 16 }}>
                             {[
-                                { good: true, text: 'Records and transcribes meetings' },
-                                { good: true, text: 'Generates meeting summaries' },
-                                { good: false, text: "Doesn't track who committed to what" },
-                                { good: false, text: "Doesn't send reminders to your team" },
-                                { good: false, text: "Can't tell you if things got done" },
-                            ].map((r, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, fontSize: 13 }}>
-                                    <span style={{ color: r.good ? '#16a34a' : textMuted, fontWeight: 700 }}>{r.good ? '✓' : '✗'}</span>
-                                    <span style={{ color: r.good ? textMuted : dark ? '#333' : '#94a3b8' }}>{r.text}</span>
+                                {
+                                    number: '01',
+                                    title: 'Paste the transcript',
+                                    body: 'Bring in the text from whatever meeting tool your team already uses.',
+                                },
+                                {
+                                    number: '02',
+                                    title: 'Review extracted commitments',
+                                    body: 'Check owners, deadlines, and tasks before finalizing anything.',
+                                },
+                                {
+                                    number: '03',
+                                    title: 'Track and nudge automatically',
+                                    body: 'Once commitments are confirmed, MeetingDebt keeps the execution loop alive.',
+                                },
+                            ].map((step) => (
+                                <div key={step.number} style={{ display: 'grid', gridTemplateColumns: '58px 1fr', gap: 14, alignItems: 'start' }}>
+                                    <div style={{ width: 48, height: 48, borderRadius: 14, border: `1px solid ${theme.accentBorder}`, background: theme.accentSoft, color: theme.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900 }}>
+                                        {step.number}
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 6 }}>{step.title}</div>
+                                        <div style={{ fontSize: 13.5, lineHeight: 1.75, color: theme.textSoft }}>{step.body}</div>
+                                    </div>
                                 </div>
                             ))}
                         </div>
-                        <div className="vs-us" style={{ ...S.card, borderColor: '#16a34a25' }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#16a34a', marginBottom: 18 }}>
-                                MeetingDebt
-                            </div>
-                            {[
-                                'Works with any transcript source',
-                                'Extracts and assigns every commitment',
-                                'Tracks status in real time',
-                                'Daily nudge emails to every team member',
-                                'Manager dashboard with full accountability',
-                            ].map((r, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, fontSize: 13 }}>
-                                    <span style={{ color: '#16a34a', fontWeight: 700 }}>✓</span>
-                                    <span style={{ color: dark ? '#888' : '#64748b' }}>{r}</span>
+
+                        <div style={{ ...S.card, padding: 0, overflow: 'hidden' }}>
+                            <div style={{ padding: '16px 18px', borderBottom: `1px solid ${theme.divider}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div>
+                                    <div style={{ fontSize: 14, fontWeight: 800 }}>Manager dashboard</div>
+                                    <div style={{ fontSize: 12, color: theme.textFaint, marginTop: 4 }}>Pending commitments across meetings</div>
                                 </div>
-                            ))}
+                                <div style={{ fontSize: 11, color: theme.accent, fontWeight: 700 }}>Live status view</div>
+                            </div>
+
+                            <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                {[
+                                    ['Weekly Product Sync', 'Deploy staging build', 'Aroool', 'Overdue'],
+                                    ['Client Review', 'Finalize API notes', 'Sarah', 'Pending'],
+                                    ['Sprint Planning', 'Prepare review deck', 'Arul', 'Done'],
+                                ].map(([meeting, task, owner, status]) => (
+                                    <div key={task} style={{ border: `1px solid ${theme.border}`, borderRadius: 16, padding: 14, background: theme.bgMuted }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+                                            <div style={{ fontSize: 12, fontWeight: 700, color: theme.textFaint }}>{meeting}</div>
+                                            <div style={{ fontSize: 10, fontWeight: 800, borderRadius: 999, padding: '4px 8px', background: status === 'Overdue' ? (dark ? 'rgba(239,68,68,0.12)' : '#fff1f1') : status === 'Done' ? theme.accentSoft : (dark ? 'rgba(245,158,11,0.12)' : '#fff7e8'), color: status === 'Overdue' ? '#ef4444' : status === 'Done' ? theme.accent : '#f59e0b' }}>
+                                                {status}
+                                            </div>
+                                        </div>
+                                        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>{task}</div>
+                                        <div style={{ fontSize: 12.5, color: theme.textSoft }}>Owner: {owner}</div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <div style={S.divider} />
-
-            {/* NUDGE EMAIL */}
-            <section className="nudge-section" style={S.section()}>
-                <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' }}>
-                    <div className="nudge-left">
-                        <div style={S.sLabel}>Automated nudges</div>
-                        <div style={{ ...S.sTitle, fontSize: 36 }}>Your team gets reminded.<br />Every. Single. Day.</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 20 }}>
-                            {[
-                                { title: 'Daily at 9am', desc: "Each person gets only their tasks. No noise." },
-                                { title: 'Overdue flagged in red', desc: "Accountability without awkward Slack messages." },
-                                { title: 'Manager sees everything', desc: "Dashboard shows who's on track and who isn't." },
-                            ].map(p => (
-                                <div key={p.title} style={{ display: 'flex', gap: 14 }}>
-                                    <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#16a34a15', border: '0.5px solid #16a34a30', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-                                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#16a34a' }} />
-                                    </div>
-                                    <div style={{ fontSize: 13, color: textMuted, lineHeight: 1.7 }}>
-                                        <strong style={{ color: dark ? '#ccc' : '#0f172a', fontWeight: 600, display: 'block', marginBottom: 2 }}>{p.title}</strong>
-                                        {p.desc}
-                                    </div>
-                                </div>
-                            ))}
+            <section id="trust" style={S.section} className="lp-section-animate">
+                <div style={S.shell} className="lp-shell">
+                    <div style={S.sectionHead}>
+                        <div style={S.label}>Privacy and trust</div>
+                        <div style={S.title} className="lp-section-title">Built to earn trust before asking for adoption.</div>
+                        <div style={S.sub}>
+                            Teams will only use an accountability product if it feels safe, controlled, and easy to understand. The experience should feel operational, not experimental.
                         </div>
                     </div>
-                    <div className="email-mock" style={{ background: '#fff', borderRadius: 16, padding: 24, color: '#111' }}>
-                        <div style={{ borderBottom: '0.5px solid #eee', paddingBottom: 14, marginBottom: 14 }}>
-                            <div style={{ fontSize: 10, color: '#999', marginBottom: 3 }}>From: MeetingDebt &lt;nudge@meetingdebt.com&gt;</div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>Your tasks for today, John</div>
-                        </div>
-                        <div style={{ fontSize: 12, color: '#666', lineHeight: 1.7, marginBottom: 14 }}>
-                            You have 3 open commitments from your recent meetings:
-                        </div>
+
+                    <div className="lp-grid-3">
                         {[
-                            { name: 'Write API documentation', due: 'Overdue · Was Wed', urgent: true },
-                            { name: 'Deploy latest build to staging', due: 'Due today', urgent: false },
-                            { name: 'Code review for login bug', due: 'Due Friday', urgent: false },
-                        ].map((t, i) => (
-                            <div key={i} className="em-task" style={{ background: '#f8f8f8', borderRadius: 8, padding: '10px 12px', marginBottom: 7, display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '0.5px solid #eee' }}>
-                                <div style={{ fontSize: 12, color: '#111', fontWeight: 500 }}>{t.name}</div>
-                                <div style={{ fontSize: 10, color: t.urgent ? '#ef4444' : '#888', fontWeight: 600 }}>{t.due}</div>
+                            {
+                                title: 'Human review before action',
+                                body: 'Extracted commitments can be reviewed before they become team-facing reminders.',
+                            },
+                            {
+                                title: 'Clear ownership model',
+                                body: 'Managers can confirm, reassign, and monitor commitments instead of relying on hidden automation.',
+                            },
+                            {
+                                title: 'Transcript in, execution out',
+                                body: 'The product stays focused on the workflow after the meeting rather than becoming a noisy all-purpose workspace.',
+                            },
+                        ].map((item) => (
+                            <div key={item.title} style={S.card} className="lp-card-hover">
+                                <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 10 }}>{item.title}</div>
+                                <div style={{ fontSize: 13.5, lineHeight: 1.75, color: theme.textSoft }}>{item.body}</div>
                             </div>
                         ))}
-                        <div style={{ background: '#16a34a', color: '#fff', borderRadius: 8, padding: 11, textAlign: 'center', fontSize: 12, fontWeight: 700, marginTop: 14, cursor: 'pointer' }}>
-                            Mark tasks as done →
+                    </div>
+                </div>
+            </section>
+
+            <section id="testimonials" style={{ ...S.section, background: dark ? '#050705' : '#f4f8f4' }} className="lp-section-animate">
+                <div style={S.shell} className="lp-shell">
+                    <div style={S.sectionHead}>
+                        <div style={S.label}>Testimonials</div>
+                        <div style={S.title} className="lp-section-title">What users say</div>
+                        <div style={S.sub}>
+                            Replace these placeholders with real user quotes before shipping. The layout is ready for production-style proof once you have them.
+                        </div>
+                    </div>
+
+                    <div className="lp-grid-3">
+                        {testimonials.map((item) => (
+                            <div key={item.quote} style={S.card} className="lp-card-hover">
+                                <div style={{ fontSize: 15, lineHeight: 1.8, color: theme.textSoft, marginBottom: 20 }}>
+                                    “{item.quote}”
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: theme.accentSoft, color: theme.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 13 }}>
+                                        {item.name.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 13.5, fontWeight: 700 }}>{item.name}</div>
+                                        <div style={{ fontSize: 12, color: theme.textFaint }}>{item.role}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            <section style={S.section} className="lp-section-animate">
+                <div style={S.shell} className="lp-shell">
+                    <div style={{ ...S.card, padding: 34, textAlign: 'center', background: dark ? 'linear-gradient(180deg, rgba(22,163,74,0.08), rgba(11,15,11,0.96))' : 'linear-gradient(180deg, #f2fff6, #ffffff)' }}>
+                        <div style={{ ...S.label, marginBottom: 10 }}>Final call to action</div>
+                        <div style={{ fontSize: 42, lineHeight: 1.05, letterSpacing: -1.8, fontWeight: 900, marginBottom: 14 }} className="lp-section-title">
+                            Stop losing execution after the meeting ends.
+                        </div>
+                        <div style={{ fontSize: 15, lineHeight: 1.75, color: theme.textSoft, maxWidth: 640, margin: '0 auto 24px' }}>
+                            If your team already records meetings, you already have the raw material. MeetingDebt turns it into clear ownership, visible status, and actual follow-through.
+                        </div>
+                        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <button style={S.primaryBtn} onClick={() => navigate('/signup')}>Start for free →</button>
+                            <button style={S.ghostBtn} onClick={() => navigate('/login')}>Sign in</button>
                         </div>
                     </div>
                 </div>
             </section>
-
-            <div style={S.divider} />
-
-            {/* PRICING placeholder */}
-            <section id="pricing" style={S.section(dark ? '#050505' : '#f1f5f9')}>
-                <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center' }}>
-                    <div style={S.sLabel}>Pricing</div>
-                    <div style={{ ...S.sTitle, fontSize: 36 }}>Free while in beta.</div>
-                    <div style={{ ...S.sSub, margin: '0 auto', textAlign: 'center' }}>
-                        MeetingDebt is completely free during the beta period. No credit card required.
-                        Full access to all features for teams up to 5 members.
-                    </div>
-                    <button style={{ ...S.btnP, marginTop: 32 }} onClick={() => navigate('/signup')}>
-                        Get started free →
-                    </button>
-                </div>
-            </section>
-
-            <div style={S.divider} />
-
-            {/* CTA */}
-            <section className="cta-section" style={{ padding: '120px 60px', textAlign: 'center', position: 'relative', overflow: 'hidden', background: bg }}>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                    <div className="cta-orb" style={{ width: 600, height: 600, borderRadius: '50%', background: '#16a34a06' }} />
-                </div>
-                <div className="cta-h2" style={{ fontSize: 52, fontWeight: 900, color: textPrimary, letterSpacing: -2, marginBottom: 16, lineHeight: 1.05, position: 'relative' }}>
-                    Stop letting commitments<br />fall through the cracks.
-                </div>
-                <div className="cta-sub" style={{ fontSize: 16, color: textMuted, marginBottom: 40, position: 'relative' }}>
-                    Join teams that actually follow through on what they say in meetings.
-                </div>
-                <div className="cta-btns" style={{ display: 'flex', gap: 12, justifyContent: 'center', position: 'relative' }}>
-                    <button style={S.btnP} onClick={() => navigate('/signup')}>Get started free →</button>
-                    <button style={S.btnS} onClick={() => navigate('/login')}>Sign in</button>
-                </div>
-            </section>
-
-            <div style={S.divider} />
-
-            {/* CONTACT */}
-            <section id="contact" className="contact-section" style={{ padding: '80px 60px', background: bg, textAlign: 'center' }}>
-                <div style={{ maxWidth: 600, margin: '0 auto' }}>
-                    <div style={S.sLabel}>Get in touch</div>
-                    <div style={{ ...S.sTitle, fontSize: 32, marginBottom: 12 }}>Let's collaborate</div>
-                    <div style={{ fontSize: 15, color: textMuted, marginBottom: 40, lineHeight: 1.7 }}>
-                        Built by Arulprashath Rajarajan at Clark University.
-                        Open to collaborations, feedback, and partnerships.
-                    </div>
-                    <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-                        {/* Email */}
-                        <a href="mailto:arulprashathrajarajan01@gmail.com"
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 10, background: '#16a34a', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600, transition: 'opacity 0.15s' }}
-                            onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
-                            ✉ Let's collaborate
-                        </a>
-                        {/* LinkedIn */}
-                        <a href="https://www.linkedin.com/in/arulprashath01/" target="_blank" rel="noreferrer"
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 10, background: '#0077b5', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600, transition: 'opacity 0.15s' }}
-                            onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
-                            in LinkedIn
-                        </a>
-                        {/* Email address */}
-                        <a href="mailto:arulprashathrajarajan01@gmail.com"
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 10, background: cardBg, color: textPrimary, textDecoration: 'none', fontSize: 14, fontWeight: 500, border: `1px solid ${border}`, transition: 'border-color 0.15s' }}
-                            onMouseEnter={e => e.currentTarget.style.borderColor = '#16a34a50'}
-                            onMouseLeave={e => e.currentTarget.style.borderColor = border}>
-                            arulprashathrajarajan01@gmail.com
-                        </a>
-                    </div>
-                </div>
-            </section>
-
-            {/* FOOTER */}
-            <div style={{ padding: '28px 60px', borderTop: `0.5px solid ${dividerColor}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: bg }}>
-                <div style={{ fontSize: 13, color: textMuted, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={S.logoDot} />
-                    Meeting<span style={{ color: '#16a34a' }}>Debt</span>
-                </div>
-                <div style={{ fontSize: 11, color: dark ? '#222' : '#94a3b8' }}>© 2026 MeetingDebt · Built at Clark University</div>
-            </div>
-
-            <style>{`
-                @keyframes pulse {
-                    0%, 100% { opacity: 1; transform: scale(1); }
-                    50% { opacity: 0.5; transform: scale(0.8); }
-                }
-            `}</style>
         </div>
     );
 }
