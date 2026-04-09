@@ -35,6 +35,7 @@ export default function Commitments() {
     const [view, setView] = useState(localStorage.getItem('commitmentsView') || 'grouped');
     const [loading, setLoading] = useState(true);
     const [sortOpen, setSortOpen] = useState(false);
+    const [personOpen, setPersonOpen] = useState(false);
 
     function switchView(v) {
         setView(v);
@@ -146,22 +147,15 @@ export default function Commitments() {
                         </div>
                     </div>
                     {/* View toggle */}
-                    <div style={{ display: 'flex', gap: 2, background: 'var(--bg)', borderRadius: 8, padding: 3, border: '1px solid var(--border)' }}>
+                    <div className="filter-tabs" style={{ background: 'var(--bg)', borderRadius: 8, padding: 3, border: '1px solid var(--border)' }}>
                         {[
                             { key: 'grouped', icon: '⊞', label: 'By meeting' },
                             { key: 'flat', icon: '☰', label: 'List' },
                         ].map(v => (
                             <button key={v.key} onClick={() => switchView(v.key)}
-                                style={{
-                                    padding: '5px 12px', borderRadius: 6, border: 'none',
-                                    background: view === v.key ? 'var(--bg-card)' : 'transparent',
-                                    color: view === v.key ? 'var(--text-primary)' : 'var(--text-muted)',
-                                    cursor: 'pointer', fontSize: 12, fontFamily: 'inherit',
-                                    fontWeight: view === v.key ? 600 : 400,
-                                    boxShadow: view === v.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                                    transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 5,
-                                }}>
-                                <span>{v.icon}</span>{v.label}
+                                className={`ftab${view === v.key ? ' active' : ''}`}
+                                style={view === v.key ? { background: 'var(--bg-card)', color: 'var(--text-primary)', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' } : undefined}>
+                                <span>{v.icon}</span> {v.label}
                             </button>
                         ))}
                     </div>
@@ -188,7 +182,7 @@ export default function Commitments() {
                             <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                 {s.label}
                             </span>
-                            <span style={{ fontSize: 18, fontWeight: 800, color: s.value > 0 ? s.color : 'var(--text-muted)', lineHeight: 1 }}>
+                            <span style={{ fontSize: 14, fontWeight: 800, color: s.value > 0 ? s.color : 'var(--text-muted)', lineHeight: 1 }}>
                                 {s.value}
                             </span>
                         </div>
@@ -225,20 +219,43 @@ export default function Commitments() {
                     </div>
 
                     {/* Person filter */}
-                    <select
-                        value={personFilter}
-                        onChange={e => setPersonFilter(e.target.value)}
-                        style={{
-                            padding: '9px 12px', borderRadius: 8,
-                            border: '1px solid var(--border)', background: 'var(--bg-card)',
-                            fontSize: 13, color: 'var(--text-primary)', fontFamily: 'inherit',
-                            cursor: 'pointer', outline: 'none',
-                        }}
-                    >
-                        {allPeople.map(p => (
-                            <option key={p} value={p}>{p === 'All' ? 'All people' : p}</option>
-                        ))}
-                    </select>
+                    <div style={{ position: 'relative' }}>
+                        <button
+                            onClick={() => setPersonOpen(v => !v)}
+                            style={{
+                                padding: '9px 14px', borderRadius: 8,
+                                border: '1px solid var(--border)', background: 'var(--bg-card)',
+                                fontSize: 13, color: 'var(--text-muted)', fontFamily: 'inherit',
+                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                            }}>
+                            👤 {personFilter === 'All' ? 'All people' : personFilter}
+                        </button>
+                        <AnimatePresence>
+                            {personOpen && (
+                                <>
+                                    <div onClick={() => setPersonOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 98 }} />
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                                        className="dropdown-menu"
+                                        style={{ right: 'auto', left: 0, minWidth: 160, maxHeight: 240, overflowY: 'auto' }}
+                                    >
+                                        {allPeople.map(p => (
+                                            <div key={p}
+                                                onClick={() => { setPersonFilter(p); setPersonOpen(false); }}
+                                                className={`dropdown-item${personFilter === p ? ' dropdown-item--active' : ''}`}
+                                                style={personFilter === p ? { fontWeight: 600 } : undefined}
+                                            >
+                                                {p === 'All' ? 'All people' : p}
+                                                {personFilter === p && <span style={{ marginLeft: 'auto', fontSize: 11 }}>✓</span>}
+                                            </div>
+                                        ))}
+                                    </motion.div>
+                                </>
+                            )}
+                        </AnimatePresence>
+                    </div>
 
                     {/* Sort */}
                     <div style={{ position: 'relative' }}>
@@ -260,25 +277,14 @@ export default function Commitments() {
                                         initial={{ opacity: 0, scale: 0.95, y: -4 }}
                                         animate={{ opacity: 1, scale: 1, y: 0 }}
                                         exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                                        style={{
-                                            position: 'absolute', top: 'calc(100% + 6px)', right: 0,
-                                            background: 'var(--bg-card)', border: '1px solid var(--border)',
-                                            borderRadius: 10, padding: 4, zIndex: 99,
-                                            minWidth: 160, boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-                                        }}>
+                                        className="dropdown-menu"
+                                        style={{ minWidth: 160 }}
+                                    >
                                         {SORT_OPTIONS.map(s => (
                                             <div key={s.key}
                                                 onClick={() => { setSort(s.key); setSortOpen(false); }}
-                                                style={{
-                                                    padding: '8px 12px', borderRadius: 7, cursor: 'pointer',
-                                                    fontSize: 13, color: sort === s.key ? 'var(--accent-text)' : 'var(--text-primary)',
-                                                    background: sort === s.key ? 'var(--accent-light)' : 'transparent',
-                                                    fontWeight: sort === s.key ? 600 : 400,
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                    transition: 'background 0.1s',
-                                                }}
-                                                onMouseEnter={e => { if (sort !== s.key) e.currentTarget.style.background = 'var(--bg)'; }}
-                                                onMouseLeave={e => { if (sort !== s.key) e.currentTarget.style.background = 'transparent'; }}
+                                                className={`dropdown-item${sort === s.key ? ' dropdown-item--active' : ''}`}
+                                                style={sort === s.key ? { fontWeight: 600, justifyContent: 'space-between' } : { justifyContent: 'space-between' }}
                                             >
                                                 {s.label}
                                                 {sort === s.key && <span style={{ fontSize: 11 }}>✓</span>}
@@ -294,14 +300,7 @@ export default function Commitments() {
                     {(filter !== 'All' || search || personFilter !== 'All') && (
                         <button
                             onClick={() => { setFilter('All'); setSearch(''); setPersonFilter('All'); }}
-                            style={{
-                                padding: '9px 14px', borderRadius: 8,
-                                border: '1px solid var(--border)', background: 'transparent',
-                                fontSize: 13, color: 'var(--red)', fontFamily: 'inherit',
-                                cursor: 'pointer', transition: 'background 0.15s',
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'var(--red-light)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            className="btn-ghost-danger"
                         >
                             Clear filters
                         </button>
@@ -381,24 +380,10 @@ export default function Commitments() {
                                             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
                                                 {group.title}
                                             </span>
-                                            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent-text)' }}>
-                                                {group.commitments.length}
-                                            </span>
-                                            {gOverdue > 0 && (
-                                                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--red-light)', color: 'var(--red)' }}>
-                                                    {gOverdue} late
-                                                </span>
-                                            )}
-                                            {gBlocked > 0 && (
-                                                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--blue-light)', color: 'var(--blue)' }}>
-                                                    {gBlocked} blocked
-                                                </span>
-                                            )}
-                                            {gDone > 0 && (
-                                                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent-text)' }}>
-                                                    {gDone} done
-                                                </span>
-                                            )}
+                                            <span className="pill pill-green">{group.commitments.length}</span>
+                                            {gOverdue > 0 && <span className="pill pill-red">{gOverdue} late</span>}
+                                            {gBlocked > 0 && <span className="pill pill-blue">{gBlocked} blocked</span>}
+                                            {gDone > 0 && <span className="pill pill-green">{gDone} done</span>}
                                             {/* Progress bar */}
                                             <div style={{ flex: 1, height: 4, background: 'var(--border)', borderRadius: 999, overflow: 'hidden', maxWidth: 100, marginLeft: 'auto' }}>
                                                 <div style={{ height: '100%', background: 'var(--accent)', borderRadius: 999, width: `${pct}%`, transition: 'width 0.6s ease' }} />

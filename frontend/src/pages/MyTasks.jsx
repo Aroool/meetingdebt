@@ -131,19 +131,7 @@ export default function MyTasks() {
                         Personal tasks — private to you only
                     </div>
                 </div>
-                <button
-                    onClick={() => setShowAdd(v => !v)}
-                    style={{
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '8px 18px', borderRadius: 9,
-                        background: 'var(--accent)', color: '#fff',
-                        border: 'none', cursor: 'pointer',
-                        fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-                        transition: 'opacity 0.15s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                >
+                <button onClick={() => setShowAdd(v => !v)} className="btn-accent-sm">
                     + New Task
                 </button>
             </div>
@@ -234,7 +222,7 @@ export default function MyTasks() {
                 {/* Main task list */}
                 <div>
                     {/* Filter bar */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+                    <div className="filter-tabs" style={{ marginBottom: 14 }}>
                         {[
                             { key: 'All', label: `All ${tasks.length}` },
                             { key: 'Today', label: `Today ${todayCount}` },
@@ -242,14 +230,9 @@ export default function MyTasks() {
                             { key: 'Done', label: `Done ${done}` },
                         ].map(f => (
                             <button key={f.key} onClick={() => setFilter(f.key)}
-                                style={{
-                                    padding: '5px 14px', borderRadius: 999, border: 'none',
-                                    background: filter === f.key ? 'var(--accent-light)' : 'transparent',
-                                    color: filter === f.key ? 'var(--accent-text)' : 'var(--text-muted)',
-                                    fontWeight: filter === f.key ? 700 : 400,
-                                    cursor: 'pointer', fontSize: 12, fontFamily: 'inherit',
-                                    transition: 'all 0.15s',
-                                }}>{f.label}</button>
+                                className={`ftab${filter === f.key ? ' active' : ''}`}>
+                                {f.label}
+                            </button>
                         ))}
                     </div>
 

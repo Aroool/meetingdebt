@@ -112,28 +112,22 @@ export default function Meetings() {
             </motion.div>
 
             {showTabs && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
-                    {[
-                        { key: 'team', label: 'Team meetings', count: teamMeetings.length },
-                        { key: 'personal', label: 'Personal', count: personalMeetings.length },
-                    ].map(t => (
-                        <button key={t.key} onClick={() => setTab(t.key)}
-                            style={{
-                                padding: '7px 16px', borderRadius: 8, border: 'none',
-                                background: tab === t.key ? 'var(--accent-light)' : 'transparent',
-                                color: tab === t.key ? 'var(--accent-text)' : 'var(--text-muted)',
-                                fontWeight: tab === t.key ? 600 : 400,
-                                cursor: 'pointer', fontSize: 13, fontFamily: 'inherit',
-                                transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6,
-                            }}>
-                            {t.label}
-                            <span style={{
-                                fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 20,
-                                background: tab === t.key ? 'var(--accent)' : 'var(--border)',
-                                color: tab === t.key ? '#fff' : 'var(--text-muted)',
-                            }}>{t.count}</span>
-                        </button>
-                    ))}
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <div className="filter-tabs" style={{ marginBottom: 16 }}>
+                        {[
+                            { key: 'team', label: 'Team meetings', count: teamMeetings.length },
+                            { key: 'personal', label: 'Personal', count: personalMeetings.length },
+                        ].map(t => (
+                            <button key={t.key} onClick={() => setTab(t.key)}
+                                className={`ftab${tab === t.key ? ' active' : ''}`}
+                                style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {t.label}
+                                <span className={`pill ${tab === t.key ? 'pill-green' : 'pill-neutral'}`}>
+                                    {t.count}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
                 </motion.div>
             )}
 
@@ -168,26 +162,10 @@ export default function Meetings() {
                                 This will permanently delete the meeting and all its commitments. This cannot be undone.
                             </div>
                             <div style={{ display: 'flex', gap: 8 }}>
-                                <button
-                                    onClick={() => setDeleteConfirm(null)}
-                                    style={{
-                                        flex: 1, padding: '9px', borderRadius: 9,
-                                        border: '1px solid var(--border)', background: 'transparent',
-                                        fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
-                                        color: 'var(--text-primary)',
-                                    }}>
+                                <button onClick={() => setDeleteConfirm(null)} className="btn-cancel">
                                     Cancel
                                 </button>
-                                <button
-                                    onClick={() => handleDelete(deleteConfirm)}
-                                    disabled={deleting}
-                                    style={{
-                                        flex: 1, padding: '9px', borderRadius: 9,
-                                        border: 'none', background: 'var(--red)',
-                                        color: '#fff', fontSize: 13, fontWeight: 600,
-                                        cursor: 'pointer', fontFamily: 'inherit',
-                                        opacity: deleting ? 0.7 : 1,
-                                    }}>
+                                <button onClick={() => handleDelete(deleteConfirm)} disabled={deleting} className="btn-danger">
                                     {deleting ? 'Deleting...' : 'Delete meeting'}
                                 </button>
                             </div>
@@ -258,19 +236,9 @@ export default function Meetings() {
                                     </div>
 
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 12 }}>
-                                        {overdue > 0 && (
-                                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--red-light)', color: 'var(--red)' }}>
-                                                {overdue} late
-                                            </span>
-                                        )}
-                                        {done > 0 && (
-                                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent-text)' }}>
-                                                {done} done
-                                            </span>
-                                        )}
-                                        <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--bg)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                                            {mCommitments.length}
-                                        </span>
+                                        {overdue > 0 && <span className="pill pill-red">{overdue} late</span>}
+                                        {done > 0 && <span className="pill pill-green">{done} done</span>}
+                                        <span className="pill pill-neutral">{mCommitments.length}</span>
 
                                         {/* Delete button — manager only */}
                                         {role === 'manager' && (
