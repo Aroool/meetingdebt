@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api';
 import { supabase } from '../supabase';
+import { BellIcon, ClipboardIcon, CheckCircleIcon, ClockIcon } from './Icons';
 
 export default function NotificationBell() {
     const [notifications, setNotifications] = useState([]);
@@ -80,10 +81,10 @@ export default function NotificationBell() {
 
     function getIcon(type) {
         switch (type) {
-            case 'assignment': return '📋';
-            case 'status_update': return '✅';
-            case 'nudge': return '⏰';
-            default: return '🔔';
+            case 'assignment': return <ClipboardIcon size={16} />;
+            case 'status_update': return <CheckCircleIcon size={16} />;
+            case 'nudge': return <ClockIcon size={16} />;
+            default: return <BellIcon size={16} />;
         }
     }
 
@@ -96,10 +97,10 @@ export default function NotificationBell() {
                 style={{
                     background: 'none', border: 'none', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    position: 'relative', fontSize: 18, padding: 4,
+                    position: 'relative', color: 'var(--text-muted)', padding: 4,
                 }}
             >
-                🔔
+                <BellIcon size={18} />
                 {unreadCount > 0 && (
                     <motion.div
                         initial={{ scale: 0 }}
@@ -121,12 +122,8 @@ export default function NotificationBell() {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: -8 }}
                         transition={{ duration: 0.15 }}
-                        style={{
-                            position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-                            background: 'var(--bg-card)', border: '1px solid var(--border)',
-                            borderRadius: 12, padding: 8, width: 320, zIndex: 100,
-                            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                        }}
+                        className="dropdown-menu"
+                        style={{ width: 320 }}
                     >
                         {/* Header */}
                         <div style={{
@@ -137,24 +134,13 @@ export default function NotificationBell() {
                             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
                                 Notifications
                                 {unreadCount > 0 && (
-                                    <span style={{
-                                        marginLeft: 8, fontSize: 10, fontWeight: 700,
-                                        padding: '1px 7px', borderRadius: 20,
-                                        background: 'var(--red-light)', color: 'var(--red)'
-                                    }}>
+                                    <span className="pill pill-red" style={{ marginLeft: 8 }}>
                                         {unreadCount} new
                                     </span>
                                 )}
                             </div>
                             {unreadCount > 0 && (
-                                <button
-                                    onClick={markAllRead}
-                                    style={{
-                                        fontSize: 11, color: 'var(--accent)', background: 'none',
-                                        border: 'none', cursor: 'pointer', fontWeight: 600,
-                                        fontFamily: 'inherit'
-                                    }}
-                                >
+                                <button onClick={markAllRead} className="btn-link">
                                     Mark all read
                                 </button>
                             )}
@@ -167,7 +153,9 @@ export default function NotificationBell() {
                                     padding: '24px 16px', textAlign: 'center',
                                     fontSize: 13, color: 'var(--text-muted)'
                                 }}>
-                                    <div style={{ fontSize: 24, marginBottom: 8 }}>🔔</div>
+                                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, opacity: 0.4 }}>
+                                        <BellIcon size={24} />
+                                    </div>
                                     No notifications yet
                                 </div>
                             ) : (
@@ -184,7 +172,7 @@ export default function NotificationBell() {
                                             marginBottom: 2,
                                         }}
                                     >
-                                        <div style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>
+                                        <div style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: 1, display: 'flex' }}>
                                             {getIcon(n.type)}
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0 }}>
