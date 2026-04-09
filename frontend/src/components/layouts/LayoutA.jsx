@@ -246,7 +246,6 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
     const [activity, setActivity] = useState([]);
     const [showProfile, setShowProfile] = useState(false);
     const [expandedMeetings, setExpandedMeetings] = useState(new Set());
-    const expandInitialized = useRef(false);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [deleting, setDeleting] = useState(false);
 
@@ -286,13 +285,6 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
         document.addEventListener('visibilitychange', handleVisibility);
         return () => document.removeEventListener('visibilitychange', handleVisibility);
     }, []);
-
-    useEffect(() => {
-        if (expandInitialized.current || commitments.length === 0) return;
-        expandInitialized.current = true;
-        const ids = new Set(commitments.map(c => c.meeting_id).filter(Boolean));
-        setExpandedMeetings(ids);
-    }, [commitments]);
 
     useEffect(() => {
         let ignore = false;

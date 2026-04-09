@@ -1350,3 +1350,56 @@ body {
 .btn-link:hover {
     opacity: 0.75;
 }
+
+/* ─── Scrollbar styling ──────────────────────────────────────────────────────
+   WebKit (Chrome, Edge, Safari) — full control via pseudo-elements
+   Firefox                       — scrollbar-width + scrollbar-color shorthand
+   Goal: thin, rounded, minimal. Blends in both light and dark mode via vars.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Global Firefox support */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* Light mode tokens */
+:root {
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: #cbd5e1;
+    --scrollbar-thumb-hover: #94a3b8;
+}
+
+/* Dark mode tokens */
+.dark {
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: #2e3347;
+    --scrollbar-thumb-hover: #3d4260;
+}
+
+/* WebKit — track */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 999px;
+}
+
+/* WebKit — thumb */
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 999px;
+    transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}
+
+/* Hide scrollbar corner where horizontal and vertical bars meet */
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
