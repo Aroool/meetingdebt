@@ -182,12 +182,7 @@ export default function Navbar() {
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: -8 }}
                                 transition={{ duration: 0.15 }}
-                                style={{
-                                    position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-                                    background: 'var(--bg-card)', border: '1px solid var(--border)',
-                                    borderRadius: 12, padding: 8, minWidth: 240,
-                                    zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                                }}
+                                className="dropdown-menu"
                             >
                                 {/* User info */}
                                 <div style={{
@@ -200,11 +195,7 @@ export default function Navbar() {
                                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>{email}</div>
                                     {workspaceName && (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <span style={{
-                                                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
-                                                background: role === 'manager' ? 'var(--accent-light)' : role === 'member' ? 'var(--blue-light)' : '#EEEDFE',
-                                                color: role === 'manager' ? 'var(--accent-text)' : role === 'member' ? 'var(--blue)' : '#3C3489',
-                                            }}>
+                                            <span className={`pill ${role === 'manager' ? 'pill-green' : role === 'member' ? 'pill-blue' : 'role-badge-purple'}`}>
                                                 {role}
                                             </span>
                                             <span style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>
@@ -213,7 +204,7 @@ export default function Navbar() {
                                         </div>
                                     )}
                                     {isSolo && !workspaceName && (
-                                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#EEEDFE', color: '#3C3489' }}>
+                                        <span className="pill role-badge-purple">
                                             solo
                                         </span>
                                     )}
@@ -227,13 +218,7 @@ export default function Navbar() {
                                     <div
                                         key={item.label}
                                         onClick={item.action}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: 10,
-                                            padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
-                                            fontSize: 13, color: 'var(--text-primary)', transition: 'background 0.1s',
-                                        }}
-                                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
-                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        className="dropdown-item"
                                     >
                                         <span style={{ fontSize: 14 }}>{item.icon}</span>
                                         {item.label}
@@ -243,13 +228,8 @@ export default function Navbar() {
                                 {/* Workspace switcher */}
                                 {workspaces.length >= 0 && (
                                     <>
-                                        <div style={{ height: 1, background: 'var(--border)', margin: '6px 0' }} />
-                                        <div style={{
-                                            padding: '4px 10px 6px',
-                                            fontSize: 10, fontWeight: 700,
-                                            color: 'var(--text-muted)',
-                                            textTransform: 'uppercase', letterSpacing: '0.05em',
-                                        }}>
+                                        <div className="dropdown-divider" />
+                                        <div className="dropdown-section-label">
                                             Workspaces
                                         </div>
 
@@ -259,15 +239,8 @@ export default function Navbar() {
                                                 <div
                                                     key={ws.id}
                                                     onClick={() => !isActive && handleSwitchWorkspace(ws)}
-                                                    style={{
-                                                        display: 'flex', alignItems: 'center', gap: 10,
-                                                        padding: '7px 10px', borderRadius: 8,
-                                                        cursor: isActive ? 'default' : 'pointer',
-                                                        background: isActive ? 'var(--accent-light)' : 'transparent',
-                                                        transition: 'background 0.1s',
-                                                    }}
-                                                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--bg)'; }}
-                                                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                                                    className={`dropdown-item${isActive ? ' dropdown-item--active' : ''}`}
+                                                    style={isActive ? { cursor: 'default' } : undefined}
                                                 >
                                                     <div style={{
                                                         width: 22, height: 22, borderRadius: 6, flexShrink: 0,
@@ -288,7 +261,7 @@ export default function Navbar() {
                                                         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{ws.role}</div>
                                                     </div>
                                                     {isActive && (
-                                                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a', flexShrink: 0 }} />
+                                                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
                                                     )}
                                                     {!isActive && (
                                                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>→</span>
@@ -299,13 +272,7 @@ export default function Navbar() {
 
                                         <div
                                             onClick={() => { navigate('/create-workspace'); setDropdownOpen(false); }}
-                                            style={{
-                                                display: 'flex', alignItems: 'center', gap: 10,
-                                                padding: '7px 10px', borderRadius: 8, cursor: 'pointer',
-                                                fontSize: 12, color: 'var(--accent)', transition: 'background 0.1s',
-                                            }}
-                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-light)'}
-                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                            className="dropdown-item dropdown-item--accent"
                                         >
                                             <span style={{ fontSize: 16 }}>＋</span>
                                             Create new workspace
@@ -314,17 +281,8 @@ export default function Navbar() {
                                 )}
 
                                 {/* Sign out */}
-                                <div style={{ height: 1, background: 'var(--border)', margin: '6px 0' }} />
-                                <div
-                                    onClick={handleLogout}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: 10,
-                                        padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
-                                        fontSize: 13, color: 'var(--red)', transition: 'background 0.1s',
-                                    }}
-                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--red-light)'}
-                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                >
+                                <div className="dropdown-divider" />
+                                <div onClick={handleLogout} className="dropdown-item dropdown-item--danger">
                                     <span style={{ fontSize: 14 }}>🚪</span>
                                     Sign out
                                 </div>

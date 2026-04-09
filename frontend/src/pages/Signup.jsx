@@ -294,17 +294,7 @@ export default function Signup() {
                                     </div>
                                 )}
 
-                                <button
-                                    onClick={nextStep}
-                                    style={{
-                                        width: '100%', padding: '12px', borderRadius: 10,
-                                        background: '#16a34a', color: '#fff', border: 'none',
-                                        fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                                        fontFamily: 'inherit', transition: 'opacity 0.15s',
-                                    }}
-                                    onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-                                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                                >
+                                <button onClick={nextStep} className="btn-primary" style={{ marginTop: 0 }}>
                                     Continue →
                                 </button>
                             </motion.div>
@@ -409,19 +399,7 @@ export default function Signup() {
                                     </div>
                                 )}
 
-                                <button
-                                    onClick={handleSubmit}
-                                    disabled={loading}
-                                    style={{
-                                        width: '100%', padding: '12px', borderRadius: 10,
-                                        background: '#16a34a', color: '#fff', border: 'none',
-                                        fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                                        fontFamily: 'inherit', transition: 'opacity 0.15s',
-                                        opacity: loading ? 0.7 : 1,
-                                    }}
-                                    onMouseEnter={e => { if (!loading) e.currentTarget.style.opacity = '0.85'; }}
-                                    onMouseLeave={e => e.currentTarget.style.opacity = loading ? '0.7' : '1'}
-                                >
+                                <button onClick={handleSubmit} disabled={loading} className="btn-primary">
                                     {loading ? 'Creating account...' : 'Create account 🚀'}
                                 </button>
 

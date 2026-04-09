@@ -40,6 +40,13 @@ function getPill(status) {
     return { label: 'Pending', color: '#f59e0b', bg: 'var(--amber-light)' };
 }
 
+function getPillClass(status) {
+    if (status === 'completed') return 'pill pill-green';
+    if (status === 'blocked') return 'pill pill-blue';
+    if (status === 'overdue') return 'pill pill-red';
+    return 'pill pill-amber';
+}
+
 function safeDateText(value) {
     if (!value) return '';
     const date = new Date(value);
@@ -381,7 +388,7 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
                 </div>
 
                 {/* Status pill — read only indicator */}
-                <div style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: pill.bg, color: pill.color, flexShrink: 0, minWidth: 64, textAlign: 'center' }}>
+                <div className={getPillClass(localStatus)} style={{ flexShrink: 0, minWidth: 64, textAlign: 'center' }}>
                     {saving ? '...' : pill.label}
                 </div>
 
@@ -403,10 +410,8 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
                         </div>
                         {STATUSES.map(s => (
                             <div key={s.key} onClick={() => changeStatus(s.key)}
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', borderRadius: 7, cursor: 'pointer', fontSize: 12, color: 'var(--text-primary)', background: localStatus === s.key ? s.bg : 'transparent', transition: 'background 0.1s' }}
-                                onMouseEnter={e => { if (localStatus !== s.key) e.currentTarget.style.background = 'var(--bg)'; }}
-                                onMouseLeave={e => { if (localStatus !== s.key) e.currentTarget.style.background = 'transparent'; }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                className={`status-option${localStatus === s.key ? ' active' : ''}`}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-primary)' }}>
                                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
                                     {s.label}
                                 </div>
