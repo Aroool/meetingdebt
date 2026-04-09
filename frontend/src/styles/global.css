@@ -29,25 +29,29 @@
 }
 
 .dark {
-    --bg: #080808;
-    --bg-card: #0d0d0d;
-    --bg-input: #111111;
-    --border: #ffffff15;
-    --border-hover: #ffffff25;
-    --text-primary: #f0f0f0;
-    --text-secondary: #aaaaaa;
-    --text-muted: #666666;
+    /* Layered charcoal palette — bg → card is a clear visible step */
+    --bg: #0f1117;
+    --bg-card: #1a1e2a;
+    --bg-input: #21252f;
+    --border: #2c3044;
+    --border-hover: #3c4058;
+    /* Text — cooler tint matches the slate base; muted is lifted so labels read cleanly */
+    --text-primary: #e8eaf2;
+    --text-secondary: #8892a8;
+    --text-muted: #68718a;
+    /* Accent unchanged — green is the brand */
     --accent: #16a34a;
     --accent-hover: #15803d;
-    --accent-light: #16a34a12;
+    --accent-light: #16a34a1e;
     --accent-text: #4ade80;
+    /* Status colors — more opacity so tinted pill backgrounds register on charcoal */
     --red: #f87171;
-    --red-light: #ef444410;
+    --red-light: #f871711e;
     --amber: #fbbf24;
-    --amber-light: #f59e0b10;
+    --amber-light: #fbbf241c;
     --blue: #60a5fa;
-    --blue-light: #3b82f610;
-    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --blue-light: #60a5fa1c;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 button,
@@ -143,18 +147,19 @@ body {
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 18px;
-    padding: 4px;
+    padding: 6px;
     border-radius: 8px;
-    transition: background 0.15s;
+    /* SVG inherits this — muted in both modes, never invisible */
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
 }
 
 .dark-toggle:hover {
     background: var(--bg);
-}
-
-.dark-toggle:hover {
-    border-color: var(--border-hover);
+    color: var(--text-primary);
 }
 
 /* Main layout */
@@ -1327,4 +1332,21 @@ body {
     background: var(--bg);
     color: var(--text-muted);
     border: 1px solid var(--border);
+}
+
+/* Link-style button — "Mark all read" etc. */
+.btn-link {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    font-family: inherit;
+    padding: 0;
+    transition: opacity 0.15s;
+}
+
+.btn-link:hover {
+    opacity: 0.75;
 }

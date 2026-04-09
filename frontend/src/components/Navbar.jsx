@@ -5,6 +5,10 @@ import { supabase } from '../supabase';
 import NotificationBell from './NotificationBell';
 import axios from 'axios';
 import API from '../config';
+import {
+    MoonIcon, SunIcon, UserIcon, SettingsIcon, LogOutIcon,
+    BuildingIcon, PlusIcon, ChevronRightIcon, ArrowUpIcon,
+} from './Icons';
 
 function getRoleFromStorage() {
     return localStorage.getItem('userRole') || 'solo';
@@ -137,9 +141,9 @@ export default function Navbar() {
                 {isSolo && (
                     <Link to="/workspace"
                         className={`nav-link ${location.pathname === '/workspace' ? 'active' : ''}`}
-                        style={{ color: 'var(--accent)', fontWeight: 600 }}
+                        style={{ color: 'var(--accent)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
                     >
-                        ⬆ Upgrade
+                        <ArrowUpIcon size={12} /> Upgrade
                     </Link>
                 )}
             </div>
@@ -151,7 +155,7 @@ export default function Navbar() {
                     onClick={() => setDark(!dark)}
                     whileTap={{ scale: 0.92 }}
                 >
-                    {dark ? '☀️' : '🌙'}
+                    {dark ? <SunIcon size={16} /> : <MoonIcon size={16} />}
                 </motion.button>
 
                 <div ref={dropdownRef} style={{ position: 'relative' }}>
@@ -212,15 +216,15 @@ export default function Navbar() {
 
                                 {/* Menu items */}
                                 {[
-                                    { icon: '👤', label: 'View profile', action: () => { navigate('/profile'); setDropdownOpen(false); } },
-                                    { icon: '⚙️', label: 'Settings', action: () => { navigate('/profile?tab=settings'); setDropdownOpen(false); } },
+                                    { icon: <UserIcon size={14} />, label: 'View profile', action: () => { navigate('/profile'); setDropdownOpen(false); } },
+                                    { icon: <SettingsIcon size={14} />, label: 'Settings', action: () => { navigate('/profile?tab=settings'); setDropdownOpen(false); } },
                                 ].map(item => (
                                     <div
                                         key={item.label}
                                         onClick={item.action}
                                         className="dropdown-item"
                                     >
-                                        <span style={{ fontSize: 14 }}>{item.icon}</span>
+                                        {item.icon}
                                         {item.label}
                                     </div>
                                 ))}
@@ -245,10 +249,10 @@ export default function Navbar() {
                                                     <div style={{
                                                         width: 22, height: 22, borderRadius: 6, flexShrink: 0,
                                                         background: ws.role === 'manager' ? 'var(--accent-light)' : 'var(--blue-light)',
+                                                        color: ws.role === 'manager' ? 'var(--accent-text)' : 'var(--blue)',
                                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        fontSize: 12,
                                                     }}>
-                                                        {ws.role === 'manager' ? '🏢' : '👤'}
+                                                        {ws.role === 'manager' ? <BuildingIcon size={13} /> : <UserIcon size={13} />}
                                                     </div>
                                                     <div style={{ flex: 1, minWidth: 0 }}>
                                                         <div style={{
@@ -264,7 +268,7 @@ export default function Navbar() {
                                                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
                                                     )}
                                                     {!isActive && (
-                                                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>→</span>
+                                                        <span style={{ color: 'var(--text-muted)', display: 'flex' }}><ChevronRightIcon size={12} /></span>
                                                     )}
                                                 </div>
                                             );
@@ -274,7 +278,7 @@ export default function Navbar() {
                                             onClick={() => { navigate('/create-workspace'); setDropdownOpen(false); }}
                                             className="dropdown-item dropdown-item--accent"
                                         >
-                                            <span style={{ fontSize: 16 }}>＋</span>
+                                            <PlusIcon size={14} />
                                             Create new workspace
                                         </div>
                                     </>
@@ -283,7 +287,7 @@ export default function Navbar() {
                                 {/* Sign out */}
                                 <div className="dropdown-divider" />
                                 <div onClick={handleLogout} className="dropdown-item dropdown-item--danger">
-                                    <span style={{ fontSize: 14 }}>🚪</span>
+                                    <LogOutIcon size={14} />
                                     Sign out
                                 </div>
                             </motion.div>

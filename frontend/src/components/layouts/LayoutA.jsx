@@ -257,6 +257,19 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
     const progressRefs = useRef([]);
     const hiddenAtRef = useRef(null);
     const hasAnimatedRef = useRef(!!sessionStorage.getItem('layoutA_animated'));
+    const [filterOpen, setFilterOpen] = useState(false);
+    const filterRef = useRef(null);
+    const filterMenuRef = useRef(null);
+
+    useEffect(() => {
+        function handleClick(e) {
+            if (filterOpen && !filterRef.current?.contains(e.target)) {
+                setFilterOpen(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [filterOpen]);
 
     useEffect(() => {
         function handleVisibility() {
@@ -674,37 +687,64 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
 
                 <div ref={centerRef} className="layoutA-col" style={{ ...card(), display: 'flex', flexDirection: 'column', overflow: 'hidden', opacity: 0, minHeight: 0 }}>
                     <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text-primary)', marginRight: 4 }}>Commitments</span>
-                        {['All', 'Overdue', 'Pending', 'Done'].map(f => (
+                        <span style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text-primary)', flex: 1 }}>Commitments</span>
+                        <div ref={filterRef} style={{ position: 'relative' }}>
                             <button
-                                key={f}
-                                onClick={() => setFilter(f)}
+                                onClick={() => setFilterOpen(v => !v)}
                                 style={{
-                                    padding: '6px 12px',
-                                    borderRadius: 999,
-                                    border: 'none',
-                                    background: filter === f ? 'var(--accent-light)' : 'transparent',
-                                    color: filter === f ? 'var(--accent-text)' : 'var(--text-muted)',
-                                    fontWeight: filter === f ? 700 : 500,
-                                    cursor: 'pointer',
-                                    fontSize: 12,
-                                    fontFamily: 'inherit',
-                                    transition: 'all 0.15s ease',
+                                    display: 'flex', alignItems: 'center', gap: 6,
+                                    padding: '5px 12px', borderRadius: 8,
+                                    border: '1px solid var(--border)', background: filter !== 'All' ? 'var(--accent-light)' : 'var(--bg)',
+                                    color: filter !== 'All' ? 'var(--accent-text)' : 'var(--text-muted)',
+                                    fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                                    transition: 'all 0.15s',
                                 }}
                             >
-                                {f}
-                                {f === 'Overdue' && overdue > 0 && <span style={{ marginLeft: 4, fontSize: 10, fontWeight: 800, color: 'var(--red)' }}>{overdue}</span>}
-                                {f === 'Pending' && pending > 0 && <span style={{ marginLeft: 4, fontSize: 10, color: 'var(--text-muted)', fontWeight: 700 }}>{pending}</span>}
-                                {f === 'Done' && done > 0 && <span style={{ marginLeft: 4, fontSize: 10, color: 'var(--text-muted)', fontWeight: 700 }}>{done}</span>}
+                                {filter}
+                                <span style={{ fontSize: 8, opacity: 0.6 }}>▼</span>
                             </button>
-                        ))}
+
+                            {filterOpen && (
+                                <div
+                                    ref={filterMenuRef}
+                                    style={{
+                                        position: 'absolute', top: '110%', right: 0, zIndex: 999,
+                                        background: 'var(--bg-card)', border: '1px solid var(--border)',
+                                        borderRadius: 10, padding: 4, minWidth: 140,
+                                        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                                    }}
+                                >
+                                    {[
+                                        { key: 'All', count: commitments.length, color: null },
+                                        { key: 'Overdue', count: overdue, color: 'var(--red)' },
+                                        { key: 'Pending', count: pending, color: 'var(--amber)' },
+                                        { key: 'Done', count: done, color: 'var(--accent-text)' },
+                                    ].map(f => (
+                                        <div key={f.key}
+                                            onClick={() => { setFilter(f.key); setFilterOpen(false); }}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                padding: '7px 10px', borderRadius: 7, cursor: 'pointer',
+                                                background: filter === f.key ? 'var(--accent-light)' : 'transparent',
+                                                fontSize: 12, color: 'var(--text-primary)', transition: 'background 0.1s',
+                                            }}
+                                            onMouseEnter={e => { if (filter !== f.key) e.currentTarget.style.background = 'var(--bg)'; }}
+                                            onMouseLeave={e => { if (filter !== f.key) e.currentTarget.style.background = 'transparent'; }}
+                                        >
+                                            <span style={{ fontWeight: filter === f.key ? 700 : 500 }}>{f.key}</span>
+                                            {f.count > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: f.color || 'var(--text-muted)' }}>{f.count}</span>}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                         {personFilter && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent-light)', borderRadius: 999, padding: '5px 10px' }}>
                                 <span style={{ fontSize: 11, color: 'var(--accent-text)', fontWeight: 700 }}>{personFilter}</span>
                                 <button onClick={() => setPersonFilter(null)} style={{ fontSize: 14, color: 'var(--accent-text)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 800, padding: 0, lineHeight: 1 }}>×</button>
                             </div>
                         )}
-                        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{filtered.length} tasks</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{filtered.length} tasks</span>
                     </div>
 
                     <div style={{ flex: 1, overflowY: 'auto', padding: '16px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.01), transparent 80px)' }}>

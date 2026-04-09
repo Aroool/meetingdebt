@@ -337,6 +337,7 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
     }
 
     const pill = getPill(localStatus);
+    const isTeamContext = uniqueMembers.length > 0;
     const ownerDisplay = displayName(commitment.owner);
     const assignedMember = uniqueMembers.find(m => m.user_id === commitment.assigned_to);
     const assignedDisplay = displayAssignedName(commitment.assigned_to, assignedMember?.name || assignedMember?.email?.split('@')[0]);
@@ -374,14 +375,19 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
                         <span style={{ fontWeight: ownerDisplay === 'You' ? 700 : 400, color: ownerDisplay === 'You' ? 'var(--accent-text)' : 'var(--text-muted)' }}>
                             {ownerDisplay}
                         </span>
-                        {assignedDisplay && assignedDisplay !== ownerDisplay && (
+                        {assignedDisplay && assignedDisplay !== ownerDisplay ? (
                             <>
                                 <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>→</span>
-                                <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: assignedDisplay === 'You' ? 'var(--accent-light)' : 'var(--blue-light)', color: assignedDisplay === 'You' ? 'var(--accent-text)' : 'var(--blue)' }}>
+                                <span className={`pill ${assignedDisplay === 'You' ? 'pill-green' : 'pill-blue'}`}>
                                     {assignedDisplay}
                                 </span>
                             </>
-                        )}
+                        ) : (isTeamContext && !commitment.assigned_to) ? (
+                            <>
+                                <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>→</span>
+                                <span className="pill pill-neutral">Unassigned</span>
+                            </>
+                        ) : null}
                         {commitment.meeting_title && <span style={{ color: 'var(--text-muted)' }}>· {commitment.meeting_title}</span>}
                         {deadlineDisplay && <span style={{ color: 'var(--text-muted)' }}>· {deadlineDisplay}</span>}
                     </div>
