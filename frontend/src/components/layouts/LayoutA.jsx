@@ -388,6 +388,7 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
     }).slice(0, 5);
 
     const filtered = commitments.filter(c => {
+        if (personFilter === '__unassigned__') return !c.assigned_to && getStatus(c) !== 'done';
         if (personFilter && c.owner !== personFilter) return false;
         if (filter === 'All') return true;
         const s = getStatus(c);
@@ -609,6 +610,23 @@ export default function LayoutA({ data, onUpdate, onOpenPicker }) {
                             <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6' }} />
                             Accountability
                         </div>
+                        {/* Unassigned pill — always shown */}
+                        {(() => {
+                            const unassignedCount = commitments.filter(c => !c.assigned_to && getStatus(c) !== 'done').length;
+                            return unassignedCount > 0 ? (
+                                <div
+                                    onClick={() => setPersonFilter(personFilter === '__unassigned__' ? null : '__unassigned__')}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 12, cursor: 'pointer', background: personFilter === '__unassigned__' ? 'var(--red-light)' : 'var(--bg)', border: '1px solid var(--border)', marginBottom: 8, transition: 'all 0.15s' }}
+                                    onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                                >
+                                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: 'var(--text-muted)', flexShrink: 0 }}>?</div>
+                                    <span style={{ fontSize: 12.5, fontWeight: 600, color: personFilter === '__unassigned__' ? 'var(--red)' : 'var(--text-muted)', flex: 1 }}>Unassigned</span>
+                                    <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--red)' }}>{unassignedCount}</span>
+                                </div>
+                            ) : null;
+                        })()}
+
                         {topPeople.length === 0 ? (
                             <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>No team data yet</div>
                         ) : topPeople.map((p, i) => {
