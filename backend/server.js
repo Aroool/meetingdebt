@@ -90,6 +90,20 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+// ─── AUTH HELPERS ─────────────────────────────────────────────────────────────
+
+// Returns the membership row { role } if userId is a member of workspaceId, else null.
+// Used throughout to gate workspace-scoped routes.
+async function getWorkspaceMembership(userId, workspaceId) {
+    const { data } = await supabase
+        .from('workspace_members')
+        .select('role')
+        .eq('workspace_id', workspaceId)
+        .eq('user_id', userId)
+        .single();
+    return data || null;
+}
+
 // Shared matchMember function
 function buildMatcher(members) {
     return function matchMember(ownerName) {
@@ -238,19 +252,9 @@ ${transcript}`
             assigned_to: matchMember(c.owner)
         }));
 
-        const { data: meeting, error: meetingError } = await supabase
-            .from('meetings')
-            .insert({
-                title: meetingTitle || 'Untitled Meeting',
-                owner_email: ownerEmail || 'unknown@email.com',
-                user_id: userId || null,
-                workspace_id: workspaceId || null
-            })
-            .select()
-            .single();
-
-        if (meetingError) throw meetingError;
-        return res.json({ meeting, commitments });
+        // Meeting is NOT created here — only a preview is returned.
+        // The meeting record is created in /save-commitments once the user confirms.
+        return res.json({ commitments });
 
     } catch (error) {
         console.error('Extract preview error:', error);
@@ -261,8 +265,33 @@ ${transcript}`
 // Save commitments after manager confirms
 app.post('/save-commitments', requireAuth, async (req, res) => {
     try {
-        const { meeting, commitments, workspaceId } = req.body;
+        const { meeting: meetingPayload, commitments, workspaceId } = req.body;
         const userId = req.userId;
+
+        // Verify workspace membership — manager required to create meetings
+        if (workspaceId) {
+            const membership = await getWorkspaceMembership(userId, workspaceId);
+            if (!membership) return res.status(403).json({ error: 'Not a member of this workspace' });
+            if (membership.role !== 'manager') return res.status(403).json({ error: 'Only managers can save meetings' });
+        }
+
+        // Create the meeting now (extract-preview no longer does it)
+        // If a meeting.id already exists in the payload (legacy), skip creation.
+        let meeting = meetingPayload;
+        if (!meeting?.id) {
+            const { data: newMeeting, error: meetingError } = await supabase
+                .from('meetings')
+                .insert({
+                    title: meetingPayload?.title || 'Untitled Meeting',
+                    owner_email: req.userEmail,
+                    user_id: userId,
+                    workspace_id: workspaceId || null,
+                })
+                .select()
+                .single();
+            if (meetingError) throw meetingError;
+            meeting = newMeeting;
+        }
 
         const commitmentsToInsert = commitments.map(c => ({
             meeting_id: meeting.id,
@@ -333,27 +362,6 @@ app.post('/save-commitments', requireAuth, async (req, res) => {
     }
 });
 
-app.get('/workspaces', async (req, res) => {
-    try {
-        const { userId } = req.query;
-        const { data: memberships, error } = await supabase
-            .from('workspace_members')
-            .select('*, workspaces(*)')
-            .eq('user_id', userId);
-
-        if (error) throw error;
-
-        const workspaces = memberships.map(m => ({
-            ...m.workspaces,
-            role: m.role
-        }));
-
-        return res.json(workspaces);
-    } catch (error) {
-        return res.status(500).json({ error: error.message });
-    }
-});
-
 // Legacy /extract route removed — use /extract-preview + /save-commitments instead
 
 // Get all meetings
@@ -361,6 +369,12 @@ app.get('/meetings', requireAuth, async (req, res) => {
     try {
         const { workspaceId } = req.query;
         const userId = req.userId;
+
+        if (workspaceId) {
+            const membership = await getWorkspaceMembership(userId, workspaceId);
+            if (!membership) return res.status(403).json({ error: 'Not a member of this workspace' });
+        }
+
         let query = supabase
             .from('meetings')
             .select('*')
@@ -368,7 +382,7 @@ app.get('/meetings', requireAuth, async (req, res) => {
 
         if (workspaceId) {
             query = query.eq('workspace_id', workspaceId);
-        } else if (userId) {
+        } else {
             query = query.eq('user_id', userId);
         }
 
@@ -383,6 +397,25 @@ app.get('/meetings', requireAuth, async (req, res) => {
 // Get commitments for a specific meeting
 app.get('/commitments/:meetingId', requireAuth, async (req, res) => {
     try {
+        const userId = req.userId;
+
+        // Verify user owns the meeting or is a member of its workspace
+        const { data: meeting } = await supabase
+            .from('meetings')
+            .select('user_id, workspace_id')
+            .eq('id', req.params.meetingId)
+            .single();
+
+        if (meeting) {
+            const ownsIt = meeting.user_id === userId;
+            const inWorkspace = meeting.workspace_id
+                ? !!(await getWorkspaceMembership(userId, meeting.workspace_id))
+                : false;
+            if (!ownsIt && !inWorkspace) {
+                return res.status(403).json({ error: 'Not authorized to view this meeting' });
+            }
+        }
+
         const { data, error } = await supabase
             .from('commitments')
             .select('*, meetings(title)')
@@ -405,6 +438,12 @@ app.get('/commitments', requireAuth, async (req, res) => {
     try {
         const { workspaceId } = req.query;
         const userId = req.userId;
+
+        if (workspaceId) {
+            const membership = await getWorkspaceMembership(userId, workspaceId);
+            if (!membership) return res.status(403).json({ error: 'Not a member of this workspace' });
+        }
+
         let query = supabase
             .from('commitments')
             .select('*, meetings(title)')
@@ -412,7 +451,7 @@ app.get('/commitments', requireAuth, async (req, res) => {
 
         if (workspaceId) {
             query = query.eq('workspace_id', workspaceId);
-        } else if (userId) {
+        } else {
             query = query.eq('user_id', userId);
         }
 
@@ -433,6 +472,31 @@ app.patch('/commitments/:id', requireAuth, async (req, res) => {
     try {
         const { status, assigned_to } = req.body;
         const userId = req.userId;
+
+        // Fetch the commitment to verify authorization before updating
+        const { data: existing } = await supabase
+            .from('commitments')
+            .select('user_id, workspace_id, assigned_to')
+            .eq('id', req.params.id)
+            .single();
+
+        if (existing) {
+            const ownsIt = existing.user_id === userId || existing.assigned_to === userId;
+            const inWorkspace = existing.workspace_id
+                ? !!(await getWorkspaceMembership(userId, existing.workspace_id))
+                : false;
+            if (!ownsIt && !inWorkspace) {
+                return res.status(403).json({ error: 'Not authorized to update this commitment' });
+            }
+            // Only managers can reassign; members can only update status
+            if (assigned_to !== undefined && existing.workspace_id) {
+                const membership = await getWorkspaceMembership(userId, existing.workspace_id);
+                if (membership?.role !== 'manager') {
+                    return res.status(403).json({ error: 'Only managers can reassign commitments' });
+                }
+            }
+        }
+
         const updates = {};
         if (status !== undefined) updates.status = status;
         if (assigned_to !== undefined) updates.assigned_to = assigned_to;
@@ -512,85 +576,7 @@ app.post('/nudge/:commitmentId', requireAuth, async (req, res) => {
     }
 });
 
-// Daily cron — 9am
-cron.schedule('0 9 * * *', async () => {
-    console.log('Running daily nudge check...');
-    try {
-        const today = new Date().toISOString();
-        const { data: overdue } = await supabase
-            .from('commitments')
-            .select('*')
-            .eq('status', 'pending')
-            .lt('deadline', today);
-
-        if (!overdue || overdue.length === 0) {
-            console.log('No overdue commitments today.');
-            return;
-        }
-
-        for (const commitment of overdue) {
-            let recipientEmail = null;
-            let nudgeEnabled = true;
-
-            if (commitment.assigned_to) {
-                const { data: member } = await supabase
-                    .from('workspace_members')
-                    .select('email, nudge_enabled')
-                    .eq('user_id', commitment.assigned_to)
-                    .single();
-
-                if (member) {
-                    recipientEmail = member.email;
-                    nudgeEnabled = member.nudge_enabled !== false;
-                }
-            }
-
-            if (!nudgeEnabled) continue;
-            if (!recipientEmail || recipientEmail === 'unknown@email.com') {
-                const { data: meeting } = await supabase
-                    .from('meetings')
-                    .select('owner_email')
-                    .eq('id', commitment.meeting_id)
-                    .single();
-                recipientEmail = meeting?.owner_email;
-            }
-
-            if (!recipientEmail || recipientEmail === 'unknown@email.com') continue;
-
-            try {
-                const { data: meeting } = await supabase
-                    .from('meetings')
-                    .select('title')
-                    .eq('id', commitment.meeting_id)
-                    .single();
-
-                await transporter.sendMail({
-                    from: `MeetingDebt <${process.env.SENDGRID_FROM_EMAIL}>`,
-                    to: recipientEmail,
-                    subject: `Overdue: ${commitment.task}`,
-                    html: `
-                        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-                            <h2 style="color: #0f172a;">Commitment Overdue</h2>
-                            <p style="color: #475569;">Your commitment from <strong>${meeting?.title || 'a meeting'}</strong> is now overdue.</p>
-                            <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0;">
-                                <p style="margin: 0; color: #1e293b; font-weight: 600;">${commitment.task}</p>
-                                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 14px;">Due: ${new Date(commitment.deadline).toLocaleDateString()}</p>
-                            </div>
-                            <a href="${process.env.FRONTEND_URL}/dashboard" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">View Dashboard</a>
-                        </div>
-                    `
-                });
-                console.log(`Sent nudge to ${recipientEmail} for task: ${commitment.task}`);
-            } catch (err) {
-                console.error(`Failed to send mail to ${recipientEmail}:`, err);
-            }
-        }
-    } catch (err) {
-        console.error('Cron error:', err);
-    }
-});
-
-// ─── WORKSPACES ───────────────────────────────────────────────────────────────
+// ─── WORKSPACES ───────────────────────��───────────────────────────────────────
 
 app.post('/workspaces', requireAuth, async (req, res) => {
     try {
@@ -696,6 +682,9 @@ app.get('/workspaces', requireAuth, async (req, res) => {
 
 app.get('/workspaces/:workspaceId/members', requireAuth, async (req, res) => {
     try {
+        const membership = await getWorkspaceMembership(req.userId, req.params.workspaceId);
+        if (!membership) return res.status(403).json({ error: 'Not a member of this workspace' });
+
         const { data, error } = await supabase
             .from('workspace_members')
             .select('*')
@@ -710,8 +699,14 @@ app.get('/workspaces/:workspaceId/members', requireAuth, async (req, res) => {
 
 app.post('/workspaces/:workspaceId/invite', requireAuth, async (req, res) => {
     try {
-        const { email, invitedBy, workspaceName } = req.body;
+        const { email, workspaceName } = req.body;
         const { workspaceId } = req.params;
+        const invitedBy = req.userId; // always from auth, never from body
+
+        // Only managers may invite
+        const membership = await getWorkspaceMembership(invitedBy, workspaceId);
+        if (!membership) return res.status(403).json({ error: 'Not a member of this workspace' });
+        if (membership.role !== 'manager') return res.status(403).json({ error: 'Only managers can send invites' });
 
         const { data: invite, error } = await supabase
             .from('invites')
@@ -807,6 +802,9 @@ app.get('/workspaces/:workspaceId/role', requireAuth, async (req, res) => {
 
 app.get('/workspaces/:workspaceId', requireAuth, async (req, res) => {
     try {
+        const membership = await getWorkspaceMembership(req.userId, req.params.workspaceId);
+        if (!membership) return res.status(403).json({ error: 'Not a member of this workspace' });
+
         const { data, error } = await supabase
             .from('workspaces')
             .select('*')
@@ -865,6 +863,7 @@ app.patch('/notifications/:id/read', requireAuth, async (req, res) => {
             .from('notifications')
             .update({ read: true })
             .eq('id', req.params.id)
+            .eq('user_id', req.userId) // only own notifications
             .select()
             .single();
 
@@ -935,10 +934,13 @@ app.post('/profile/delete-account', requireAuth, async (req, res) => {
 
 const PORT = process.env.PORT || 5001;
 
-app.get('/activity', async (req, res) => {
+app.get('/activity', requireAuth, async (req, res) => {
     try {
         const { workspaceId, limit = 10 } = req.query;
         if (!workspaceId) return res.json([]);
+
+        const membership = await getWorkspaceMembership(req.userId, workspaceId);
+        if (!membership) return res.status(403).json({ error: 'Not a member of this workspace' });
 
         const { data, error } = await supabase
             .from('activity_log')
@@ -1013,17 +1015,30 @@ app.delete('/meetings/:id', requireAuth, async (req, res) => {
         const { id } = req.params;
         const userId = req.userId;
 
-        // Delete commitments first
+        // Fetch meeting to verify authorization
+        const { data: meeting } = await supabase
+            .from('meetings')
+            .select('user_id, workspace_id')
+            .eq('id', id)
+            .single();
+
+        if (!meeting) return res.status(404).json({ error: 'Meeting not found' });
+
+        // Allow: user owns the meeting OR user is a manager of its workspace
+        const ownsIt = meeting.user_id === userId;
+        let isManager = false;
+        if (!ownsIt && meeting.workspace_id) {
+            const membership = await getWorkspaceMembership(userId, meeting.workspace_id);
+            isManager = membership?.role === 'manager';
+        }
+        if (!ownsIt && !isManager) return res.status(403).json({ error: 'Not authorized to delete this meeting' });
+
+        // Delete commitments first, then the meeting
         await supabase.from('commitments').delete().eq('meeting_id', id);
-
-        // Delete the meeting
-        const { error } = await supabase.from('meetings').delete()
-            .eq('id', id).eq('user_id', userId);
-
+        const { error } = await supabase.from('meetings').delete().eq('id', id);
         if (error) throw error;
 
-        // Log activity
-        await logActivity(null, userId, 'Manager', 'meeting_deleted',
+        await logActivity(meeting.workspace_id, userId, 'Manager', 'meeting_deleted',
             `deleted a meeting`, { meetingId: id });
 
         return res.json({ success: true });
@@ -1073,7 +1088,7 @@ app.post('/feedback', requireAuth, async (req, res) => {
     }
 });
 
-app.get('/feedback', async (req, res) => {
+app.get('/feedback', requireAuth, async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('feedback')
@@ -1258,8 +1273,8 @@ cron.schedule('0 9 * * *', sendDailyNudges, {
     timezone: 'America/New_York'
 });
 
-// Also expose a manual trigger endpoint for testing
-app.get('/trigger-nudge', async (req, res) => {
+// Manual trigger for testing — authenticated only
+app.get('/trigger-nudge', requireAuth, async (req, res) => {
     await sendDailyNudges();
     return res.json({ success: true, message: 'Nudge job triggered' });
 });
