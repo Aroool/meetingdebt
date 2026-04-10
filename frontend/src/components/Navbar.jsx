@@ -81,10 +81,9 @@ function TopBar({ dark, onToggleDark, user, workspaceName, role, isSolo,
     return (
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, height: 52,
-            background: 'var(--bg-card)',
+            background: 'var(--bg)',
             display: 'flex', alignItems: 'center',
             zIndex: 300,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 0 0 0.5px rgba(0,0,0,0.03)',
         }}>
             {/* Logo — green dot + wordmark */}
             <Link to="/dashboard" style={{
@@ -107,26 +106,59 @@ function TopBar({ dark, onToggleDark, user, workspaceName, role, isSolo,
 
             <div style={{ flex: 1 }} />
 
-            {/* Segmented nav — centered */}
+            {/* Floating pill nav — futuristic style */}
             <div style={{
                 display: 'flex', alignItems: 'center',
-                background: 'var(--bg)', borderRadius: 10, padding: 3,
+                padding: 4,
+                borderRadius: 22,
+                background: 'var(--bg-card)',
                 border: '1px solid var(--border)',
+                boxShadow: '0 2px 16px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
                 position: 'absolute', left: '50%', transform: 'translateX(-50%)',
+                overflow: 'hidden',
             }}>
                 {SEGMENTS.map(seg => {
                     const isActive = seg.match.includes(location.pathname);
                     return (
                         <Link key={seg.to} to={seg.to} style={{
-                            padding: '5px 18px', borderRadius: 7,
+                            padding: '7px 22px', borderRadius: 18,
                             fontSize: 13, fontWeight: isActive ? 600 : 500,
                             color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
-                            background: isActive ? 'var(--bg-card)' : 'transparent',
                             textDecoration: 'none',
-                            transition: 'all 0.15s',
-                            boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
-                            lineHeight: '20px',
+                            position: 'relative',
+                            zIndex: 1,
+                            transition: 'color 0.25s',
+                            lineHeight: '18px',
                         }}>
+                            {/* Glow — soft blurred accent behind active tab */}
+                            {isActive && (
+                                <motion.div
+                                    layoutId="nav-glow"
+                                    style={{
+                                        position: 'absolute',
+                                        inset: '-10px -14px',
+                                        borderRadius: '50%',
+                                        background: 'var(--accent)',
+                                        opacity: 0.09,
+                                        filter: 'blur(16px)',
+                                        zIndex: -2,
+                                    }}
+                                    transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                                />
+                            )}
+                            {/* Pill background for active */}
+                            {isActive && (
+                                <motion.div
+                                    layoutId="nav-pill"
+                                    style={{
+                                        position: 'absolute', inset: 0,
+                                        borderRadius: 18,
+                                        background: 'var(--accent-light)',
+                                        zIndex: -1,
+                                    }}
+                                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                                />
+                            )}
                             {seg.label}
                         </Link>
                     );
@@ -383,12 +415,11 @@ function Sidebar({ role, isSolo, user, overdueCount }) {
             style={{
                 position: 'fixed', left: 0, top: 52, bottom: 0,
                 background: 'var(--bg-card)',
+                borderRight: '1px solid var(--border)',
                 zIndex: 200,
                 overflow: 'hidden',
                 display: 'flex', flexDirection: 'column',
-                boxShadow: expanded
-                    ? '4px 0 24px rgba(0,0,0,0.07), 1px 0 0 rgba(0,0,0,0.03)'
-                    : '1px 0 0 rgba(0,0,0,0.03)',
+                boxShadow: expanded ? '4px 0 24px rgba(0,0,0,0.07)' : 'none',
                 transition: 'box-shadow 0.22s',
             }}
         >
