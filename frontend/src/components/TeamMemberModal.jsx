@@ -1,17 +1,18 @@
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+function parseDate(s) { if (!s) return null; const [y,m,d] = s.slice(0,10).split('-').map(Number); return new Date(y, m-1, d); }
 function getStatusColor(status, deadline) {
     if (status === 'completed') return { bg: '#EAF3DE', color: '#16a34a' };
     if (status === 'blocked') return { bg: '#E6F1FB', color: '#3b82f6' };
-    if (deadline && new Date(deadline) < new Date()) return { bg: '#FCEBEB', color: '#ef4444' };
+    if (deadline && parseDate(deadline) < new Date()) return { bg: '#FCEBEB', color: '#ef4444' };
     return { bg: '#FAEEDA', color: '#f59e0b' };
 }
 
 function getStatusLabel(status, deadline) {
     if (status === 'completed') return 'Done';
     if (status === 'blocked') return 'Blocked';
-    if (deadline && new Date(deadline) < new Date()) return 'Overdue';
+    if (deadline && parseDate(deadline) < new Date()) return 'Overdue';
     return 'Pending';
 }
 
@@ -41,7 +42,7 @@ export default function TeamMemberModal({ member, tasks, loading, onClose }) {
     const av = avatarColors[fullName.charCodeAt(0) % avatarColors.length];
 
     const done = tasks.filter(t => t.status === 'completed').length;
-    const overdue = tasks.filter(t => t.status !== 'completed' && t.deadline && new Date(t.deadline) < new Date()).length;
+    const overdue = tasks.filter(t => t.status !== 'completed' && t.deadline && parseDate(t.deadline) < new Date()).length;
     const pending = tasks.filter(t => t.status !== 'completed' && t.status !== 'blocked').length - overdue;
 
     return (
@@ -190,7 +191,7 @@ export default function TeamMemberModal({ member, tasks, loading, onClose }) {
                                     {task.meeting_title && (
                                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                                             {task.meeting_title}
-                                            {task.deadline && (' · Due ' + new Date(task.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))}
+                                            {task.deadline && (' · Due ' + parseDate(task.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))}
                                         </div>
                                     )}
                                 </div>

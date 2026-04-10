@@ -328,7 +328,7 @@ export default function Workspace() {
                             pending: commitments.filter(c => c.status === 'pending').length,
                             overdue: commitments.filter(c => {
                                 if (c.status === 'completed') return false;
-                                if (c.deadline) { const due = new Date(c.deadline); return !isNaN(due) && due < now; }
+                                if (c.deadline) { const [y,m,d] = c.deadline.slice(0,10).split('-').map(Number); const due = new Date(y,m-1,d); return !isNaN(due) && due < now; }
                                 return false;
                             }).length,
                             done: commitments.filter(c => c.status === 'completed').length,

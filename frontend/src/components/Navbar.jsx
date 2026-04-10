@@ -586,7 +586,8 @@ export default function Navbar() {
             const { data } = await api.get('/commitments', { params });
             const overdue = data.filter(c => {
                 if (c.status === 'completed' || c.status === 'blocked') return false;
-                return c.deadline && new Date(c.deadline) < new Date();
+                const due = c.deadline ? (() => { const [y,m,d] = c.deadline.slice(0,10).split('-').map(Number); return new Date(y,m-1,d); })() : null;
+                return due && due < new Date();
             }).length;
             setOverdueCount(overdue);
         } catch (e) { }

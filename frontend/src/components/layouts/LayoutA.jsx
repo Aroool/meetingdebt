@@ -4,10 +4,11 @@ import { gsap } from 'gsap';
 import api from '../../api';
 import CommitmentRow from '../CommitmentRow';
 
+function parseDate(s) { if (!s) return null; const [y,m,d] = s.slice(0,10).split('-').map(Number); return new Date(y, m-1, d); }
 function getStatus(c) {
     if (c.status === 'completed') return 'done';
     if (c.status === 'blocked') return 'blocked';
-    if (c.deadline && new Date(c.deadline) < new Date()) return 'overdue';
+    if (c.deadline && parseDate(c.deadline) < new Date()) return 'overdue';
     return 'pending';
 }
 
@@ -326,7 +327,7 @@ export default function LayoutA({ data, onUpdate }) {
         if (s === 'done') return false;
         if (s === 'overdue') return true;
         if (!c.deadline) return false;
-        return new Date(c.deadline).toDateString() === new Date().toDateString();
+        return parseDate(c.deadline).toDateString() === new Date().toDateString();
     }).slice(0, 5);
 
     const filtered = commitments.filter(c => {

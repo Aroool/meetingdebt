@@ -2,15 +2,16 @@ import { useState, useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import api from '../api';
 
+function parseDate(s) { if (!s) return null; const [y,m,d] = s.slice(0,10).split('-').map(Number); return new Date(y, m-1, d); }
 function getStatus(c) {
     if (c.status === 'completed') return 'done';
-    if (c.deadline && new Date(c.deadline) < new Date()) return 'overdue';
+    if (c.deadline && parseDate(c.deadline) < new Date()) return 'overdue';
     return 'pending';
 }
 
 function isToday(dateStr) {
     if (!dateStr) return false;
-    return new Date(dateStr).toDateString() === new Date().toDateString();
+    return parseDate(dateStr).toDateString() === new Date().toDateString();
 }
 
 function isTomorrow(dateStr) {

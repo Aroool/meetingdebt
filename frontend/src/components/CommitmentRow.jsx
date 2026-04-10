@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { supabase } from '../supabase';
-import { getStatusKey } from '../utils';
+import { getStatusKey, parseDate } from '../utils';
 
 const STATUSES = [
     { key: 'pending', label: 'Pending', color: '#f59e0b', bg: 'var(--amber-light)' },
@@ -138,12 +138,12 @@ function MemberProfilePopup({ member, commitments, onClose }) {
     );
     const pending = memberCommitments.filter(c => {
         if (c.status === 'completed' || c.status === 'blocked') return false;
-        if (c.deadline && new Date(c.deadline) < new Date()) return false;
+        if (c.deadline && parseDate(c.deadline) < new Date()) return false;
         return true;
     }).length;
     const overdue = memberCommitments.filter(c => {
         if (c.status === 'completed') return false;
-        return c.deadline && new Date(c.deadline) < new Date();
+        return c.deadline && parseDate(c.deadline) < new Date();
     }).length;
     const done = memberCommitments.filter(c => c.status === 'completed').length;
     const total = memberCommitments.length;

@@ -13,12 +13,13 @@ const SORT_OPTIONS = [
     { key: 'status', label: 'By status' },
 ];
 
+function parseDate(s) { if (!s) return null; const [y,m,d] = s.slice(0,10).split('-').map(Number); return new Date(y, m-1, d); }
 function getStatus(c) {
     if (c.status === 'completed') return 'done';
     if (c.status === 'blocked') return 'blocked';
     if (c.deadline) {
-        const due = new Date(c.deadline);
-        if (!isNaN(due) && due < new Date()) return 'overdue';
+        const due = parseDate(c.deadline);
+        if (due && due < new Date()) return 'overdue';
     }
     return 'pending';
 }
@@ -106,7 +107,7 @@ export default function Commitments() {
         if (sort === 'deadline') {
             if (!a.deadline) return 1;
             if (!b.deadline) return -1;
-            return new Date(a.deadline) - new Date(b.deadline);
+            return parseDate(a.deadline) - parseDate(b.deadline);
         }
         if (sort === 'owner') return (a.owner || '').localeCompare(b.owner || '');
         if (sort === 'status') return (statusOrder[getStatus(a)] || 0) - (statusOrder[getStatus(b)] || 0);

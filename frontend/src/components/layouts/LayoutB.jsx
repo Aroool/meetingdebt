@@ -4,17 +4,18 @@ import { gsap } from 'gsap';
 import { supabase } from '../../supabase';
 import api from '../../api';
 
+function parseDate(s) { if (!s) return null; const [y,m,d] = s.slice(0,10).split('-').map(Number); return new Date(y, m-1, d); }
 function getStatus(c) {
     if (c.status === 'completed') return 'done';
     if (c.status === 'blocked') return 'blocked';
-    if (c.deadline && new Date(c.deadline) < new Date()) return 'overdue';
+    if (c.deadline && parseDate(c.deadline) < new Date()) return 'overdue';
     return 'pending';
 }
 
 function formatDeadline(d) {
     if (!d) return null;
-    const date = new Date(d);
-    if (isNaN(date)) return d;
+    const date = parseDate(d);
+    if (!date || isNaN(date)) return d;
     const today = new Date();
     const tomorrow = new Date();
     tomorrow.setDate(today.getDate() + 1);

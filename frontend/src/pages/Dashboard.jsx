@@ -7,10 +7,11 @@ import LayoutB from '../components/layouts/LayoutB';
 import { motion } from 'framer-motion';
 
 
+function parseDate(s) { if (!s) return null; const [y,m,d] = s.slice(0,10).split('-').map(Number); return new Date(y, m-1, d); }
 function getStatusKey(c) {
     if (c.status === 'completed') return 'done';
     if (c.status === 'blocked') return 'blocked';
-    if (c.deadline && new Date(c.deadline) < new Date()) return 'overdue';
+    if (c.deadline && parseDate(c.deadline) < new Date()) return 'overdue';
     return 'pending';
 }
 
