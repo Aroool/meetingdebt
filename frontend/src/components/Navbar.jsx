@@ -264,100 +264,74 @@ function TopBar({ dark, onToggleDark, user, workspaceName, role, isSolo,
     );
 }
 
-// ─── Nav Item ─────────────────────────────────────────────────────────────────
+// ─── Rail Item (icon-only nav link) ──────────────────────────────────────────
 
-function NavItem({ item, location, expanded }) {
+function RailItem({ item, location }) {
     const isActive = location.pathname === item.to;
     const Icon = item.icon;
 
     return (
-        <div style={{ padding: '1px 6px' }}>
-            <Link to={item.to}
-                title={!expanded ? item.label : undefined}
-                style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '7px 6px 7px 8px', borderRadius: 8,
-                    textDecoration: 'none', position: 'relative',
-                    color: 'inherit',
-                }}>
-                {isActive && (
-                    <motion.div
-                        layoutId="sidebar-active-bg"
-                        style={{ position: 'absolute', inset: 0, borderRadius: 8, background: 'var(--accent-light)' }}
-                        transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                    />
-                )}
-                <div style={{
-                    width: 22, height: 22, flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    position: 'relative', zIndex: 1,
-                    color: isActive ? 'var(--accent-text)' : item.accent ? 'var(--accent)' : 'var(--text-muted)',
-                    transition: 'color 0.15s',
-                }}>
-                    <Icon size={17} />
-                </div>
-                <motion.span
-                    animate={{ opacity: expanded ? 1 : 0 }}
-                    transition={{ duration: 0.15 }}
-                    style={{
-                        fontSize: 13, fontWeight: isActive ? 600 : 500, whiteSpace: 'nowrap',
-                        position: 'relative', zIndex: 1, flex: 1,
-                        color: isActive ? 'var(--accent-text)' : item.accent ? 'var(--accent)' : 'var(--text-primary)',
-                    }}>
-                    {item.label}
-                </motion.span>
-                {item.badge != null && (
-                    <motion.span animate={{ opacity: expanded ? 1 : 0 }} transition={{ duration: 0.15 }}
-                        style={{ position: 'relative', zIndex: 1 }}>
-                        <span className="pill pill-red" style={{ fontSize: 10, padding: '1px 6px', lineHeight: '14px' }}>
-                            {item.badge}
-                        </span>
-                    </motion.span>
-                )}
-            </Link>
-        </div>
-    );
-}
-
-// ─── Toggle Button Group ─────────────────────────────────────────────────────
-
-function ToggleItem({ icon: Icon, label, isActive, onClick, expanded }) {
-    return (
-        <div style={{ padding: '1px 6px' }}>
-            <div onClick={onClick}
-                style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '7px 6px 7px 8px', borderRadius: 8,
-                    cursor: 'pointer', position: 'relative',
-                    background: isActive ? 'var(--accent-light)' : 'transparent',
-                    transition: 'background 0.15s',
-                }}>
-                <div style={{
-                    width: 22, height: 22, flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: isActive ? 'var(--accent-text)' : 'var(--text-muted)',
-                    transition: 'color 0.15s',
-                }}>
-                    {Icon}
-                </div>
-                <motion.span
-                    animate={{ opacity: expanded ? 1 : 0 }}
-                    transition={{ duration: 0.15 }}
-                    style={{
-                        fontSize: 13, fontWeight: isActive ? 600 : 500, whiteSpace: 'nowrap',
-                        color: isActive ? 'var(--accent-text)' : 'var(--text-primary)',
-                    }}>
-                    {label}
-                </motion.span>
+        <Link
+            to={item.to}
+            title={item.label}
+            style={{
+                position: 'relative',
+                width: 34, height: 34, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 9,
+                textDecoration: 'none',
+                color: isActive ? 'var(--accent-text)' : item.accent ? 'var(--accent)' : 'var(--text-muted)',
+                margin: '2px 0',
+                transition: 'color 0.15s',
+            }}
+        >
+            {isActive && (
+                <motion.div
+                    layoutId="rail-active-bg"
+                    style={{ position: 'absolute', inset: 0, borderRadius: 9, background: 'var(--accent-light)' }}
+                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                />
+            )}
+            <div style={{ position: 'relative', zIndex: 1, display: 'flex' }}>
+                <Icon size={17} />
             </div>
+            {item.badge > 0 && (
+                <span style={{
+                    position: 'absolute', top: 5, right: 5,
+                    width: 5, height: 5, borderRadius: '50%',
+                    background: 'var(--red)', zIndex: 2,
+                }} />
+            )}
+        </Link>
+    );
+}
+
+// ─── Rail Button (icon-only action) ──────────────────────────────────────────
+
+function RailBtn({ icon, isActive, onClick, title }) {
+    return (
+        <div
+            onClick={onClick}
+            title={title}
+            style={{
+                width: 34, height: 34, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 9,
+                cursor: 'pointer',
+                color: isActive ? 'var(--accent-text)' : 'var(--text-muted)',
+                background: isActive ? 'var(--accent-light)' : 'transparent',
+                transition: 'color 0.15s, background 0.15s',
+                margin: '2px 0',
+            }}
+        >
+            {icon}
         </div>
     );
 }
 
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
+// ─── Icon Rail ────────────────────────────────────────────────────────────────
 
-function Sidebar({ role, isSolo, user, overdueCount }) {
-    const [expanded, setExpanded] = useState(false);
+function Rail({ role, isSolo, user, overdueCount }) {
     const location = useLocation();
     const isDashboard = location.pathname === '/dashboard';
 
@@ -405,99 +379,89 @@ function Sidebar({ role, isSolo, user, overdueCount }) {
         };
     }, []);
 
+    const divider = (
+        <div style={{
+            width: 18, height: 1,
+            background: 'var(--text-muted)',
+            opacity: 0.2,
+            margin: '6px 0',
+            flexShrink: 0,
+        }} />
+    );
+
     return (
-        <motion.div
-            onMouseEnter={() => setExpanded(true)}
-            onMouseLeave={() => setExpanded(false)}
-            animate={{ width: expanded ? 220 : 52 }}
-            initial={false}
-            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-            style={{
-                position: 'fixed', left: 0, top: 52, bottom: 0,
-                background: 'var(--bg-sidebar)',
-                borderRight: '1px solid var(--border)',
-                zIndex: 200,
-                overflow: 'hidden',
-                display: 'flex', flexDirection: 'column',
-            }}
-        >
-            {/* Primary navigation */}
-            <div style={{ flex: 1, padding: '10px 0', overflowY: 'auto', overflowX: 'hidden' }}>
-                {primaryNav.map(item => (
-                    <NavItem key={item.to} item={item} location={location} expanded={expanded} />
-                ))}
+        <div style={{
+            position: 'fixed', left: 0, top: 52, bottom: 0,
+            width: 52,
+            background: 'var(--bg)',
+            zIndex: 200,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center',
+            paddingTop: 10,
+            paddingBottom: 12,
+        }}>
+            {primaryNav.map(item => (
+                <RailItem key={item.to} item={item} location={location} />
+            ))}
 
-                {secondaryNav.length > 0 && (
-                    <div style={{ height: 1, background: 'var(--border)', margin: '6px 14px', opacity: 0.5 }} />
-                )}
-                {secondaryNav.map(item => (
-                    <NavItem key={item.to + item.label} item={item} location={location} expanded={expanded} />
-                ))}
+            {secondaryNav.length > 0 && divider}
 
-                {/* Dashboard controls — layout & view */}
-                {isDashboard && (
-                    <>
-                        <div style={{ height: 1, background: 'var(--border)', margin: '6px 14px', opacity: 0.5 }} />
-                        <ToggleItem
-                            icon={<LayoutGridIcon size={17} />}
-                            label="Command Center"
-                            isActive={dashLayout === 'A'}
-                            onClick={() => switchLayout('A')}
-                            expanded={expanded}
-                        />
-                        <ToggleItem
-                            icon={<LayoutColumnsIcon size={17} />}
-                            label="Kanban Board"
-                            isActive={dashLayout === 'B'}
-                            onClick={() => switchLayout('B')}
-                            expanded={expanded}
-                        />
-                        {dashLayout === 'A' && (
-                            <>
-                                <div style={{ height: 1, background: 'var(--border)', margin: '6px 14px', opacity: 0.5 }} />
-                                <ToggleItem
-                                    icon={<GroupedIcon size={17} />}
-                                    label="Grouped"
-                                    isActive={dashView === 'grouped'}
-                                    onClick={() => switchView('grouped')}
-                                    expanded={expanded}
-                                />
-                                <ToggleItem
-                                    icon={<FlatListIcon size={17} />}
-                                    label="Flat list"
-                                    isActive={dashView === 'flat'}
-                                    onClick={() => switchView('flat')}
-                                    expanded={expanded}
-                                />
-                            </>
-                        )}
-                    </>
-                )}
+            {secondaryNav.map(item => (
+                <RailItem key={item.to + item.label} item={item} location={location} />
+            ))}
+
+            {isDashboard && (
+                <>
+                    {divider}
+                    <RailBtn
+                        icon={<LayoutGridIcon size={16} />}
+                        isActive={dashLayout === 'A'}
+                        onClick={() => switchLayout('A')}
+                        title="Command Center"
+                    />
+                    <RailBtn
+                        icon={<LayoutColumnsIcon size={16} />}
+                        isActive={dashLayout === 'B'}
+                        onClick={() => switchLayout('B')}
+                        title="Kanban Board"
+                    />
+                    {dashLayout === 'A' && (
+                        <>
+                            {divider}
+                            <RailBtn
+                                icon={<GroupedIcon size={16} />}
+                                isActive={dashView === 'grouped'}
+                                onClick={() => switchView('grouped')}
+                                title="Grouped view"
+                            />
+                            <RailBtn
+                                icon={<FlatListIcon size={16} />}
+                                isActive={dashView === 'flat'}
+                                onClick={() => switchView('flat')}
+                                title="Flat list"
+                            />
+                        </>
+                    )}
+                </>
+            )}
+
+            <div style={{ flex: 1 }} />
+
+            {/* User avatar at bottom — acts as subtle identity anchor */}
+            <div
+                title={name}
+                style={{
+                    width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                    background: 'var(--accent-light)', color: 'var(--accent-text)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 10, fontWeight: 700, overflow: 'hidden',
+                }}
+            >
+                {avatarUrl
+                    ? <img src={avatarUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : initial}
             </div>
-
-            {/* User profile — bottom */}
-            <div style={{ padding: '10px 0', flexShrink: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 10px 0 15px', minHeight: 32 }}>
-                    <div style={{
-                        width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-                        background: 'var(--accent-light)', color: 'var(--accent-text)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 10, fontWeight: 700, overflow: 'hidden',
-                    }}>
-                        {avatarUrl
-                            ? <img src={avatarUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            : initial}
-                    </div>
-                    <motion.div
-                        animate={{ opacity: expanded ? 1 : 0 }}
-                        transition={{ duration: 0.15 }}
-                        style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{isSolo ? 'solo' : role}</div>
-                    </motion.div>
-                </div>
-            </div>
-        </motion.div>
+        </div>
     );
 }
 
@@ -617,7 +581,7 @@ export default function Navbar() {
                 navigate={navigate}
                 fetchWorkspaces={fetchWorkspaces}
             />
-            <Sidebar
+            <Rail
                 role={role}
                 isSolo={isSolo}
                 user={user}
