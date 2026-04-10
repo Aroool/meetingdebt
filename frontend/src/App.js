@@ -18,7 +18,16 @@ import { useEffect } from 'react';
 import MyTasks from './pages/MyTasks';
 import Feedback from './pages/Feedback';
 
-
+// Layout wrapper for all authenticated pages.
+// Sidebar is 52px fixed — content always starts at marginLeft: 52.
+// TopBar is 56px fixed — content always starts at paddingTop: 56.
+function ProtectedLayout({ children }) {
+  return (
+    <div style={{ marginLeft: 52, paddingTop: 56, minHeight: '100vh' }}>
+      {children}
+    </div>
+  );
+}
 
 function App() {
   useEffect(() => {
@@ -29,38 +38,17 @@ function App() {
   return (
     <div className="app">
       <Routes>
+        {/* Public routes — no navbar */}
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/invite/:token" element={<AcceptInvite />} />
         <Route path="/theme-picker" element={<ProtectedRoute><ThemePicker /></ProtectedRoute>} />
+
+        {/* Auth-gated routes without nav (workspace setup flows) */}
         <Route path="/create-workspace" element={
           <ProtectedRoute>
             <CreateWorkspace />
-          </ProtectedRoute>
-        } />
-        <Route path="/workspace" element={
-          <ProtectedRoute>
-            <Navbar />
-            <Workspace />
-          </ProtectedRoute>
-        } />
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <Navbar />
-            <Dashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/commitments" element={
-          <ProtectedRoute>
-            <Navbar />
-            <Commitments />
-          </ProtectedRoute>
-        } />
-        <Route path="/meetings" element={
-          <ProtectedRoute>
-            <Navbar />
-            <Meetings />
           </ProtectedRoute>
         } />
         <Route path="/join-or-create" element={
@@ -73,22 +61,62 @@ function App() {
             <EnterInvite />
           </ProtectedRoute>
         } />
+
+        {/* Protected app routes — sidebar + top bar layout */}
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <Navbar />
+            <ProtectedLayout>
+              <Dashboard />
+            </ProtectedLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/commitments" element={
+          <ProtectedRoute>
+            <Navbar />
+            <ProtectedLayout>
+              <Commitments />
+            </ProtectedLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/meetings" element={
+          <ProtectedRoute>
+            <Navbar />
+            <ProtectedLayout>
+              <Meetings />
+            </ProtectedLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/workspace" element={
+          <ProtectedRoute>
+            <Navbar />
+            <ProtectedLayout>
+              <Workspace />
+            </ProtectedLayout>
+          </ProtectedRoute>
+        } />
         <Route path="/profile" element={
           <ProtectedRoute>
             <Navbar />
-            <Profile />
+            <ProtectedLayout>
+              <Profile />
+            </ProtectedLayout>
           </ProtectedRoute>
         } />
         <Route path="/my-tasks" element={
           <ProtectedRoute>
             <Navbar />
-            <MyTasks />
+            <ProtectedLayout>
+              <MyTasks />
+            </ProtectedLayout>
           </ProtectedRoute>
         } />
         <Route path="/feedback" element={
           <ProtectedRoute>
             <Navbar />
-            <Feedback />
+            <ProtectedLayout>
+              <Feedback />
+            </ProtectedLayout>
           </ProtectedRoute>
         } />
       </Routes>

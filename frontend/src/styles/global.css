@@ -1403,3 +1403,20 @@ body {
 ::-webkit-scrollbar-corner {
     background: transparent;
 }
+
+/* ─── Sidebar nav ─────────────────────────────────────────────────────────── */
+
+/* Hover highlight for sidebar nav links */
+.sidebar-nav-link {
+    display: flex;
+    align-items: center;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: background 0.12s;
+    position: relative;
+}
+
+.sidebar-nav-link:hover {
+    background: var(--bg);
+}
+
