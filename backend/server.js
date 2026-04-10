@@ -190,6 +190,78 @@ function assignmentEmail(commitment, meeting, memberName) {
   `;
 }
 
+// ─── OVERDUE ALERT EMAIL TEMPLATES ───────────────────────────────────────────
+// These are distinct from nudgeEmail (manual one-off) and the daily digest.
+// overdueAssigneeEmail  → sent once to the person the task is assigned to
+// overdueManagerEmail   → sent once to the workspace manager (if different person)
+
+function overdueAssigneeEmail(commitment, meetingTitle, assigneeName) {
+    const deadlineStr = commitment.deadline
+        ? new Date(commitment.deadline).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+        : 'No deadline set';
+    return `
+    <div style="font-family:-apple-system,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#ffffff">
+      <div style="margin-bottom:24px">
+        <span style="font-size:16px;font-weight:800;color:#0f172a">Meeting<span style="color:#16a34a">Debt</span></span>
+      </div>
+      <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:8px">
+        Your task is overdue${assigneeName ? `, ${assigneeName}` : ''}
+      </h2>
+      <p style="font-size:14px;color:#64748b;margin-bottom:24px">
+        From: <strong>${meetingTitle}</strong>
+      </p>
+      <div style="background:#fef2f2;border-left:3px solid #ef4444;border-radius:8px;padding:16px 20px;margin-bottom:24px">
+        <div style="font-size:15px;font-weight:600;color:#0f172a;margin-bottom:8px">${commitment.task}</div>
+        <div style="font-size:13px;color:#64748b">
+          Deadline was: <strong style="color:#ef4444">${deadlineStr}</strong>
+        </div>
+      </div>
+      <a href="${process.env.FRONTEND_URL}/dashboard"
+         style="display:inline-block;background:#16a34a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">
+        View your tasks →
+      </a>
+      <p style="font-size:11px;color:#cbd5e1;border-top:1px solid #f1f5f9;padding-top:16px;margin-top:24px">
+        MeetingDebt — making sure meeting commitments actually happen.
+      </p>
+    </div>
+  `;
+}
+
+function overdueManagerEmail(commitment, meetingTitle, managerName) {
+    const deadlineStr = commitment.deadline
+        ? new Date(commitment.deadline).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+        : 'No deadline set';
+    return `
+    <div style="font-family:-apple-system,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#ffffff">
+      <div style="margin-bottom:24px">
+        <span style="font-size:16px;font-weight:800;color:#0f172a">Meeting<span style="color:#16a34a">Debt</span></span>
+      </div>
+      <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:8px">
+        A team task is overdue${managerName ? `, ${managerName}` : ''}
+      </h2>
+      <p style="font-size:14px;color:#64748b;margin-bottom:24px">
+        From: <strong>${meetingTitle}</strong>
+      </p>
+      <div style="background:#fef2f2;border-left:3px solid #ef4444;border-radius:8px;padding:16px 20px;margin-bottom:24px">
+        <div style="font-size:15px;font-weight:600;color:#0f172a;margin-bottom:8px">${commitment.task}</div>
+        <div style="font-size:13px;color:#64748b;margin-top:6px">
+          Assigned to: <strong>${commitment.owner || 'Unknown'}</strong>
+        </div>
+        <div style="font-size:13px;color:#64748b;margin-top:4px">
+          Deadline was: <strong style="color:#ef4444">${deadlineStr}</strong>
+        </div>
+      </div>
+      <a href="${process.env.FRONTEND_URL}/dashboard"
+         style="display:inline-block;background:#16a34a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">
+        View team dashboard →
+      </a>
+      <p style="font-size:11px;color:#cbd5e1;border-top:1px solid #f1f5f9;padding-top:16px;margin-top:24px">
+        MeetingDebt — making sure meeting commitments actually happen.
+      </p>
+    </div>
+  `;
+}
+
 // ─── ROUTES ───────────────────────────────────────────────────────────────────
 
 app.get('/', (req, res) => {
@@ -1109,11 +1181,12 @@ async function sendDailyNudges() {
         today.setHours(0, 0, 0, 0);
         const todayStr = today.toISOString().split('T')[0];
 
-        // Get all non-completed commitments
+        // Get all non-completed, non-blocked commitments with an assignee
         const { data: commitments, error } = await supabase
             .from('commitments')
             .select('*, meetings(title)')
             .neq('status', 'completed')
+            .neq('status', 'blocked')
             .not('assigned_to', 'is', null);
 
         if (error) throw error;
@@ -1268,7 +1341,7 @@ async function sendDailyNudges() {
     }
 }
 
-// Run every day at 9am
+// Daily digest — 9 AM Eastern, morning summary of all pending/overdue/upcoming tasks
 cron.schedule('0 9 * * *', sendDailyNudges, {
     timezone: 'America/New_York'
 });
@@ -1277,6 +1350,122 @@ cron.schedule('0 9 * * *', sendDailyNudges, {
 app.get('/trigger-nudge', requireAuth, async (req, res) => {
     await sendDailyNudges();
     return res.json({ success: true, message: 'Nudge job triggered' });
+});
+
+// ─── FIRST-OVERDUE ALERTS ─────────────────────────────────────────────────────
+// Fires ONCE per commitment, within ~1 hour of the deadline passing.
+// Sends to the assignee + the workspace manager (if different people).
+// Dedup is handled by the overdue_notified_at column on commitments:
+//   NULL  → never alerted, eligible this run
+//   value → already alerted, skip forever
+//
+// DB migration required before deploying:
+//   ALTER TABLE commitments
+//     ADD COLUMN IF NOT EXISTS overdue_notified_at TIMESTAMPTZ DEFAULT NULL;
+async function sendOverdueAlerts() {
+    try {
+        const now = new Date();
+        console.log('Running overdue alert check...');
+
+        // Fetch commitments that:
+        //  • are not completed or blocked (status already resolved)
+        //  • have a deadline that has now passed
+        //  • have never had an overdue alert sent (overdue_notified_at IS NULL)
+        const { data: newlyOverdue, error } = await supabase
+            .from('commitments')
+            .select('*, meetings(title)')
+            .not('status', 'eq', 'completed')
+            .not('status', 'eq', 'blocked')
+            .not('deadline', 'is', null)
+            .lt('deadline', now.toISOString())
+            .is('overdue_notified_at', null);
+
+        if (error) throw error;
+
+        if (!newlyOverdue?.length) {
+            console.log('Overdue check: nothing newly overdue');
+            return;
+        }
+
+        console.log(`Overdue check: ${newlyOverdue.length} task(s) newly overdue`);
+
+        // Stamp ALL matched rows as notified before sending any emails.
+        // This prevents duplicate alerts if the job is triggered concurrently
+        // (e.g. cron fires while /trigger-overdue-check is also running).
+        // Trade-off: if email delivery fails, we don't retry — but the daily
+        // digest will still surface the task the next morning.
+        await supabase
+            .from('commitments')
+            .update({ overdue_notified_at: now.toISOString() })
+            .in('id', newlyOverdue.map(c => c.id));
+
+        for (const commitment of newlyOverdue) {
+            const meetingTitle = commitment.meetings?.title || 'Your meeting';
+
+            // ── 1. Assignee alert ─────────────────────────────────────────────
+            // Skip if no assigned_to (unassigned tasks have no one to email).
+            if (commitment.assigned_to) {
+                try {
+                    const { data: { user: assignee } } = await supabase.auth.admin.getUserById(commitment.assigned_to);
+                    if (assignee?.email) {
+                        const assigneeName = assignee.user_metadata?.first_name
+                            || assignee.user_metadata?.full_name?.split(' ')[0]
+                            || assignee.email.split('@')[0];
+
+                        await transporter.sendMail({
+                            from: `MeetingDebt <${process.env.SENDGRID_FROM_EMAIL}>`,
+                            to: assignee.email,
+                            subject: `Overdue: ${commitment.task}`,
+                            html: overdueAssigneeEmail(commitment, meetingTitle, assigneeName),
+                        });
+                        console.log(`  → Assignee notified: ${assignee.email} — "${commitment.task}"`);
+                    }
+                } catch (err) {
+                    console.error(`  ✗ Assignee alert failed (commitment ${commitment.id}):`, err.message);
+                }
+            }
+
+            // ── 2. Manager alert ──────────────────────────────────────────────
+            // Only for workspace commitments (workspace_id is set).
+            // Skip if the manager IS the assignee to avoid double-emailing.
+            if (commitment.workspace_id) {
+                try {
+                    // maybeSingle: gracefully returns null if no manager row exists
+                    const { data: managerRow } = await supabase
+                        .from('workspace_members')
+                        .select('user_id, email, name')
+                        .eq('workspace_id', commitment.workspace_id)
+                        .eq('role', 'manager')
+                        .maybeSingle();
+
+                    if (managerRow?.email && managerRow.user_id !== commitment.assigned_to) {
+                        await transporter.sendMail({
+                            from: `MeetingDebt <${process.env.SENDGRID_FROM_EMAIL}>`,
+                            to: managerRow.email,
+                            subject: `Team task overdue: ${commitment.task}`,
+                            html: overdueManagerEmail(commitment, meetingTitle, managerRow.name),
+                        });
+                        console.log(`  → Manager notified: ${managerRow.email} — "${commitment.task}"`);
+                    }
+                } catch (err) {
+                    console.error(`  ✗ Manager alert failed (commitment ${commitment.id}):`, err.message);
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Overdue alert job error:', err.message);
+    }
+}
+
+// Runs every hour — tasks are alerted within ~1h of crossing their deadline
+cron.schedule('0 * * * *', sendOverdueAlerts, {
+    timezone: 'America/New_York'
+});
+
+// Manual trigger for testing — authenticated only
+app.get('/trigger-overdue-check', requireAuth, async (req, res) => {
+    await sendOverdueAlerts();
+    return res.json({ success: true, message: 'Overdue check triggered' });
 });
 
 
