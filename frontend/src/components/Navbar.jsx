@@ -414,12 +414,11 @@ function Sidebar({ role, isSolo, user, overdueCount }) {
             transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
             style={{
                 position: 'fixed', left: 0, top: 52, bottom: 0,
-                background: 'var(--bg-card)',
+                background: 'var(--bg-sidebar)',
+                borderRight: '1px solid var(--border)',
                 zIndex: 200,
                 overflow: 'hidden',
                 display: 'flex', flexDirection: 'column',
-                boxShadow: expanded ? '4px 0 24px rgba(0,0,0,0.07)' : 'none',
-                transition: 'box-shadow 0.22s',
             }}
         >
             {/* Primary navigation */}
