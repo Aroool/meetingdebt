@@ -88,6 +88,10 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExt
                 transcript,
                 meetingTitle: title || 'Untitled Meeting',
                 workspaceId,
+                // Send the user's LOCAL calendar date so the AI resolves relative
+                // deadlines ("tomorrow", "end of week") correctly regardless of
+                // what UTC time it is on the server.
+                localDate: new Date().toLocaleDateString('en-CA'), // → YYYY-MM-DD
             });
 
             clearInterval(interval);

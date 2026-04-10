@@ -285,7 +285,7 @@ app.post('/extract-preview', aiLimiter, requireAuth, async (req, res) => {
                 content: `You are analyzing a meeting transcript.
 Extract all action items, decisions, and blockers.
 For each item identify the real name of the person responsible.
-Today's date is ${new Date().toISOString().split('T')[0]}.
+Today's date is ${req.body.localDate || new Date().toISOString().split('T')[0]}.
 Convert all relative deadlines like "tomorrow", "Wednesday", "end of week", "Friday" into real ISO dates (YYYY-MM-DD) based on today's date.
 If no deadline is mentioned, use null.
 Return ONLY valid JSON, nothing else:
