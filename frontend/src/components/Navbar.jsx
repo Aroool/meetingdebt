@@ -93,12 +93,12 @@ function TopBar({ dark, onToggleDark, user, workspaceName, role, isSolo,
                 height: '100%',
             }}>
                 <div style={{
-                    width: 8, height: 8, borderRadius: '50%',
+                    width: 10, height: 10, borderRadius: '50%',
                     background: 'var(--accent)', flexShrink: 0,
                 }} />
                 <span style={{
-                    fontSize: 15, fontWeight: 700, color: 'var(--text-primary)',
-                    letterSpacing: '-0.02em',
+                    fontSize: 17, fontWeight: 700, color: 'var(--text-primary)',
+                    letterSpacing: '-0.03em',
                 }}>
                     Meeting<span style={{ color: 'var(--accent)' }}>Debt</span>
                 </span>
@@ -264,27 +264,37 @@ function TopBar({ dark, onToggleDark, user, workspaceName, role, isSolo,
     );
 }
 
-// ─── Rail Item (icon-only nav link) ──────────────────────────────────────────
+// ─── Rail Item (collapsible nav link) ────────────────────────────────────────
 
-function RailItem({ item, location }) {
+function RailItem({ item, location, expanded }) {
     const isActive = location.pathname === item.to;
     const Icon = item.icon;
+    const [hovered, setHovered] = useState(false);
 
     return (
         <Link
             to={item.to}
-            title={item.label}
+            title={expanded ? undefined : item.label}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
             style={{
                 position: 'relative',
-                width: 34, height: 34, flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: 9,
-                textDecoration: 'none',
-                color: isActive ? 'var(--accent-text)' : item.accent ? 'var(--accent)' : 'var(--text-muted)',
-                margin: '2px 0',
-                transition: 'color 0.15s',
+                display: 'flex', alignItems: 'center',
+                height: 36, borderRadius: 9, flexShrink: 0,
+                textDecoration: 'none', overflow: 'hidden',
+                margin: '1px 0',
+                color: isActive
+                    ? 'var(--accent-text)'
+                    : item.accent
+                    ? 'var(--accent)'
+                    : hovered
+                    ? 'var(--text-primary)'
+                    : 'var(--text-muted)',
+                background: !isActive && hovered ? 'rgba(128,128,128,0.08)' : 'transparent',
+                transition: 'color 0.15s, background 0.12s',
             }}
         >
+            {/* Animated active bg — slides between items via layoutId */}
             {isActive && (
                 <motion.div
                     layoutId="rail-active-bg"
@@ -292,39 +302,98 @@ function RailItem({ item, location }) {
                     transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
                 />
             )}
-            <div style={{ position: 'relative', zIndex: 1, display: 'flex' }}>
+
+            {/* Icon — always visible, fixed width so it stays aligned at both widths */}
+            <div style={{
+                width: 36, height: 36, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                position: 'relative', zIndex: 1,
+            }}>
                 <Icon size={17} />
             </div>
-            {item.badge > 0 && (
+
+            {/* Label — fades + slides in when expanded */}
+            <motion.span
+                animate={{ opacity: expanded ? 1 : 0, x: expanded ? 0 : -6 }}
+                transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                style={{
+                    fontSize: 13, fontWeight: isActive ? 600 : 500,
+                    whiteSpace: 'nowrap', flex: 1,
+                    position: 'relative', zIndex: 1,
+                    pointerEvents: 'none',
+                }}
+            >
+                {item.label}
+            </motion.span>
+
+            {/* Badge — dot when collapsed, pill count when expanded */}
+            {item.badge > 0 && !expanded && (
                 <span style={{
-                    position: 'absolute', top: 5, right: 5,
+                    position: 'absolute', top: 7, right: 7,
                     width: 5, height: 5, borderRadius: '50%',
                     background: 'var(--red)', zIndex: 2,
                 }} />
+            )}
+            {item.badge > 0 && (
+                <motion.div
+                    animate={{ opacity: expanded ? 1 : 0 }}
+                    transition={{ duration: 0.15 }}
+                    style={{ marginRight: 10, position: 'relative', zIndex: 1, flexShrink: 0 }}
+                >
+                    <span style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8,
+                        background: 'var(--red)', color: '#fff',
+                        fontSize: 9, fontWeight: 700,
+                    }}>{item.badge}</span>
+                </motion.div>
             )}
         </Link>
     );
 }
 
-// ─── Rail Button (icon-only action) ──────────────────────────────────────────
+// ─── Rail Button (collapsible action) ────────────────────────────────────────
 
-function RailBtn({ icon, isActive, onClick, title }) {
+function RailBtn({ icon, label, isActive, onClick, title, expanded }) {
+    const [hovered, setHovered] = useState(false);
+
     return (
         <div
             onClick={onClick}
-            title={title}
+            title={expanded ? undefined : title}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
             style={{
-                width: 34, height: 34, flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: 9,
-                cursor: 'pointer',
-                color: isActive ? 'var(--accent-text)' : 'var(--text-muted)',
-                background: isActive ? 'var(--accent-light)' : 'transparent',
-                transition: 'color 0.15s, background 0.15s',
-                margin: '2px 0',
+                display: 'flex', alignItems: 'center',
+                height: 36, borderRadius: 9, flexShrink: 0,
+                cursor: 'pointer', overflow: 'hidden',
+                margin: '1px 0',
+                color: isActive ? 'var(--accent-text)' : hovered ? 'var(--text-primary)' : 'var(--text-muted)',
+                background: isActive
+                    ? 'var(--accent-light)'
+                    : hovered
+                    ? 'rgba(128,128,128,0.08)'
+                    : 'transparent',
+                transition: 'color 0.15s, background 0.12s',
             }}
         >
-            {icon}
+            <div style={{
+                width: 36, height: 36, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+                {icon}
+            </div>
+            <motion.span
+                animate={{ opacity: expanded ? 1 : 0, x: expanded ? 0 : -6 }}
+                transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                style={{
+                    fontSize: 13, fontWeight: isActive ? 600 : 500,
+                    whiteSpace: 'nowrap', flex: 1,
+                    pointerEvents: 'none',
+                }}
+            >
+                {label}
+            </motion.span>
         </div>
     );
 }
@@ -332,6 +401,7 @@ function RailBtn({ icon, isActive, onClick, title }) {
 // ─── Icon Rail ────────────────────────────────────────────────────────────────
 
 function Rail({ role, isSolo, user, overdueCount }) {
+    const [expanded, setExpanded] = useState(false);
     const location = useLocation();
     const isDashboard = location.pathname === '/dashboard';
 
@@ -381,33 +451,37 @@ function Rail({ role, isSolo, user, overdueCount }) {
 
     const divider = (
         <div style={{
-            width: 18, height: 1,
+            height: 1, width: '100%', flexShrink: 0,
             background: 'var(--text-muted)',
-            opacity: 0.2,
-            margin: '6px 0',
-            flexShrink: 0,
+            opacity: 0.15,
+            margin: '5px 0',
         }} />
     );
 
     return (
-        <div style={{
-            position: 'fixed', left: 0, top: 52, bottom: 0,
-            width: 52,
-            background: 'var(--bg)',
-            zIndex: 200,
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center',
-            paddingTop: 10,
-            paddingBottom: 12,
-        }}>
+        <motion.div
+            onMouseEnter={() => setExpanded(true)}
+            onMouseLeave={() => setExpanded(false)}
+            animate={{ width: expanded ? 216 : 52 }}
+            initial={false}
+            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+            style={{
+                position: 'fixed', left: 0, top: 52, bottom: 0,
+                background: 'var(--bg)',
+                zIndex: 200,
+                overflow: 'hidden',
+                display: 'flex', flexDirection: 'column',
+                padding: '10px 8px 12px',
+            }}
+        >
             {primaryNav.map(item => (
-                <RailItem key={item.to} item={item} location={location} />
+                <RailItem key={item.to} item={item} location={location} expanded={expanded} />
             ))}
 
             {secondaryNav.length > 0 && divider}
 
             {secondaryNav.map(item => (
-                <RailItem key={item.to + item.label} item={item} location={location} />
+                <RailItem key={item.to + item.label} item={item} location={location} expanded={expanded} />
             ))}
 
             {isDashboard && (
@@ -415,30 +489,38 @@ function Rail({ role, isSolo, user, overdueCount }) {
                     {divider}
                     <RailBtn
                         icon={<LayoutGridIcon size={16} />}
+                        label="Command Center"
                         isActive={dashLayout === 'A'}
                         onClick={() => switchLayout('A')}
                         title="Command Center"
+                        expanded={expanded}
                     />
                     <RailBtn
                         icon={<LayoutColumnsIcon size={16} />}
+                        label="Kanban Board"
                         isActive={dashLayout === 'B'}
                         onClick={() => switchLayout('B')}
                         title="Kanban Board"
+                        expanded={expanded}
                     />
                     {dashLayout === 'A' && (
                         <>
                             {divider}
                             <RailBtn
                                 icon={<GroupedIcon size={16} />}
+                                label="Grouped view"
                                 isActive={dashView === 'grouped'}
                                 onClick={() => switchView('grouped')}
                                 title="Grouped view"
+                                expanded={expanded}
                             />
                             <RailBtn
                                 icon={<FlatListIcon size={16} />}
+                                label="Flat list"
                                 isActive={dashView === 'flat'}
                                 onClick={() => switchView('flat')}
                                 title="Flat list"
+                                expanded={expanded}
                             />
                         </>
                     )}
@@ -447,21 +529,29 @@ function Rail({ role, isSolo, user, overdueCount }) {
 
             <div style={{ flex: 1 }} />
 
-            {/* User avatar at bottom — acts as subtle identity anchor */}
-            <div
-                title={name}
-                style={{
+            {/* User identity anchor at bottom */}
+            <div style={{ display: 'flex', alignItems: 'center', height: 36, overflow: 'hidden', flexShrink: 0 }}>
+                <div style={{
                     width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
                     background: 'var(--accent-light)', color: 'var(--accent-text)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 10, fontWeight: 700, overflow: 'hidden',
-                }}
-            >
-                {avatarUrl
-                    ? <img src={avatarUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : initial}
+                    margin: '0 5px',
+                }}>
+                    {avatarUrl
+                        ? <img src={avatarUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : initial}
+                </div>
+                <motion.div
+                    animate={{ opacity: expanded ? 1 : 0, x: expanded ? 0 : -6 }}
+                    transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                    style={{ minWidth: 0, pointerEvents: 'none' }}
+                >
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{isSolo ? 'solo' : role}</div>
+                </motion.div>
             </div>
-        </div>
+        </motion.div>
     );
 }
 
