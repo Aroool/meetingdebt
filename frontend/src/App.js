@@ -23,7 +23,7 @@ import Feedback from './pages/Feedback';
 // TopBar is 56px fixed — content always starts at paddingTop: 56.
 function ProtectedLayout({ children }) {
   return (
-    <div style={{ marginLeft: 52, paddingTop: 56, minHeight: '100vh' }}>
+    <div style={{ marginLeft: 52, paddingTop: 52, minHeight: '100vh' }}>
       {children}
     </div>
   );

@@ -450,7 +450,7 @@ export default function Feedback() {
     }
 
     return (
-        <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--bg)' }}>
+        <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)' }}>
             <style>{`
         @media (max-width: 960px) {
           .feedback-top-grid {

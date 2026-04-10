@@ -119,7 +119,7 @@ export default function MyTasks() {
     };
 
     return (
-        <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--bg)', padding: '24px 32px' }}>
+        <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', padding: '24px 32px' }}>
 
             {/* Header */}
             <div ref={headerRef} style={{ opacity: 0, marginBottom: 24, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>

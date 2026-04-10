@@ -415,7 +415,6 @@ function Sidebar({ role, isSolo, user, overdueCount }) {
             style={{
                 position: 'fixed', left: 0, top: 52, bottom: 0,
                 background: 'var(--bg-card)',
-                borderRight: '1px solid var(--border)',
                 zIndex: 200,
                 overflow: 'hidden',
                 display: 'flex', flexDirection: 'column',

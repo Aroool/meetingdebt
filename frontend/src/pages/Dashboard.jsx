@@ -75,6 +75,15 @@ export default function Dashboard() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
+    // Listen for layout changes dispatched from sidebar
+    useEffect(() => {
+        function handleLayoutChange() {
+            setLayout(localStorage.getItem('dashboardLayout') || 'A');
+        }
+        window.addEventListener('layoutChanged', handleLayoutChange);
+        return () => window.removeEventListener('layoutChanged', handleLayoutChange);
+    }, []);
+
     useEffect(() => {
         // Check localStorage first (set by extension via scripting)
         const raw = localStorage.getItem('pendingExtraction');
@@ -128,7 +137,7 @@ export default function Dashboard() {
     const LayoutComponent = layout === 'B' ? LayoutB : LayoutA;
 
     return (
-        <div style={{ height: 'calc(100vh - 56px)', background: 'var(--bg)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ height: 'calc(100vh - 52px)', background: 'var(--bg)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <div style={{ flex: 1, overflow: 'hidden' }}>
                 <motion.div
                     key={layout}

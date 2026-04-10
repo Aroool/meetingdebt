@@ -361,11 +361,10 @@ function BoardTab({ commitments, members, onUpdate, currentUserId }) {
 }
 
 // ── MAIN ──
-export default function LayoutB({ data, onUpdate, onOpenPicker }) {
-    const { commitments, members, loading, userName, workspaceName, total } = data;
+export default function LayoutB({ data, onUpdate }) {
+    const { commitments, members, loading, total } = data;
     const [tab, setTab] = useState('focus');
     const [currentUserId, setCurrentUserId] = useState('');
-    const headerRef = useRef(null);
     const contentRef = useRef(null);
 
     useEffect(() => {
@@ -377,42 +376,13 @@ export default function LayoutB({ data, onUpdate, onOpenPicker }) {
     useEffect(() => {
         if (loading) return;
         const ctx = gsap.context(() => {
-            gsap.fromTo(headerRef.current, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' });
-            gsap.fromTo(contentRef.current, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'power2.out', delay: 0.15 });
+            gsap.fromTo(contentRef.current, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'power2.out' });
         });
         return () => ctx.revert();
     }, [loading]);
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg)', overflow: 'hidden' }}>
-
-            {/* Header */}
-            <div ref={headerRef} style={{ padding: '12px 24px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', flexShrink: 0, opacity: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--accent-light)', border: '1px solid var(--border)', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900 }}>
-                        {userName?.charAt(0)?.toUpperCase() || 'A'}
-                    </div>
-                    <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: -0.3 }}>
-                            {userName ? `${userName}'s workspace` : 'Your workspace'}
-                            <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8 }}>· {workspaceName || 'Personal'}</span>
-                        </div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                            {total > 0 && <span style={{ marginLeft: 8 }}>· {total} commitments</span>}
-                        </div>
-                    </div>
-                </div>
-                <button onClick={onOpenPicker}
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)50'}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
-                    ⊞
-                    <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 20, background: 'var(--accent-light)', color: 'var(--accent-text)' }}>
-                        Focus+Board
-                    </span>
-                </button>
-            </div>
 
             {/* Tabs */}
             <div style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', padding: '0 24px', display: 'flex', alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
