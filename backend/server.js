@@ -1363,14 +1363,15 @@ app.get('/trigger-nudge', requireAuth, async (req, res) => {
 //   ALTER TABLE commitments
 //     ADD COLUMN IF NOT EXISTS overdue_notified_at TIMESTAMPTZ DEFAULT NULL;
 async function sendOverdueAlerts() {
-    try {
-        const now = new Date();
-        console.log('Running overdue alert check...');
+    const log = [];          // collect diagnostics so trigger endpoint can return them
+    const now = new Date();
 
-        // Fetch commitments that:
-        //  • are not completed or blocked (status already resolved)
-        //  • have a deadline that has now passed
-        //  • have never had an overdue alert sent (overdue_notified_at IS NULL)
+    try {
+        log.push(`Run started at ${now.toISOString()}`);
+        log.push(`SENDGRID_FROM_EMAIL = ${process.env.SENDGRID_FROM_EMAIL || '⚠ NOT SET'}`);
+        log.push(`SENDGRID_API_KEY = ${process.env.SENDGRID_API_KEY ? '✓ set (' + process.env.SENDGRID_API_KEY.slice(0, 8) + '…)' : '⚠ NOT SET'}`);
+        log.push(`SUPABASE_KEY type = ${process.env.SUPABASE_KEY?.includes('service_role') ? 'service_role ✓' : (process.env.SUPABASE_KEY ? 'anon key ⚠ (admin.getUserById needs service_role!)' : 'NOT SET ❌')}`);
+
         const { data: newlyOverdue, error } = await supabase
             .from('commitments')
             .select('*, meetings(title)')
@@ -1380,37 +1381,35 @@ async function sendOverdueAlerts() {
             .lt('deadline', now.toISOString())
             .is('overdue_notified_at', null);
 
-        if (error) throw error;
-
-        if (!newlyOverdue?.length) {
-            console.log('Overdue check: nothing newly overdue');
-            return;
+        if (error) {
+            log.push(`❌ Supabase query error: ${error.message}`);
+            return log;
         }
 
-        console.log(`Overdue check: ${newlyOverdue.length} task(s) newly overdue`);
+        log.push(`Found ${newlyOverdue?.length || 0} newly overdue task(s)`);
+        if (!newlyOverdue?.length) return log;
 
-        // Stamp ALL matched rows as notified before sending any emails.
-        // This prevents duplicate alerts if the job is triggered concurrently
-        // (e.g. cron fires while /trigger-overdue-check is also running).
-        // Trade-off: if email delivery fails, we don't retry — but the daily
-        // digest will still surface the task the next morning.
-        await supabase
-            .from('commitments')
-            .update({ overdue_notified_at: now.toISOString() })
-            .in('id', newlyOverdue.map(c => c.id));
-
+        // Process each commitment individually — stamp AFTER email succeeds
         for (const commitment of newlyOverdue) {
+            const taskSnippet = commitment.task?.slice(0, 60);
             const meetingTitle = commitment.meetings?.title || 'Your meeting';
+            let emailSentToAnyone = false;
 
             // ── 1. Assignee alert ─────────────────────────────────────────────
-            // Skip if no assigned_to (unassigned tasks have no one to email).
             if (commitment.assigned_to) {
                 try {
-                    const { data: { user: assignee } } = await supabase.auth.admin.getUserById(commitment.assigned_to);
-                    if (assignee?.email) {
+                    const { data: userData, error: userErr } = await supabase.auth.admin.getUserById(commitment.assigned_to);
+                    if (userErr) {
+                        log.push(`  ❌ [${taskSnippet}] getUserById failed: ${userErr.message}`);
+                    } else if (!userData?.user?.email) {
+                        log.push(`  ⚠ [${taskSnippet}] Assignee ${commitment.assigned_to} has no email`);
+                    } else {
+                        const assignee = userData.user;
                         const assigneeName = assignee.user_metadata?.first_name
                             || assignee.user_metadata?.full_name?.split(' ')[0]
                             || assignee.email.split('@')[0];
+
+                        log.push(`  📧 [${taskSnippet}] Sending to assignee: ${assignee.email}`);
 
                         await transporter.sendMail({
                             from: `MeetingDebt <${process.env.SENDGRID_FROM_EMAIL}>`,
@@ -1418,43 +1417,68 @@ async function sendOverdueAlerts() {
                             subject: `Overdue: ${commitment.task}`,
                             html: overdueAssigneeEmail(commitment, meetingTitle, assigneeName),
                         });
-                        console.log(`  → Assignee notified: ${assignee.email} — "${commitment.task}"`);
+                        log.push(`  ✅ [${taskSnippet}] Assignee email sent to ${assignee.email}`);
+                        emailSentToAnyone = true;
                     }
                 } catch (err) {
-                    console.error(`  ✗ Assignee alert failed (commitment ${commitment.id}):`, err.message);
+                    log.push(`  ❌ [${taskSnippet}] Assignee email FAILED: ${err.message}`);
                 }
+            } else {
+                log.push(`  ⚠ [${taskSnippet}] No assigned_to — skipping assignee email`);
             }
 
             // ── 2. Manager alert ──────────────────────────────────────────────
-            // Only for workspace commitments (workspace_id is set).
-            // Skip if the manager IS the assignee to avoid double-emailing.
             if (commitment.workspace_id) {
                 try {
-                    // maybeSingle: gracefully returns null if no manager row exists
-                    const { data: managerRow } = await supabase
+                    const { data: managerRow, error: mgrErr } = await supabase
                         .from('workspace_members')
                         .select('user_id, email, name')
                         .eq('workspace_id', commitment.workspace_id)
                         .eq('role', 'manager')
                         .maybeSingle();
 
-                    if (managerRow?.email && managerRow.user_id !== commitment.assigned_to) {
+                    if (mgrErr) {
+                        log.push(`  ❌ [${taskSnippet}] Manager lookup failed: ${mgrErr.message}`);
+                    } else if (!managerRow?.email) {
+                        log.push(`  ⚠ [${taskSnippet}] No manager found for workspace ${commitment.workspace_id}`);
+                    } else if (managerRow.user_id === commitment.assigned_to) {
+                        log.push(`  ℹ [${taskSnippet}] Manager IS the assignee — skipping duplicate`);
+                    } else {
+                        log.push(`  📧 [${taskSnippet}] Sending to manager: ${managerRow.email}`);
                         await transporter.sendMail({
                             from: `MeetingDebt <${process.env.SENDGRID_FROM_EMAIL}>`,
                             to: managerRow.email,
                             subject: `Team task overdue: ${commitment.task}`,
                             html: overdueManagerEmail(commitment, meetingTitle, managerRow.name),
                         });
-                        console.log(`  → Manager notified: ${managerRow.email} — "${commitment.task}"`);
+                        log.push(`  ✅ [${taskSnippet}] Manager email sent to ${managerRow.email}`);
+                        emailSentToAnyone = true;
                     }
                 } catch (err) {
-                    console.error(`  ✗ Manager alert failed (commitment ${commitment.id}):`, err.message);
+                    log.push(`  ❌ [${taskSnippet}] Manager email FAILED: ${err.message}`);
                 }
+            }
+
+            // Stamp overdue_notified_at ONLY after at least one email succeeded
+            // (or if there's nobody to email, still stamp so we don't reprocess)
+            if (emailSentToAnyone || (!commitment.assigned_to && !commitment.workspace_id)) {
+                await supabase
+                    .from('commitments')
+                    .update({ overdue_notified_at: now.toISOString() })
+                    .eq('id', commitment.id);
+                log.push(`  🔒 [${taskSnippet}] Stamped overdue_notified_at`);
+            } else {
+                log.push(`  ⏭ [${taskSnippet}] NOT stamped — no email was sent, will retry next run`);
             }
         }
     } catch (err) {
+        log.push(`❌ Fatal error: ${err.message}`);
         console.error('Overdue alert job error:', err.message);
     }
+
+    // Always print to Railway logs too
+    log.forEach(l => console.log(`[overdue] ${l}`));
+    return log;
 }
 
 // Runs every hour — tasks are alerted within ~1h of crossing their deadline
@@ -1462,10 +1486,10 @@ cron.schedule('0 * * * *', sendOverdueAlerts, {
     timezone: 'America/New_York'
 });
 
-// Manual trigger for testing — authenticated only
+// Manual trigger — returns full diagnostics so you can debug from the browser
 app.get('/trigger-overdue-check', requireAuth, async (req, res) => {
-    await sendOverdueAlerts();
-    return res.json({ success: true, message: 'Overdue check triggered' });
+    const log = await sendOverdueAlerts();
+    return res.json({ success: true, log });
 });
 
 
