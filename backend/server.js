@@ -1422,9 +1422,26 @@ app.get('/preferences', requireAuth, async (req, res) => {
 app.post('/preferences', requireAuth, async (req, res) => {
     const { timezone, nudge_hour } = req.body;
     if (!timezone || nudge_hour === undefined) return res.status(400).json({ error: 'timezone and nudge_hour required' });
-    const { error } = await supabase
+
+    // Check if row already exists
+    const { data: existing } = await supabase
         .from('user_preferences')
-        .upsert({ user_id: req.userId, timezone, nudge_hour, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+        .select('user_id')
+        .eq('user_id', req.userId)
+        .maybeSingle();
+
+    let error;
+    if (existing) {
+        ({ error } = await supabase
+            .from('user_preferences')
+            .update({ timezone, nudge_hour, updated_at: new Date().toISOString() })
+            .eq('user_id', req.userId));
+    } else {
+        ({ error } = await supabase
+            .from('user_preferences')
+            .insert({ user_id: req.userId, timezone, nudge_hour }));
+    }
+
     if (error) return res.status(500).json({ error: error.message });
     return res.json({ success: true });
 });
