@@ -1,9 +1,9 @@
 const express = require('express');
 const cors = require('cors');
+const https = require('https');
 require('dotenv').config();
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
-const nodemailer = require('nodemailer');
 const cron = require('node-cron');
 const rateLimit = require('express-rate-limit');
 
@@ -43,6 +43,14 @@ app.use(generalLimiter);
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
+// Service-role client — needed for auth.admin.getUserById()
+// Add SUPABASE_SERVICE_ROLE_KEY to your Railway env vars (Supabase → Settings → API → service_role key)
+const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false }
+    })
+    : null;
+
 async function logActivity(workspaceId, userId, actorName, type, message, meta = {}) {
     try {
         await supabase.from('activity_log').insert({
@@ -80,15 +88,42 @@ async function requireAuth(req, res, next) {
     }
 }
 
-// SendGrid transporter
-const transporter = nodemailer.createTransport({
-    host: 'smtp.sendgrid.net',
-    port: 587,
-    auth: {
-        user: 'apikey',
-        pass: process.env.SENDGRID_API_KEY
-    }
-});
+// SendGrid HTTP API — Railway blocks outbound SMTP (port 587), so we use
+// SendGrid's REST API over HTTPS (port 443) instead of nodemailer SMTP.
+function sendEmail({ to, subject, html }) {
+    return new Promise((resolve, reject) => {
+        const body = JSON.stringify({
+            personalizations: [{ to: [{ email: to }] }],
+            from: { email: process.env.SENDGRID_FROM_EMAIL, name: 'MeetingDebt' },
+            subject,
+            content: [{ type: 'text/html', value: html }],
+        });
+
+        const req = https.request({
+            hostname: 'api.sendgrid.com',
+            port: 443,
+            path: '/v3/mail/send',
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(body),
+            },
+        }, (res) => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+                resolve();
+            } else {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => reject(new Error(`SendGrid ${res.statusCode}: ${data}`)));
+            }
+        });
+
+        req.on('error', reject);
+        req.write(body);
+        req.end();
+    });
+}
 
 // ─── AUTH HELPERS ─────────────────────────────────────────────────────────────
 
@@ -410,12 +445,11 @@ app.post('/save-commitments', requireAuth, async (req, res) => {
 
             // Send assignment email - don't await, run in background
             try {
-                transporter.sendMail({
-                    from: `MeetingDebt <${process.env.SENDGRID_FROM_EMAIL}>`,
+                sendEmail({
                     to: member.email,
                     subject: `New task assigned: ${commitment.task}`,
                     html: assignmentEmail(commitment, meeting, member.name)
-                }).catch(err => console.log('Email failed:', err.message));
+                }).catch(err => console.log('Assignment email failed:', err.message));
             } catch (emailErr) {
                 console.error('Assignment email failed:', emailErr.message);
             }
@@ -634,8 +668,7 @@ app.post('/nudge/:commitmentId', requireAuth, async (req, res) => {
             .eq('id', commitment.meeting_id)
             .single();
 
-        await transporter.sendMail({
-            from: `MeetingDebt <${process.env.SENDGRID_FROM_EMAIL}>`,
+        await sendEmail({
             to: email,
             subject: `Overdue: ${commitment.task}`,
             html: nudgeEmail(commitment, meeting?.title || 'Your meeting')
@@ -790,8 +823,7 @@ app.post('/workspaces/:workspaceId/invite', requireAuth, async (req, res) => {
 
         const inviteUrl = `${process.env.FRONTEND_URL}/invite/${invite.token}`;
 
-        await transporter.sendMail({
-            from: `MeetingDebt <${process.env.SENDGRID_FROM_EMAIL}>`,
+        await sendEmail({
             to: email,
             subject: `You've been invited to join ${workspaceName} on MeetingDebt`,
             html: `
@@ -1324,8 +1356,7 @@ async function sendDailyNudges() {
           </div>
         `;
 
-                await transporter.sendMail({
-                    from: `MeetingDebt <${process.env.SENDGRID_FROM_EMAIL}>`,
+                await sendEmail({
                     to: user.email,
                     subject: `Your tasks for today, ${name} — ${overdue.length > 0 ? `${overdue.length} overdue` : `${dueToday.length} due today`}`,
                     html,
@@ -1397,31 +1428,34 @@ async function sendOverdueAlerts() {
 
             // ── 1. Assignee alert ─────────────────────────────────────────────
             if (commitment.assigned_to) {
-                try {
-                    const { data: userData, error: userErr } = await supabase.auth.admin.getUserById(commitment.assigned_to);
-                    if (userErr) {
-                        log.push(`  ❌ [${taskSnippet}] getUserById failed: ${userErr.message}`);
-                    } else if (!userData?.user?.email) {
-                        log.push(`  ⚠ [${taskSnippet}] Assignee ${commitment.assigned_to} has no email`);
-                    } else {
-                        const assignee = userData.user;
-                        const assigneeName = assignee.user_metadata?.first_name
-                            || assignee.user_metadata?.full_name?.split(' ')[0]
-                            || assignee.email.split('@')[0];
+                if (!supabaseAdmin) {
+                    log.push(`  ⚠ [${taskSnippet}] SUPABASE_SERVICE_ROLE_KEY not set — cannot look up assignee email`);
+                } else {
+                    try {
+                        const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.getUserById(commitment.assigned_to);
+                        if (userErr) {
+                            log.push(`  ❌ [${taskSnippet}] getUserById failed: ${userErr.message}`);
+                        } else if (!userData?.user?.email) {
+                            log.push(`  ⚠ [${taskSnippet}] Assignee ${commitment.assigned_to} has no email`);
+                        } else {
+                            const assignee = userData.user;
+                            const assigneeName = assignee.user_metadata?.first_name
+                                || assignee.user_metadata?.full_name?.split(' ')[0]
+                                || assignee.email.split('@')[0];
 
-                        log.push(`  📧 [${taskSnippet}] Sending to assignee: ${assignee.email}`);
+                            log.push(`  📧 [${taskSnippet}] Sending to assignee: ${assignee.email}`);
 
-                        await transporter.sendMail({
-                            from: `MeetingDebt <${process.env.SENDGRID_FROM_EMAIL}>`,
-                            to: assignee.email,
-                            subject: `Overdue: ${commitment.task}`,
-                            html: overdueAssigneeEmail(commitment, meetingTitle, assigneeName),
-                        });
-                        log.push(`  ✅ [${taskSnippet}] Assignee email sent to ${assignee.email}`);
-                        emailSentToAnyone = true;
+                            await sendEmail({
+                                to: assignee.email,
+                                subject: `Overdue: ${commitment.task}`,
+                                html: overdueAssigneeEmail(commitment, meetingTitle, assigneeName),
+                            });
+                            log.push(`  ✅ [${taskSnippet}] Assignee email sent to ${assignee.email}`);
+                            emailSentToAnyone = true;
+                        }
+                    } catch (err) {
+                        log.push(`  ❌ [${taskSnippet}] Assignee email FAILED: ${err.message}`);
                     }
-                } catch (err) {
-                    log.push(`  ❌ [${taskSnippet}] Assignee email FAILED: ${err.message}`);
                 }
             } else {
                 log.push(`  ⚠ [${taskSnippet}] No assigned_to — skipping assignee email`);
@@ -1445,8 +1479,7 @@ async function sendOverdueAlerts() {
                         log.push(`  ℹ [${taskSnippet}] Manager IS the assignee — skipping duplicate`);
                     } else {
                         log.push(`  📧 [${taskSnippet}] Sending to manager: ${managerRow.email}`);
-                        await transporter.sendMail({
-                            from: `MeetingDebt <${process.env.SENDGRID_FROM_EMAIL}>`,
+                        await sendEmail({
                             to: managerRow.email,
                             subject: `Team task overdue: ${commitment.task}`,
                             html: overdueManagerEmail(commitment, meetingTitle, managerRow.name),
