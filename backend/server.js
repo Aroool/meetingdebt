@@ -226,34 +226,53 @@ function assignmentEmail(commitment, meeting, memberName) {
 }
 
 // ─── OVERDUE ALERT EMAIL TEMPLATES ───────────────────────────────────────────
-// These are distinct from nudgeEmail (manual one-off) and the daily digest.
-// overdueAssigneeEmail  → sent once to the person the task is assigned to
-// overdueManagerEmail   → sent once to the workspace manager (if different person)
+// Both templates accept an ARRAY of commitments so one email covers all overdue
+// tasks for that person in a single digest rather than one email per task.
 
-function overdueAssigneeEmail(commitment, meetingTitle, assigneeName) {
-    const deadlineStr = commitment.deadline
-        ? new Date(commitment.deadline).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-        : 'No deadline set';
+function daysOverdue(deadline) {
+    if (!deadline) return null;
+    const [y, m, d] = deadline.slice(0, 10).split('-').map(Number);
+    const due = new Date(y, m - 1, d);
+    const diff = Math.floor((Date.now() - due.getTime()) / 86400000);
+    return diff > 0 ? diff : null;
+}
+
+function taskRows(commitments) {
+    return commitments.map(c => {
+        const days = daysOverdue(c.deadline);
+        const deadlineStr = c.deadline
+            ? new Date(...c.deadline.slice(0,10).split('-').map((v,i) => i===1?+v-1:+v)).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+            : 'No deadline';
+        const meetingTitle = c.meetings?.title || 'Unknown meeting';
+        return `
+        <div style="background:#fef2f2;border-left:3px solid #ef4444;border-radius:8px;padding:14px 18px;margin-bottom:12px">
+          <div style="font-size:14px;font-weight:600;color:#0f172a;margin-bottom:6px">${c.task}</div>
+          <div style="font-size:12px;color:#64748b">
+            📅 Deadline: <strong style="color:#ef4444">${deadlineStr}</strong>
+            ${days ? `<span style="margin-left:8px;background:#fee2e2;color:#b91c1c;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:600">${days}d overdue</span>` : ''}
+          </div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:3px">From: ${meetingTitle}</div>
+        </div>`;
+    }).join('');
+}
+
+function overdueAssigneeEmail(commitments, assigneeName) {
+    const count = commitments.length;
     return `
     <div style="font-family:-apple-system,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#ffffff">
       <div style="margin-bottom:24px">
         <span style="font-size:16px;font-weight:800;color:#0f172a">Meeting<span style="color:#16a34a">Debt</span></span>
       </div>
-      <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:8px">
-        Your task is overdue${assigneeName ? `, ${assigneeName}` : ''}
+      <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:6px">
+        You have ${count} overdue task${count > 1 ? 's' : ''}${assigneeName ? `, ${assigneeName}` : ''}
       </h2>
       <p style="font-size:14px;color:#64748b;margin-bottom:24px">
-        From: <strong>${meetingTitle}</strong>
+        These tasks missed their deadline and need your attention.
       </p>
-      <div style="background:#fef2f2;border-left:3px solid #ef4444;border-radius:8px;padding:16px 20px;margin-bottom:24px">
-        <div style="font-size:15px;font-weight:600;color:#0f172a;margin-bottom:8px">${commitment.task}</div>
-        <div style="font-size:13px;color:#64748b">
-          Deadline was: <strong style="color:#ef4444">${deadlineStr}</strong>
-        </div>
-      </div>
+      ${taskRows(commitments)}
       <a href="${process.env.FRONTEND_URL}/dashboard"
-         style="display:inline-block;background:#16a34a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">
-        View your tasks →
+         style="display:inline-block;background:#16a34a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;margin-top:8px">
+        Go to my tasks →
       </a>
       <p style="font-size:11px;color:#cbd5e1;border-top:1px solid #f1f5f9;padding-top:16px;margin-top:24px">
         MeetingDebt — making sure meeting commitments actually happen.
@@ -262,32 +281,42 @@ function overdueAssigneeEmail(commitment, meetingTitle, assigneeName) {
   `;
 }
 
-function overdueManagerEmail(commitment, meetingTitle, managerName) {
-    const deadlineStr = commitment.deadline
-        ? new Date(commitment.deadline).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-        : 'No deadline set';
+function overdueManagerEmail(commitments, managerName) {
+    const count = commitments.length;
+    // Add owner name to each row for manager view
+    const rows = commitments.map(c => {
+        const days = daysOverdue(c.deadline);
+        const deadlineStr = c.deadline
+            ? new Date(...c.deadline.slice(0,10).split('-').map((v,i) => i===1?+v-1:+v)).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+            : 'No deadline';
+        const meetingTitle = c.meetings?.title || 'Unknown meeting';
+        return `
+        <div style="background:#fef2f2;border-left:3px solid #ef4444;border-radius:8px;padding:14px 18px;margin-bottom:12px">
+          <div style="font-size:14px;font-weight:600;color:#0f172a;margin-bottom:6px">${c.task}</div>
+          <div style="font-size:12px;color:#64748b">
+            👤 Assigned to: <strong>${c.owner || 'Unassigned'}</strong>
+          </div>
+          <div style="font-size:12px;color:#64748b;margin-top:3px">
+            📅 Deadline: <strong style="color:#ef4444">${deadlineStr}</strong>
+            ${days ? `<span style="margin-left:8px;background:#fee2e2;color:#b91c1c;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:600">${days}d overdue</span>` : ''}
+          </div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:3px">From: ${meetingTitle}</div>
+        </div>`;
+    }).join('');
     return `
     <div style="font-family:-apple-system,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#ffffff">
       <div style="margin-bottom:24px">
         <span style="font-size:16px;font-weight:800;color:#0f172a">Meeting<span style="color:#16a34a">Debt</span></span>
       </div>
-      <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:8px">
-        A team task is overdue${managerName ? `, ${managerName}` : ''}
+      <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:6px">
+        ${count} team task${count > 1 ? 's are' : ' is'} overdue${managerName ? `, ${managerName}` : ''}
       </h2>
       <p style="font-size:14px;color:#64748b;margin-bottom:24px">
-        From: <strong>${meetingTitle}</strong>
+        These tasks need follow-up from your team.
       </p>
-      <div style="background:#fef2f2;border-left:3px solid #ef4444;border-radius:8px;padding:16px 20px;margin-bottom:24px">
-        <div style="font-size:15px;font-weight:600;color:#0f172a;margin-bottom:8px">${commitment.task}</div>
-        <div style="font-size:13px;color:#64748b;margin-top:6px">
-          Assigned to: <strong>${commitment.owner || 'Unknown'}</strong>
-        </div>
-        <div style="font-size:13px;color:#64748b;margin-top:4px">
-          Deadline was: <strong style="color:#ef4444">${deadlineStr}</strong>
-        </div>
-      </div>
+      ${rows}
       <a href="${process.env.FRONTEND_URL}/dashboard"
-         style="display:inline-block;background:#16a34a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">
+         style="display:inline-block;background:#16a34a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;margin-top:8px">
         View team dashboard →
       </a>
       <p style="font-size:11px;color:#cbd5e1;border-top:1px solid #f1f5f9;padding-top:16px;margin-top:24px">
@@ -1420,89 +1449,116 @@ async function sendOverdueAlerts() {
         log.push(`Found ${newlyOverdue?.length || 0} newly overdue task(s)`);
         if (!newlyOverdue?.length) return log;
 
-        // Process each commitment individually — stamp AFTER email succeeds
-        for (const commitment of newlyOverdue) {
-            const taskSnippet = commitment.task?.slice(0, 60);
-            const meetingTitle = commitment.meetings?.title || 'Your meeting';
-            let emailSentToAnyone = false;
+        // ── Group tasks by assignee and by workspace ──────────────────────────
+        // byAssignee: { userId → [commitments] }
+        // byWorkspace: { workspaceId → [commitments] }  (for manager digest)
+        const byAssignee = {};
+        const byWorkspace = {};
 
-            // ── 1. Assignee alert ─────────────────────────────────────────────
-            if (commitment.assigned_to) {
-                if (!supabaseAdmin) {
-                    log.push(`  ⚠ [${taskSnippet}] SUPABASE_SERVICE_ROLE_KEY not set — cannot look up assignee email`);
-                } else {
-                    try {
-                        const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.getUserById(commitment.assigned_to);
-                        if (userErr) {
-                            log.push(`  ❌ [${taskSnippet}] getUserById failed: ${userErr.message}`);
-                        } else if (!userData?.user?.email) {
-                            log.push(`  ⚠ [${taskSnippet}] Assignee ${commitment.assigned_to} has no email`);
-                        } else {
-                            const assignee = userData.user;
-                            const assigneeName = assignee.user_metadata?.first_name
-                                || assignee.user_metadata?.full_name?.split(' ')[0]
-                                || assignee.email.split('@')[0];
-
-                            log.push(`  📧 [${taskSnippet}] Sending to assignee: ${assignee.email}`);
-
-                            await sendEmail({
-                                to: assignee.email,
-                                subject: `Overdue: ${commitment.task}`,
-                                html: overdueAssigneeEmail(commitment, meetingTitle, assigneeName),
-                            });
-                            log.push(`  ✅ [${taskSnippet}] Assignee email sent to ${assignee.email}`);
-                            emailSentToAnyone = true;
-                        }
-                    } catch (err) {
-                        log.push(`  ❌ [${taskSnippet}] Assignee email FAILED: ${err.message}`);
-                    }
-                }
-            } else {
-                log.push(`  ⚠ [${taskSnippet}] No assigned_to — skipping assignee email`);
+        for (const c of newlyOverdue) {
+            if (c.assigned_to) {
+                if (!byAssignee[c.assigned_to]) byAssignee[c.assigned_to] = [];
+                byAssignee[c.assigned_to].push(c);
             }
+            if (c.workspace_id) {
+                if (!byWorkspace[c.workspace_id]) byWorkspace[c.workspace_id] = [];
+                byWorkspace[c.workspace_id].push(c);
+            }
+        }
 
-            // ── 2. Manager alert ──────────────────────────────────────────────
-            if (commitment.workspace_id) {
+        // Track which commitment IDs were successfully notified
+        const notifiedIds = new Set();
+
+        // ── 1. One digest email per assignee ─────────────────────────────────
+        if (!supabaseAdmin) {
+            log.push(`⚠ SUPABASE_SERVICE_ROLE_KEY not set — skipping assignee emails`);
+        } else {
+            for (const [userId, tasks] of Object.entries(byAssignee)) {
                 try {
-                    const { data: managerRow, error: mgrErr } = await supabase
-                        .from('workspace_members')
-                        .select('user_id, email, name')
-                        .eq('workspace_id', commitment.workspace_id)
-                        .eq('role', 'manager')
-                        .maybeSingle();
-
-                    if (mgrErr) {
-                        log.push(`  ❌ [${taskSnippet}] Manager lookup failed: ${mgrErr.message}`);
-                    } else if (!managerRow?.email) {
-                        log.push(`  ⚠ [${taskSnippet}] No manager found for workspace ${commitment.workspace_id}`);
-                    } else if (managerRow.user_id === commitment.assigned_to) {
-                        log.push(`  ℹ [${taskSnippet}] Manager IS the assignee — skipping duplicate`);
-                    } else {
-                        log.push(`  📧 [${taskSnippet}] Sending to manager: ${managerRow.email}`);
-                        await sendEmail({
-                            to: managerRow.email,
-                            subject: `Team task overdue: ${commitment.task}`,
-                            html: overdueManagerEmail(commitment, meetingTitle, managerRow.name),
-                        });
-                        log.push(`  ✅ [${taskSnippet}] Manager email sent to ${managerRow.email}`);
-                        emailSentToAnyone = true;
+                    const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.getUserById(userId);
+                    if (userErr || !userData?.user?.email) {
+                        log.push(`  ❌ Assignee ${userId}: ${userErr?.message || 'no email found'}`);
+                        continue;
                     }
+                    const assignee = userData.user;
+                    const assigneeName = assignee.user_metadata?.first_name
+                        || assignee.user_metadata?.full_name?.split(' ')[0]
+                        || assignee.email.split('@')[0];
+                    const subject = tasks.length === 1
+                        ? `Overdue: ${tasks[0].task}`
+                        : `You have ${tasks.length} overdue tasks`;
+
+                    log.push(`  📧 Assignee ${assignee.email}: ${tasks.length} task(s)`);
+                    await sendEmail({
+                        to: assignee.email,
+                        subject,
+                        html: overdueAssigneeEmail(tasks, assigneeName),
+                    });
+                    log.push(`  ✅ Assignee digest sent to ${assignee.email}`);
+                    tasks.forEach(t => notifiedIds.add(t.id));
                 } catch (err) {
-                    log.push(`  ❌ [${taskSnippet}] Manager email FAILED: ${err.message}`);
+                    log.push(`  ❌ Assignee ${userId} email FAILED: ${err.message}`);
                 }
             }
+        }
 
-            // Stamp overdue_notified_at ONLY after at least one email succeeded
-            // (or if there's nobody to email, still stamp so we don't reprocess)
-            if (emailSentToAnyone || (!commitment.assigned_to && !commitment.workspace_id)) {
-                await supabase
-                    .from('commitments')
-                    .update({ overdue_notified_at: now.toISOString() })
-                    .eq('id', commitment.id);
-                log.push(`  🔒 [${taskSnippet}] Stamped overdue_notified_at`);
-            } else {
-                log.push(`  ⏭ [${taskSnippet}] NOT stamped — no email was sent, will retry next run`);
+        // ── 2. One digest email per workspace manager ─────────────────────────
+        for (const [workspaceId, tasks] of Object.entries(byWorkspace)) {
+            try {
+                const { data: managerRow, error: mgrErr } = await supabase
+                    .from('workspace_members')
+                    .select('user_id, email, name')
+                    .eq('workspace_id', workspaceId)
+                    .eq('role', 'manager')
+                    .maybeSingle();
+
+                if (mgrErr || !managerRow?.email) {
+                    log.push(`  ⚠ Workspace ${workspaceId}: ${mgrErr?.message || 'no manager found'}`);
+                    continue;
+                }
+
+                // Only include tasks NOT assigned to the manager (avoid duplicate)
+                const managerTasks = tasks.filter(t => t.assigned_to !== managerRow.user_id);
+                if (!managerTasks.length) {
+                    log.push(`  ℹ Workspace ${workspaceId}: all overdue tasks belong to manager — skipping`);
+                    // Still stamp these if they were already sent as assignee emails
+                    tasks.forEach(t => notifiedIds.add(t.id));
+                    continue;
+                }
+
+                const subject = managerTasks.length === 1
+                    ? `Team task overdue: ${managerTasks[0].task}`
+                    : `${managerTasks.length} team tasks are overdue`;
+
+                log.push(`  📧 Manager ${managerRow.email}: ${managerTasks.length} task(s)`);
+                await sendEmail({
+                    to: managerRow.email,
+                    subject,
+                    html: overdueManagerEmail(managerTasks, managerRow.name),
+                });
+                log.push(`  ✅ Manager digest sent to ${managerRow.email}`);
+                managerTasks.forEach(t => notifiedIds.add(t.id));
+            } catch (err) {
+                log.push(`  ❌ Manager email for workspace ${workspaceId} FAILED: ${err.message}`);
             }
+        }
+
+        // ── 3. Stamp all successfully notified commitments ────────────────────
+        // Also stamp tasks with no assignee and no workspace (nothing to send)
+        const noRecipient = newlyOverdue.filter(c => !c.assigned_to && !c.workspace_id);
+        noRecipient.forEach(c => notifiedIds.add(c.id));
+
+        if (notifiedIds.size) {
+            await supabase
+                .from('commitments')
+                .update({ overdue_notified_at: now.toISOString() })
+                .in('id', [...notifiedIds]);
+            log.push(`🔒 Stamped overdue_notified_at on ${notifiedIds.size} commitment(s)`);
+        }
+
+        const unstamped = newlyOverdue.filter(c => !notifiedIds.has(c.id));
+        if (unstamped.length) {
+            log.push(`⏭ ${unstamped.length} commitment(s) not stamped — email failed, will retry next run`);
         }
     } catch (err) {
         log.push(`❌ Fatal error: ${err.message}`);
