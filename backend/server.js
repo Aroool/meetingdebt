@@ -1576,7 +1576,7 @@ async function sendOverdueAlerts() {
 }
 
 // Runs every hour — tasks are alerted within ~1h of crossing their deadline
-cron.schedule('0 * * * *', sendOverdueAlerts, {
+cron.schedule('0 9 * * *', sendOverdueAlerts, {
     timezone: 'America/New_York'
 });
 
