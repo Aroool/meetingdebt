@@ -14,6 +14,9 @@ export default function Profile() {
     const [deleteConfirm, setDeleteConfirm] = useState('');
     const [deleting, setDeleting] = useState(false);
     const [passwordSent, setPasswordSent] = useState(false);
+    const [prefs, setPrefs] = useState({ timezone: 'America/New_York', nudge_hour: 9 });
+    const [prefsSaving, setPrefsSaving] = useState(false);
+    const [prefsSaved, setPrefsSaved] = useState(false);
     const [form, setForm] = useState({
         full_name: '', first_name: '', last_name: '',
         nickname: '', bio: '', avatar_url: '',
@@ -43,6 +46,10 @@ export default function Profile() {
             try {
                 const { data } = await api.get(`/workspaces?userId=${u.id}`);
                 setWorkspaces(data);
+            } catch (err) { console.error(err); }
+            try {
+                const { data } = await api.get('/preferences');
+                setPrefs(data);
             } catch (err) { console.error(err); }
         });
     }, [navigate]);
@@ -113,6 +120,19 @@ export default function Profile() {
     async function sendPasswordReset() {
         await supabase.auth.resetPasswordForEmail(user.email);
         setPasswordSent(true);
+    }
+
+    async function savePrefs() {
+        setPrefsSaving(true);
+        try {
+            await api.post('/preferences', prefs);
+            setPrefsSaved(true);
+            setTimeout(() => setPrefsSaved(false), 3000);
+        } catch (err) {
+            alert('Failed to save preferences: ' + err.message);
+        } finally {
+            setPrefsSaving(false);
+        }
     }
 
     async function deleteAccount() {
@@ -387,6 +407,91 @@ export default function Profile() {
             {/* SETTINGS TAB */}
             {tab === 'settings' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+
+                    {/* Notification preferences */}
+                    <div style={{
+                        background: 'var(--bg-card)', border: '1px solid var(--border)',
+                        borderRadius: 16, padding: 24, marginBottom: 16,
+                    }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+                            🔔 Notification preferences
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>
+                            Choose when you receive daily task digests and overdue alerts.
+                        </div>
+
+                        <div style={{ marginBottom: 16 }}>
+                            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                                Your timezone
+                            </label>
+                            <select
+                                className="field-input"
+                                value={prefs.timezone}
+                                onChange={e => setPrefs(p => ({ ...p, timezone: e.target.value }))}
+                                style={{ marginBottom: 0 }}
+                            >
+                                {[
+                                    ['America/New_York',  'Eastern Time (EST/EDT) — New York, Boston'],
+                                    ['America/Chicago',   'Central Time (CST/CDT) — Chicago, Dallas'],
+                                    ['America/Denver',    'Mountain Time (MST/MDT) — Denver'],
+                                    ['America/Los_Angeles','Pacific Time (PST/PDT) — Los Angeles'],
+                                    ['Pacific/Honolulu',  'Hawaii Time — Honolulu'],
+                                    ['America/Sao_Paulo', 'Brazil Time — São Paulo'],
+                                    ['Europe/London',     'GMT/BST — London'],
+                                    ['Europe/Paris',      'Central European Time — Paris, Berlin'],
+                                    ['Europe/Moscow',     'Moscow Time — Moscow'],
+                                    ['Asia/Dubai',        'Gulf Standard Time — Dubai'],
+                                    ['Asia/Kolkata',      'India Standard Time (IST) — Mumbai, Delhi'],
+                                    ['Asia/Dhaka',        'Bangladesh Time — Dhaka'],
+                                    ['Asia/Bangkok',      'Indochina Time — Bangkok'],
+                                    ['Asia/Singapore',    'Singapore Time — Singapore'],
+                                    ['Asia/Tokyo',        'Japan Standard Time — Tokyo'],
+                                    ['Asia/Shanghai',     'China Standard Time — Shanghai'],
+                                    ['Australia/Sydney',  'Australian Eastern Time — Sydney'],
+                                    ['Pacific/Auckland',  'New Zealand Time — Auckland'],
+                                ].map(([val, label]) => (
+                                    <option key={val} value={val}>{label}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div style={{ marginBottom: 20 }}>
+                            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                                Daily email time
+                            </label>
+                            <select
+                                className="field-input"
+                                value={prefs.nudge_hour}
+                                onChange={e => setPrefs(p => ({ ...p, nudge_hour: parseInt(e.target.value) }))}
+                                style={{ marginBottom: 0, maxWidth: 200 }}
+                            >
+                                {Array.from({ length: 17 }, (_, i) => i + 6).map(h => {
+                                    const label = h < 12 ? `${h}:00 AM` : h === 12 ? '12:00 PM' : `${h - 12}:00 PM`;
+                                    return <option key={h} value={h}>{label}</option>;
+                                })}
+                            </select>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <button
+                                onClick={savePrefs}
+                                disabled={prefsSaving}
+                                className="btn-primary"
+                                style={{ padding: '10px 24px', fontSize: 13 }}
+                            >
+                                {prefsSaving ? 'Saving...' : 'Save preferences'}
+                            </button>
+                            {prefsSaved && (
+                                <motion.span
+                                    initial={{ opacity: 0, x: -8 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    style={{ fontSize: 13, color: '#16a34a', fontWeight: 600 }}
+                                >
+                                    ✓ Saved!
+                                </motion.span>
+                            )}
+                        </div>
+                    </div>
 
                     {/* Password reset */}
                     <div style={{

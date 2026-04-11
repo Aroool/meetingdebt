@@ -1234,13 +1234,42 @@ app.get('/feedback', requireAuth, async (req, res) => {
     }
 });
 
+// ─── USER PREFERENCE HELPERS ──────────────────────────────────────────────────
+// Reads timezone + nudge_hour from user_preferences table.
+// Falls back to 9am EST if no row exists.
+async function getUserPrefs(userId) {
+    const { data } = await supabase
+        .from('user_preferences')
+        .select('timezone, nudge_hour')
+        .eq('user_id', userId)
+        .maybeSingle();
+    return data || { timezone: 'America/New_York', nudge_hour: 9 };
+}
+
+// Returns the current hour (0-23) in the given IANA timezone
+function currentHourInTz(timezone) {
+    try {
+        return parseInt(new Date().toLocaleString('en-US', {
+            timeZone: timezone,
+            hour: 'numeric',
+            hour12: false,
+        }), 10);
+    } catch {
+        return new Date().getHours(); // fallback to server hour
+    }
+}
+
+// Parse a YYYY-MM-DD deadline string into a local Date (avoids UTC off-by-one)
+function parseDeadline(str) {
+    if (!str) return null;
+    const [y, m, d] = str.slice(0, 10).split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+
 // ── DAILY NUDGE EMAIL ──
 async function sendDailyNudges() {
     try {
         console.log('Running daily nudge job...');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const todayStr = today.toISOString().split('T')[0];
 
         // Get all non-completed, non-blocked commitments with an assignee
         const { data: commitments, error } = await supabase
@@ -1262,45 +1291,45 @@ async function sendDailyNudges() {
 
         for (const [userId, tasks] of Object.entries(byUser)) {
             try {
-                // Get user email
-                const { data: { user } } = await supabase.auth.admin.getUserById(userId);
-                if (!user?.email) continue;
+                // Check user's preferred nudge hour in their timezone
+                const prefs = await getUserPrefs(userId);
+                if (currentHourInTz(prefs.timezone) !== prefs.nudge_hour) continue;
+
+                // "today" in the user's own timezone
+                const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: prefs.timezone });
+                const now = new Date();
+
+                // Get user email via admin client
+                if (!supabaseAdmin) { console.error('supabaseAdmin not available'); continue; }
+                const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.getUserById(userId);
+                if (userErr || !userData?.user?.email) continue;
+                const user = userData.user;
 
                 const name = user.user_metadata?.first_name
                     || user.user_metadata?.full_name?.split(' ')[0]
                     || user.email.split('@')[0];
 
-                // Split into overdue and due today
+                // Split into overdue / due today / upcoming using parseDeadline (no UTC bug)
                 const overdue = tasks.filter(c => {
-                    if (!c.deadline) return false;
-                    const d = new Date(c.deadline);
-                    return !isNaN(d) && d < new Date();
+                    const d = parseDeadline(c.deadline);
+                    return d && d < now && c.deadline.slice(0, 10) < todayStr;
                 });
-
-                const dueToday = tasks.filter(c => {
-                    if (!c.deadline) return false;
-                    const d = new Date(c.deadline);
-                    if (isNaN(d)) return false;
-                    return d.toISOString().split('T')[0] === todayStr && d >= new Date();
-                });
-
+                const dueToday = tasks.filter(c => c.deadline?.slice(0, 10) === todayStr);
                 const upcoming = tasks.filter(c => {
-                    if (!c.deadline) return false;
-                    const d = new Date(c.deadline);
-                    if (isNaN(d)) return false;
-                    return d > new Date() && d.toISOString().split('T')[0] !== todayStr;
+                    const dl = c.deadline?.slice(0, 10);
+                    return dl && dl > todayStr;
                 });
 
-                // Skip if nothing to report
                 if (!overdue.length && !dueToday.length && !upcoming.length) continue;
 
-                const taskRow = (t, urgent = false) => `
+                const taskRow = (t, urgent = false) => {
+                    const dl = t.deadline ? parseDeadline(t.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+                    return `
           <tr>
             <td style="padding:10px 16px;border-bottom:1px solid #f1f5f9">
               <div style="font-size:13px;font-weight:500;color:${urgent ? '#ef4444' : '#0f172a'}">${t.task}</div>
               <div style="font-size:11px;color:#94a3b8;margin-top:3px">
-                ${t.meetings?.title || t.meeting_id ? (t.meetings?.title || 'Meeting') : 'Personal task'}
-                ${t.deadline && !isNaN(new Date(t.deadline)) ? ` · ${new Date(t.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+                ${t.meetings?.title || 'Personal task'}${dl ? ` · ${dl}` : ''}
               </div>
             </td>
             <td style="padding:10px 16px;border-bottom:1px solid #f1f5f9;text-align:right;white-space:nowrap">
@@ -1308,24 +1337,27 @@ async function sendDailyNudges() {
                 ${urgent ? 'Overdue' : 'Due today'}
               </span>
             </td>
-          </tr>
-        `;
+          </tr>`;
+                };
 
-                const upcomingRow = (t) => `
+                const upcomingRow = (t) => {
+                    const dl = t.deadline ? parseDeadline(t.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+                    return `
           <tr>
             <td style="padding:10px 16px;border-bottom:1px solid #f1f5f9">
               <div style="font-size:13px;font-weight:500;color:#0f172a">${t.task}</div>
-              <div style="font-size:11px;color:#94a3b8;margin-top:3px">
-                ${t.meetings?.title || 'Personal task'}
-                
-                
-              </div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:3px">${t.meetings?.title || 'Personal task'}${dl ? ` · ${dl}` : ''}</div>
             </td>
             <td style="padding:10px 16px;border-bottom:1px solid #f1f5f9;text-align:right">
               <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#f0fdf4;color:#16a34a">Upcoming</span>
             </td>
-          </tr>
-        `;
+          </tr>`;
+                };
+
+                const dateLabel = now.toLocaleDateString('en-US', {
+                    timeZone: prefs.timezone,
+                    weekday: 'long', month: 'long', day: 'numeric',
+                });
 
                 const html = `
           <div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px">
@@ -1333,65 +1365,36 @@ async function sendDailyNudges() {
               <div style="width:8px;height:8px;border-radius:50%;background:#16a34a"></div>
               <span style="font-size:16px;font-weight:800;color:#0f172a">Meeting<span style="color:#16a34a">Debt</span></span>
             </div>
-
-            <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:6px">
-              Your tasks for today, ${name}
-            </h2>
-            <p style="font-size:13px;color:#94a3b8;margin-bottom:28px">
-              ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </p>
-
+            <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:6px">Your tasks for today, ${name}</h2>
+            <p style="font-size:13px;color:#94a3b8;margin-bottom:28px">${dateLabel}</p>
             ${overdue.length > 0 ? `
               <div style="margin-bottom:20px">
-                <div style="font-size:11px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">
-                  Overdue — ${overdue.length} task${overdue.length > 1 ? 's' : ''}
-                </div>
-                <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
-                  ${overdue.map(t => taskRow(t, true)).join('')}
-                </table>
-              </div>
-            ` : ''}
-
+                <div style="font-size:11px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Overdue — ${overdue.length} task${overdue.length > 1 ? 's' : ''}</div>
+                <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">${overdue.map(t => taskRow(t, true)).join('')}</table>
+              </div>` : ''}
             ${dueToday.length > 0 ? `
               <div style="margin-bottom:20px">
-                <div style="font-size:11px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">
-                  Due today — ${dueToday.length} task${dueToday.length > 1 ? 's' : ''}
-                </div>
-                <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
-                  ${dueToday.map(t => taskRow(t, false)).join('')}
-                </table>
-              </div>
-            ` : ''}
-
+                <div style="font-size:11px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Due today — ${dueToday.length} task${dueToday.length > 1 ? 's' : ''}</div>
+                <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">${dueToday.map(t => taskRow(t, false)).join('')}</table>
+              </div>` : ''}
             ${upcoming.length > 0 ? `
               <div style="margin-bottom:20px">
-                <div style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">
-                  Upcoming — ${upcoming.length} task${upcoming.length > 1 ? 's' : ''}
-                </div>
-                <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
-                  ${upcoming.map(t => upcomingRow(t)).join('')}
-                </table>
-              </div>
-            ` : ''}
-
+                <div style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Upcoming — ${upcoming.length} task${upcoming.length > 1 ? 's' : ''}</div>
+                <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">${upcoming.map(t => upcomingRow(t)).join('')}</table>
+              </div>` : ''}
             <a href="${process.env.FRONTEND_URL}/dashboard"
               style="display:inline-block;background:#16a34a;color:#fff;padding:12px 28px;border-radius:9px;text-decoration:none;font-size:14px;font-weight:600;margin-top:8px">
               View dashboard →
             </a>
-
-            <p style="font-size:11px;color:#cbd5e1;margin-top:32px">
-              MeetingDebt · You're receiving this because you have open commitments.
-            </p>
-          </div>
-        `;
+            <p style="font-size:11px;color:#cbd5e1;margin-top:32px">MeetingDebt · You're receiving this because you have open commitments.</p>
+          </div>`;
 
                 await sendEmail({
                     to: user.email,
                     subject: `Your tasks for today, ${name} — ${overdue.length > 0 ? `${overdue.length} overdue` : `${dueToday.length} due today`}`,
                     html,
                 });
-
-                console.log(`Nudge sent to ${user.email}`);
+                console.log(`Nudge sent to ${user.email} (${prefs.timezone})`);
             } catch (userErr) {
                 console.error(`Failed for user ${userId}:`, userErr.message);
             }
@@ -1401,12 +1404,31 @@ async function sendDailyNudges() {
     }
 }
 
-// Daily digest — 9 AM Eastern, morning summary of all pending/overdue/upcoming tasks
-cron.schedule('0 9 * * *', sendDailyNudges, {
-    timezone: 'America/New_York'
-});
+// Runs every hour — sends to each user when it's their preferred nudge hour
+cron.schedule('0 * * * *', sendDailyNudges);
 
 // Manual trigger for testing — authenticated only
+// ── USER NOTIFICATION PREFERENCES ──
+app.get('/preferences', requireAuth, async (req, res) => {
+    const { data, error } = await supabase
+        .from('user_preferences')
+        .select('timezone, nudge_hour')
+        .eq('user_id', req.userId)
+        .maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json(data || { timezone: 'America/New_York', nudge_hour: 9 });
+});
+
+app.post('/preferences', requireAuth, async (req, res) => {
+    const { timezone, nudge_hour } = req.body;
+    if (!timezone || nudge_hour === undefined) return res.status(400).json({ error: 'timezone and nudge_hour required' });
+    const { error } = await supabase
+        .from('user_preferences')
+        .upsert({ user_id: req.userId, timezone, nudge_hour, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json({ success: true });
+});
+
 app.get('/trigger-nudge', requireAuth, async (req, res) => {
     await sendDailyNudges();
     return res.json({ success: true, message: 'Nudge job triggered' });
@@ -1432,27 +1454,47 @@ async function sendOverdueAlerts() {
         log.push(`SENDGRID_API_KEY = ${process.env.SENDGRID_API_KEY ? '✓ set (' + process.env.SENDGRID_API_KEY.slice(0, 8) + '…)' : '⚠ NOT SET'}`);
         log.push(`SUPABASE_KEY type = ${process.env.SUPABASE_KEY?.includes('service_role') ? 'service_role ✓' : (process.env.SUPABASE_KEY ? 'anon key ⚠ (admin.getUserById needs service_role!)' : 'NOT SET ❌')}`);
 
-        // todayStr: YYYY-MM-DD in New York time — used to skip tasks already
-        // notified today (so the hourly cron doesn't double-send within a day)
-        const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-        const todayStart = new Date(`${todayStr}T00:00:00-04:00`).toISOString();
-
-        const { data: newlyOverdue, error } = await supabase
+        // Fetch all overdue unnotified-or-notified-before-today tasks.
+        // Per-user "today" dedup is handled in code (after we know their timezone).
+        const { data: overdueAll, error } = await supabase
             .from('commitments')
             .select('*, meetings(title)')
             .not('status', 'eq', 'completed')
             .not('status', 'eq', 'blocked')
             .not('deadline', 'is', null)
-            .lt('deadline', now.toISOString())
-            .or(`overdue_notified_at.is.null,overdue_notified_at.lt.${todayStart}`);
+            .lt('deadline', now.toISOString());
 
         if (error) {
             log.push(`❌ Supabase query error: ${error.message}`);
             return log;
         }
 
-        log.push(`Found ${newlyOverdue?.length || 0} overdue task(s) to notify today`);
-        if (!newlyOverdue?.length) return log;
+        log.push(`Found ${overdueAll?.length || 0} overdue task(s) total`);
+        if (!overdueAll?.length) return log;
+
+        // Filter per-user: only include tasks not yet notified today in their timezone
+        // and only when it's their preferred nudge hour
+        const newlyOverdue = [];
+        for (const c of overdueAll) {
+            if (!c.assigned_to && !c.workspace_id) { newlyOverdue.push(c); continue; }
+            const userId = c.assigned_to;
+            if (userId) {
+                const prefs = await getUserPrefs(userId);
+                // Only send during their preferred hour
+                if (currentHourInTz(prefs.timezone) !== prefs.nudge_hour) continue;
+                // Skip if already notified today in their timezone
+                if (c.overdue_notified_at) {
+                    const userTodayStr = now.toLocaleDateString('en-CA', { timeZone: prefs.timezone });
+                    const notifiedDateStr = new Date(c.overdue_notified_at)
+                        .toLocaleDateString('en-CA', { timeZone: prefs.timezone });
+                    if (notifiedDateStr >= userTodayStr) continue;
+                }
+            }
+            newlyOverdue.push(c);
+        }
+
+        log.push(`${newlyOverdue.length} task(s) eligible for notification this hour`);
+        if (!newlyOverdue.length) return log;
 
         // ── Group tasks by assignee and by workspace ──────────────────────────
         // byAssignee: { userId → [commitments] }
@@ -1575,10 +1617,8 @@ async function sendOverdueAlerts() {
     return log;
 }
 
-// Runs every hour — tasks are alerted within ~1h of crossing their deadline
-cron.schedule('0 9 * * *', sendOverdueAlerts, {
-    timezone: 'America/New_York'
-});
+// Runs every hour — per-user timezone check inside decides who gets emailed
+cron.schedule('0 * * * *', sendOverdueAlerts);
 
 // Manual trigger — returns full diagnostics so you can debug from the browser
 app.get('/trigger-overdue-check', requireAuth, async (req, res) => {
