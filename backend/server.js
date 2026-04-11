@@ -80,6 +80,7 @@ async function requireAuth(req, res, next) {
             return res.status(401).json({ error: 'Invalid or expired token' });
         }
         req.userId = user.id;
+        req.userToken = token; // pass JWT so RLS-protected routes can use it
         req.userEmail = user.email;
         req.userName = user.user_metadata?.full_name || user.email?.split('@')[0];
         next();
@@ -1410,7 +1411,11 @@ cron.schedule('0 * * * *', sendDailyNudges);
 // Manual trigger for testing — authenticated only
 // ── USER NOTIFICATION PREFERENCES ──
 app.get('/preferences', requireAuth, async (req, res) => {
-    const { data, error } = await supabase
+    // Use user-scoped client so RLS auth.uid() resolves correctly
+    const userClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY, {
+        global: { headers: { Authorization: `Bearer ${req.userToken}` } }
+    });
+    const { data, error } = await userClient
         .from('user_preferences')
         .select('timezone, nudge_hour')
         .eq('user_id', req.userId)
@@ -1423,8 +1428,11 @@ app.post('/preferences', requireAuth, async (req, res) => {
     const { timezone, nudge_hour } = req.body;
     if (!timezone || nudge_hour === undefined) return res.status(400).json({ error: 'timezone and nudge_hour required' });
 
-    // Check if row already exists
-    const { data: existing } = await supabase
+    const userClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY, {
+        global: { headers: { Authorization: `Bearer ${req.userToken}` } }
+    });
+
+    const { data: existing } = await userClient
         .from('user_preferences')
         .select('user_id')
         .eq('user_id', req.userId)
@@ -1432,12 +1440,12 @@ app.post('/preferences', requireAuth, async (req, res) => {
 
     let error;
     if (existing) {
-        ({ error } = await supabase
+        ({ error } = await userClient
             .from('user_preferences')
             .update({ timezone, nudge_hour, updated_at: new Date().toISOString() })
             .eq('user_id', req.userId));
     } else {
-        ({ error } = await supabase
+        ({ error } = await userClient
             .from('user_preferences')
             .insert({ user_id: req.userId, timezone, nudge_hour }));
     }
