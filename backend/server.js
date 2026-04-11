@@ -1432,6 +1432,11 @@ async function sendOverdueAlerts() {
         log.push(`SENDGRID_API_KEY = ${process.env.SENDGRID_API_KEY ? '✓ set (' + process.env.SENDGRID_API_KEY.slice(0, 8) + '…)' : '⚠ NOT SET'}`);
         log.push(`SUPABASE_KEY type = ${process.env.SUPABASE_KEY?.includes('service_role') ? 'service_role ✓' : (process.env.SUPABASE_KEY ? 'anon key ⚠ (admin.getUserById needs service_role!)' : 'NOT SET ❌')}`);
 
+        // todayStr: YYYY-MM-DD in New York time — used to skip tasks already
+        // notified today (so the hourly cron doesn't double-send within a day)
+        const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+        const todayStart = new Date(`${todayStr}T00:00:00-04:00`).toISOString();
+
         const { data: newlyOverdue, error } = await supabase
             .from('commitments')
             .select('*, meetings(title)')
@@ -1439,14 +1444,14 @@ async function sendOverdueAlerts() {
             .not('status', 'eq', 'blocked')
             .not('deadline', 'is', null)
             .lt('deadline', now.toISOString())
-            .is('overdue_notified_at', null);
+            .or(`overdue_notified_at.is.null,overdue_notified_at.lt.${todayStart}`);
 
         if (error) {
             log.push(`❌ Supabase query error: ${error.message}`);
             return log;
         }
 
-        log.push(`Found ${newlyOverdue?.length || 0} newly overdue task(s)`);
+        log.push(`Found ${newlyOverdue?.length || 0} overdue task(s) to notify today`);
         if (!newlyOverdue?.length) return log;
 
         // ── Group tasks by assignee and by workspace ──────────────────────────
