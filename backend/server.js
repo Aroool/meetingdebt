@@ -616,21 +616,30 @@ app.patch('/commitments/:id', requireAuth, async (req, res) => {
             .eq('id', req.params.id)
             .single();
 
-        if (existing) {
-            const ownsIt = existing.user_id === userId || existing.assigned_to === userId;
-            const inWorkspace = existing.workspace_id
-                ? !!(await getWorkspaceMembership(userId, existing.workspace_id))
-                : false;
-            if (!ownsIt && !inWorkspace) {
-                return res.status(403).json({ error: 'Not authorized to update this commitment' });
-            }
-            // Only managers can reassign; members can only update status
-            if (assigned_to !== undefined && existing.workspace_id) {
-                const membership = await getWorkspaceMembership(userId, existing.workspace_id);
-                if (membership?.role !== 'manager') {
-                    return res.status(403).json({ error: 'Only managers can reassign commitments' });
-                }
-            }
+        if (!existing) {
+            return res.status(404).json({ error: 'Commitment not found' });
+        }
+
+        const ownsIt = existing.user_id === userId || existing.assigned_to === userId;
+        let membership = null;
+        if (existing.workspace_id) {
+            membership = await getWorkspaceMembership(userId, existing.workspace_id);
+        }
+        const isManager = membership?.role === 'manager';
+
+        // Must be the owner, the assignee, or a workspace manager
+        if (!ownsIt && !isManager) {
+            return res.status(403).json({ error: 'Not authorized to update this commitment' });
+        }
+
+        // Only managers can reassign tasks
+        if (assigned_to !== undefined && existing.workspace_id && !isManager) {
+            return res.status(403).json({ error: 'Only managers can reassign commitments' });
+        }
+
+        // Regular workspace members can only update status on their own tasks
+        if (status !== undefined && !ownsIt && !isManager) {
+            return res.status(403).json({ error: 'You can only update status on tasks assigned to you' });
         }
 
         const updates = {};
@@ -1224,9 +1233,11 @@ app.post('/feedback', requireAuth, async (req, res) => {
 
 app.get('/feedback', requireAuth, async (req, res) => {
     try {
+        // Only return feedback submitted by the authenticated user's email
         const { data, error } = await supabase
             .from('feedback')
             .select('*')
+            .eq('email', req.userEmail)
             .order('created_at', { ascending: false });
         if (error) throw error;
         return res.json(data);
@@ -1476,7 +1487,7 @@ async function sendOverdueAlerts() {
     try {
         log.push(`Run started at ${now.toISOString()}`);
         log.push(`SENDGRID_FROM_EMAIL = ${process.env.SENDGRID_FROM_EMAIL || '⚠ NOT SET'}`);
-        log.push(`SENDGRID_API_KEY = ${process.env.SENDGRID_API_KEY ? '✓ set (' + process.env.SENDGRID_API_KEY.slice(0, 8) + '…)' : '⚠ NOT SET'}`);
+        log.push(`SENDGRID_API_KEY = ${process.env.SENDGRID_API_KEY ? '✓ set' : '⚠ NOT SET'}`);
         log.push(`SUPABASE_KEY type = ${process.env.SUPABASE_KEY?.includes('service_role') ? 'service_role ✓' : (process.env.SUPABASE_KEY ? 'anon key ⚠ (admin.getUserById needs service_role!)' : 'NOT SET ❌')}`);
 
         // Fetch all overdue unnotified-or-notified-before-today tasks.

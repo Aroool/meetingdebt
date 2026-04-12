@@ -18,14 +18,14 @@ function isTomorrow(dateStr) {
     if (!dateStr) return false;
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    return new Date(dateStr).toDateString() === tomorrow.toDateString();
+    return parseDate(dateStr).toDateString() === tomorrow.toDateString();
 }
 
 function formatDeadline(dateStr) {
     if (!dateStr) return null;
     if (isToday(dateStr)) return 'Today';
     if (isTomorrow(dateStr)) return 'Tomorrow';
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return parseDate(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 export default function MyTasks() {

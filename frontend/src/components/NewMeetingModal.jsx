@@ -31,6 +31,9 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExt
             });
             setAssignments(initialAssignments);
             setStep('confirm');
+        }).catch(err => {
+            console.error('Failed to load members:', err);
+            setError('Failed to load workspace members. Please try again.');
         });
     }, [pendingExtraction, isOpen]);
 
