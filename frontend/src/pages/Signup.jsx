@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
@@ -13,6 +13,12 @@ export default function Signup() {
     const [avatarPreview, setAvatarPreview] = useState(null);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    // OTP step
+    const [otp, setOtp] = useState(['', '', '', '', '', '']);
+    const [otpError, setOtpError] = useState('');
+    const [otpLoading, setOtpLoading] = useState(false);
+    const [resendCooldown, setResendCooldown] = useState(0);
+    const otpRefs = useRef([]);
     const navigate = useNavigate();
 
     function handleChange(e) {
@@ -75,7 +81,6 @@ export default function Signup() {
         setLoading(true);
         try {
             const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`;
-
             const { data, error: signupError } = await supabase.auth.signUp({
                 email: form.email.trim(),
                 password: form.password,
@@ -100,23 +105,96 @@ export default function Signup() {
                 const { error: uploadError } = await supabase.storage
                     .from('avatars')
                     .upload(path, avatar, { upsert: true });
-
                 if (!uploadError) {
-                    const { data: urlData } = supabase.storage
-                        .from('avatars')
-                        .getPublicUrl(path);
-                    await supabase.auth.updateUser({
-                        data: { avatar_url: urlData.publicUrl }
-                    });
+                    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+                    await supabase.auth.updateUser({ data: { avatar_url: urlData.publicUrl } });
                 }
             }
 
-            sessionStorage.setItem('showTransition', 'true');
-            navigate('/join-or-create');
+            // If email confirmation is disabled in Supabase, go straight to join-or-create
+            if (data.session) {
+                sessionStorage.setItem('showTransition', 'true');
+                navigate('/join-or-create');
+            } else {
+                // Show OTP verification step
+                setStep(3);
+                startResendCooldown();
+            }
         } catch (err) {
             setError(err.message);
         } finally {
             setLoading(false);
+        }
+    }
+
+    function startResendCooldown() {
+        setResendCooldown(60);
+        const timer = setInterval(() => {
+            setResendCooldown(prev => {
+                if (prev <= 1) { clearInterval(timer); return 0; }
+                return prev - 1;
+            });
+        }, 1000);
+    }
+
+    async function resendOtp() {
+        if (resendCooldown > 0) return;
+        const { error } = await supabase.auth.resend({ type: 'signup', email: form.email.trim() });
+        if (!error) startResendCooldown();
+    }
+
+    function handleOtpInput(index, value) {
+        // Allow only digits
+        const digit = value.replace(/\D/g, '').slice(-1);
+        const newOtp = [...otp];
+        newOtp[index] = digit;
+        setOtp(newOtp);
+        setOtpError('');
+        // Auto-advance
+        if (digit && index < 5) {
+            otpRefs.current[index + 1]?.focus();
+        }
+        // Auto-submit when all 6 filled
+        if (digit && newOtp.every(d => d !== '') && newOtp.join('').length === 6) {
+            verifyOtp(newOtp.join(''));
+        }
+    }
+
+    function handleOtpKeyDown(index, e) {
+        if (e.key === 'Backspace' && !otp[index] && index > 0) {
+            otpRefs.current[index - 1]?.focus();
+        }
+    }
+
+    function handleOtpPaste(e) {
+        const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+        if (pasted.length === 6) {
+            const newOtp = pasted.split('');
+            setOtp(newOtp);
+            otpRefs.current[5]?.focus();
+            verifyOtp(pasted);
+        }
+        e.preventDefault();
+    }
+
+    async function verifyOtp(code) {
+        setOtpLoading(true);
+        setOtpError('');
+        try {
+            const { error } = await supabase.auth.verifyOtp({
+                email: form.email.trim(),
+                token: code,
+                type: 'signup',
+            });
+            if (error) throw error;
+            sessionStorage.setItem('showTransition', 'true');
+            navigate('/join-or-create');
+        } catch (err) {
+            setOtpError('Invalid code. Please check your email and try again.');
+            setOtp(['', '', '', '', '', '']);
+            otpRefs.current[0]?.focus();
+        } finally {
+            setOtpLoading(false);
         }
     }
 
@@ -148,22 +226,26 @@ export default function Signup() {
                     </div>
 
                     <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>
-                        {step === 1 ? 'Create your account' : 'Almost there 🎉'}
+                        {step === 1 ? 'Create your account' : step === 2 ? 'Almost there 🎉' : 'Verify your email'}
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>
-                        {step === 1 ? 'Tell us about yourself' : 'Set up your login credentials'}
+                        {step === 1 ? 'Tell us about yourself'
+                            : step === 2 ? 'Set up your login credentials'
+                            : `We sent a 6-digit code to ${form.email}`}
                     </div>
 
                     {/* Progress */}
-                    <div style={{ display: 'flex', gap: 6, marginBottom: 28 }}>
-                        {[1, 2].map(s => (
-                            <div key={s} style={{
-                                height: 3, flex: 1, borderRadius: 10,
-                                background: s <= step ? '#16a34a' : 'var(--border)',
-                                transition: 'background 0.3s',
-                            }} />
-                        ))}
-                    </div>
+                    {step < 3 && (
+                        <div style={{ display: 'flex', gap: 6, marginBottom: 28 }}>
+                            {[1, 2].map(s => (
+                                <div key={s} style={{
+                                    height: 3, flex: 1, borderRadius: 10,
+                                    background: s <= step ? '#16a34a' : 'var(--border)',
+                                    transition: 'background 0.3s',
+                                }} />
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ padding: '0 32px 32px' }}>
@@ -171,13 +253,7 @@ export default function Signup() {
 
                         {/* Step 1 — Profile info */}
                         {step === 1 && (
-                            <motion.div
-                                key="step1"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                transition={{ duration: 0.2 }}
-                            >
+                            <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
                                 {/* Google signup */}
                                 <button
                                     type="button"
@@ -213,7 +289,7 @@ export default function Signup() {
                                     <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                                 </div>
 
-                                {/* Avatar upload */}
+                                {/* Avatar */}
                                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
                                     <label style={{ cursor: 'pointer', position: 'relative' }}>
                                         <div style={{
@@ -221,16 +297,11 @@ export default function Signup() {
                                             background: avatarPreview ? 'transparent' : '#dbeafe',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             overflow: 'hidden', border: '3px solid var(--border)',
-                                            transition: 'border-color 0.2s',
                                         }}>
-                                            {avatarPreview ? (
-                                                <img src={avatarPreview} alt="avatar"
-                                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                            ) : (
-                                                <span style={{ fontSize: 26, fontWeight: 800, color: '#1d4ed8' }}>
-                                                    {initials}
-                                                </span>
-                                            )}
+                                            {avatarPreview
+                                                ? <img src={avatarPreview} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                : <span style={{ fontSize: 26, fontWeight: 800, color: '#1d4ed8' }}>{initials}</span>
+                                            }
                                         </div>
                                         <div style={{
                                             position: 'absolute', bottom: 0, right: 0,
@@ -238,11 +309,8 @@ export default function Signup() {
                                             background: '#16a34a', display: 'flex',
                                             alignItems: 'center', justifyContent: 'center',
                                             fontSize: 14, color: '#fff', border: '2px solid var(--bg-card)',
-                                        }}>
-                                            +
-                                        </div>
-                                        <input type="file" accept="image/*" onChange={handleAvatar}
-                                            style={{ display: 'none' }} />
+                                        }}>+</div>
+                                        <input type="file" accept="image/*" onChange={handleAvatar} style={{ display: 'none' }} />
                                     </label>
                                 </div>
                                 <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', marginTop: -16, marginBottom: 20 }}>
@@ -251,60 +319,23 @@ export default function Signup() {
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                                     <div>
-                                        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                                            First name *
-                                        </label>
-                                        <input
-                                            className="field-input"
-                                            name="firstName"
-                                            placeholder="John"
-                                            value={form.firstName}
-                                            onChange={handleChange}
-                                            style={{ marginBottom: 0 }}
-                                        />
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>First name *</label>
+                                        <input className="field-input" name="firstName" placeholder="John" value={form.firstName} onChange={handleChange} style={{ marginBottom: 0 }} />
                                     </div>
                                     <div>
-                                        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                                            Last name *
-                                        </label>
-                                        <input
-                                            className="field-input"
-                                            name="lastName"
-                                            placeholder="Smith"
-                                            value={form.lastName}
-                                            onChange={handleChange}
-                                            style={{ marginBottom: 0 }}
-                                        />
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Last name *</label>
+                                        <input className="field-input" name="lastName" placeholder="Smith" value={form.lastName} onChange={handleChange} style={{ marginBottom: 0 }} />
                                     </div>
                                 </div>
 
                                 <div style={{ marginBottom: 12 }}>
-                                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                                        Nickname <span style={{ fontWeight: 400 }}>(optional)</span>
-                                    </label>
-                                    <input
-                                        className="field-input"
-                                        name="nickname"
-                                        placeholder="Johnny"
-                                        value={form.nickname}
-                                        onChange={handleChange}
-                                        style={{ marginBottom: 0 }}
-                                    />
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Nickname <span style={{ fontWeight: 400 }}>(optional)</span></label>
+                                    <input className="field-input" name="nickname" placeholder="Johnny" value={form.nickname} onChange={handleChange} style={{ marginBottom: 0 }} />
                                 </div>
 
                                 <div style={{ marginBottom: 20 }}>
-                                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                                        Bio <span style={{ fontWeight: 400 }}>(optional)</span>
-                                    </label>
-                                    <textarea
-                                        className="field-input"
-                                        name="bio"
-                                        placeholder="Tell your team a bit about yourself..."
-                                        value={form.bio}
-                                        onChange={handleChange}
-                                        rows={2}
-                                        style={{ marginBottom: 0, resize: 'none', fontFamily: 'inherit' }}
-                                    />
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Bio <span style={{ fontWeight: 400 }}>(optional)</span></label>
+                                    <textarea className="field-input" name="bio" placeholder="Tell your team a bit about yourself..." value={form.bio} onChange={handleChange} rows={2} style={{ marginBottom: 0, resize: 'none', fontFamily: 'inherit' }} />
                                 </div>
 
                                 {error && (
@@ -312,28 +343,18 @@ export default function Signup() {
                                         {error}
                                     </div>
                                 )}
-
-                                <button onClick={nextStep} className="btn-primary" style={{ marginTop: 0 }}>
-                                    Continue →
-                                </button>
+                                <button onClick={nextStep} className="btn-primary" style={{ marginTop: 0 }}>Continue →</button>
                             </motion.div>
                         )}
 
                         {/* Step 2 — Credentials */}
                         {step === 2 && (
-                            <motion.div
-                                key="step2"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                transition={{ duration: 0.2 }}
-                            >
+                            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
                                 {/* Mini profile preview */}
                                 <div style={{
                                     display: 'flex', alignItems: 'center', gap: 12,
                                     padding: '10px 14px', borderRadius: 10,
-                                    background: 'var(--bg)', border: '1px solid var(--border)',
-                                    marginBottom: 20,
+                                    background: 'var(--bg)', border: '1px solid var(--border)', marginBottom: 20,
                                 }}>
                                     <div style={{
                                         width: 36, height: 36, borderRadius: '50%',
@@ -353,42 +374,17 @@ export default function Signup() {
                                         </div>
                                         {form.bio && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{form.bio}</div>}
                                     </div>
-                                    <button
-                                        onClick={() => setStep(1)}
-                                        style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-                                    >
-                                        Edit
-                                    </button>
+                                    <button onClick={() => setStep(1)} style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Edit</button>
                                 </div>
 
                                 <div style={{ marginBottom: 12 }}>
-                                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                                        Email address *
-                                    </label>
-                                    <input
-                                        className="field-input"
-                                        name="email"
-                                        type="email"
-                                        placeholder="john@company.com"
-                                        value={form.email}
-                                        onChange={handleChange}
-                                        style={{ marginBottom: 0 }}
-                                    />
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Email address *</label>
+                                    <input className="field-input" name="email" type="email" placeholder="john@company.com" value={form.email} onChange={handleChange} style={{ marginBottom: 0 }} />
                                 </div>
 
                                 <div style={{ marginBottom: 12 }}>
-                                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                                        Password *
-                                    </label>
-                                    <input
-                                        className="field-input"
-                                        name="password"
-                                        type="password"
-                                        placeholder="••••••••"
-                                        value={form.password}
-                                        onChange={handleChange}
-                                        style={{ marginBottom: 0 }}
-                                    />
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Password *</label>
+                                    <input className="field-input" name="password" type="password" placeholder="••••••••" value={form.password} onChange={handleChange} style={{ marginBottom: 0 }} />
                                     {form.password && (
                                         <div style={{ marginTop: 6 }}>
                                             <div style={{ display: 'flex', gap: 3, marginBottom: 4 }}>
@@ -400,29 +396,15 @@ export default function Signup() {
                                                     }} />
                                                 ))}
                                             </div>
-                                            <div style={{ fontSize: 11, color: passwordStrength.color, fontWeight: 600 }}>
-                                                {passwordStrength.label}
-                                            </div>
-                                            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.5 }}>
-                                                8+ chars, uppercase, number, special character
-                                            </div>
+                                            <div style={{ fontSize: 11, color: passwordStrength.color, fontWeight: 600 }}>{passwordStrength.label}</div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.5 }}>8+ chars, uppercase, number, special character</div>
                                         </div>
                                     )}
                                 </div>
 
                                 <div style={{ marginBottom: 20 }}>
-                                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                                        Confirm password *
-                                    </label>
-                                    <input
-                                        className="field-input"
-                                        name="confirmPassword"
-                                        type="password"
-                                        placeholder="••••••••"
-                                        value={form.confirmPassword}
-                                        onChange={handleChange}
-                                        style={{ marginBottom: 0 }}
-                                    />
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Confirm password *</label>
+                                    <input className="field-input" name="confirmPassword" type="password" placeholder="••••••••" value={form.confirmPassword} onChange={handleChange} style={{ marginBottom: 0 }} />
                                     {form.confirmPassword && form.password !== form.confirmPassword && (
                                         <div style={{ fontSize: 11, color: 'var(--red)', marginTop: 4 }}>Passwords do not match</div>
                                     )}
@@ -432,28 +414,102 @@ export default function Signup() {
                                 </div>
 
                                 {error && (
-                                    <div style={{ fontSize: 12, color: 'var(--red)', marginBottom: 12, padding: '8px 12px', background: 'var(--red-light)', borderRadius: 8 }}>
-                                        {error}
-                                    </div>
+                                    <div style={{ fontSize: 12, color: 'var(--red)', marginBottom: 12, padding: '8px 12px', background: 'var(--red-light)', borderRadius: 8 }}>{error}</div>
                                 )}
-
                                 <button onClick={handleSubmit} disabled={loading} className="btn-primary">
                                     {loading ? 'Creating account...' : 'Create account 🚀'}
                                 </button>
-
                                 <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: 'var(--text-muted)' }}>
                                     By signing up you agree to our terms of service
                                 </div>
                             </motion.div>
                         )}
+
+                        {/* Step 3 — OTP Verification */}
+                        {step === 3 && (
+                            <motion.div key="step3" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.25 }}>
+                                {/* Email icon */}
+                                <div style={{ textAlign: 'center', marginBottom: 28 }}>
+                                    <div style={{
+                                        width: 64, height: 64, borderRadius: '50%',
+                                        background: 'var(--accent-light)', border: '2px solid var(--accent)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: 28, margin: '0 auto 16px',
+                                    }}>✉️</div>
+                                    <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                                        Enter the 6-digit code we sent to<br />
+                                        <strong style={{ color: 'var(--text-primary)' }}>{form.email}</strong>
+                                    </div>
+                                </div>
+
+                                {/* OTP boxes */}
+                                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
+                                    {otp.map((digit, i) => (
+                                        <input
+                                            key={i}
+                                            ref={el => otpRefs.current[i] = el}
+                                            type="text"
+                                            inputMode="numeric"
+                                            maxLength={1}
+                                            value={digit}
+                                            onChange={e => handleOtpInput(i, e.target.value)}
+                                            onKeyDown={e => handleOtpKeyDown(i, e)}
+                                            onPaste={i === 0 ? handleOtpPaste : undefined}
+                                            style={{
+                                                width: 48, height: 56, borderRadius: 10,
+                                                border: `2px solid ${otpError ? '#ef4444' : digit ? '#16a34a' : 'var(--border)'}`,
+                                                background: 'var(--bg)',
+                                                textAlign: 'center', fontSize: 22, fontWeight: 800,
+                                                color: 'var(--text-primary)',
+                                                outline: 'none', fontFamily: 'inherit',
+                                                transition: 'border-color 0.15s',
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+
+                                {otpError && (
+                                    <div style={{ fontSize: 12, color: 'var(--red)', marginBottom: 12, padding: '8px 12px', background: 'var(--red-light)', borderRadius: 8, textAlign: 'center' }}>
+                                        {otpError}
+                                    </div>
+                                )}
+
+                                <button
+                                    onClick={() => verifyOtp(otp.join(''))}
+                                    disabled={otpLoading || otp.join('').length < 6}
+                                    className="btn-primary"
+                                    style={{ marginBottom: 16 }}
+                                >
+                                    {otpLoading ? 'Verifying...' : 'Verify email →'}
+                                </button>
+
+                                <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+                                    Didn't get the code?{' '}
+                                    {resendCooldown > 0 ? (
+                                        <span style={{ color: 'var(--text-muted)' }}>Resend in {resendCooldown}s</span>
+                                    ) : (
+                                        <button onClick={resendOtp} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontWeight: 600, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+                                            Resend code
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: 'var(--text-muted)' }}>
+                                    <button onClick={() => setStep(2)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', textDecoration: 'underline' }}>
+                                        Wrong email? Go back
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+
                     </AnimatePresence>
 
-                    <div style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: 'var(--text-muted)' }}>
-                        Already have an account?{' '}
-                        <Link to="/login" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
-                            Sign in
-                        </Link>
-                    </div>
+                    {step < 3 && (
+                        <div style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: 'var(--text-muted)' }}>
+                            Already have an account?{' '}
+                            <Link to="/login" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>Sign in</Link>
+                        </div>
+                    )}
                 </div>
             </motion.div>
         </div>
