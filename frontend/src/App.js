@@ -17,6 +17,8 @@ import ThemePicker from './pages/ThemePicker';
 import { useEffect } from 'react';
 import MyTasks from './pages/MyTasks';
 import Feedback from './pages/Feedback';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 // Layout wrapper for all authenticated pages.
 // Sidebar is 52px fixed — content always starts at marginLeft: 52.
@@ -42,6 +44,8 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/invite/:token" element={<AcceptInvite />} />
         <Route path="/theme-picker" element={<ProtectedRoute><ThemePicker /></ProtectedRoute>} />
 

@@ -34,10 +34,29 @@ export default function Signup() {
         return null;
     }
 
+    function getStrength(pw) {
+        if (!pw) return { score: 0, label: '', color: '' };
+        let score = 0;
+        if (pw.length >= 8) score++;
+        if (pw.length >= 12) score++;
+        if (/[A-Z]/.test(pw)) score++;
+        if (/[0-9]/.test(pw)) score++;
+        if (/[^A-Za-z0-9]/.test(pw)) score++;
+        if (score <= 1) return { score: 1, label: 'Weak', color: '#ef4444' };
+        if (score <= 2) return { score: 2, label: 'Fair', color: '#f59e0b' };
+        if (score <= 3) return { score: 3, label: 'Good', color: '#3b82f6' };
+        return { score: 4, label: 'Strong', color: '#16a34a' };
+    }
+
+    const passwordStrength = getStrength(form.password);
+
     function validateStep2() {
         if (!form.email.trim()) return 'Email is required';
         if (!form.password) return 'Password is required';
         if (form.password.length < 8) return 'Password must be at least 8 characters';
+        if (!/[A-Z]/.test(form.password)) return 'Password must include at least one uppercase letter';
+        if (!/[0-9]/.test(form.password)) return 'Password must include at least one number';
+        if (!/[^A-Za-z0-9]/.test(form.password)) return 'Password must include at least one special character (!@#$...)';
         if (form.password !== form.confirmPassword) return 'Passwords do not match';
         return null;
     }
@@ -359,7 +378,7 @@ export default function Signup() {
 
                                 <div style={{ marginBottom: 12 }}>
                                     <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
-                                        Password * <span style={{ fontWeight: 400 }}>(min. 8 characters)</span>
+                                        Password *
                                     </label>
                                     <input
                                         className="field-input"
@@ -370,6 +389,25 @@ export default function Signup() {
                                         onChange={handleChange}
                                         style={{ marginBottom: 0 }}
                                     />
+                                    {form.password && (
+                                        <div style={{ marginTop: 6 }}>
+                                            <div style={{ display: 'flex', gap: 3, marginBottom: 4 }}>
+                                                {[1, 2, 3, 4].map(i => (
+                                                    <div key={i} style={{
+                                                        height: 3, flex: 1, borderRadius: 99,
+                                                        background: i <= passwordStrength.score ? passwordStrength.color : 'var(--border)',
+                                                        transition: 'all 0.2s',
+                                                    }} />
+                                                ))}
+                                            </div>
+                                            <div style={{ fontSize: 11, color: passwordStrength.color, fontWeight: 600 }}>
+                                                {passwordStrength.label}
+                                            </div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.5 }}>
+                                                8+ chars, uppercase, number, special character
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div style={{ marginBottom: 20 }}>

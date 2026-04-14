@@ -95,7 +95,15 @@ export default function Login() {
                     <label className="field-label">Email</label>
                     <input className="field-input" type="email" placeholder="you@company.com"
                         value={email} onChange={e => setEmail(e.target.value)} required />
-                    <label className="field-label">Password</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <label className="field-label" style={{ marginBottom: 0 }}>Password</label>
+                        <Link to="/forgot-password" style={{
+                            fontSize: 12, color: 'var(--accent)', textDecoration: 'none',
+                            fontWeight: 500,
+                        }}>
+                            Forgot password?
+                        </Link>
+                    </div>
                     <input className="field-input" type="password" placeholder="••••••••"
                         value={password} onChange={e => setPassword(e.target.value)} required />
                     {error && <div className="auth-error">{error}</div>}
