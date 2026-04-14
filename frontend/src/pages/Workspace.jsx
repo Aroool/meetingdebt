@@ -175,11 +175,11 @@ function RightPanel({ ws, isActive, onSwitch }) {
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     fontSize: 11, fontWeight: 800, flexShrink: 0
                                 }}>
-                                    {m.email?.charAt(0).toUpperCase()}
+                                    {(m.name || m.email)?.charAt(0).toUpperCase()}
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                        {m.email}
+                                        {m.name || m.email}
                                     </div>
                                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                                         Joined {new Date(m.joined_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -216,6 +216,7 @@ function RightPanel({ ws, isActive, onSwitch }) {
                                             border: '0.5px solid var(--border)'
                                         }}>
                                             {[
+                                                ...(m.name ? [['Name', m.name]] : []),
                                                 ['Email', m.email],
                                                 ['Role', m.role],
                                                 ['Joined', new Date(m.joined_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })],

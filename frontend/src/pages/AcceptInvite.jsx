@@ -75,6 +75,13 @@ export default function AcceptInvite() {
                         <div style={{ fontSize: 48, marginBottom: 16 }}>❌</div>
                         <div className="auth-title">Invite not found</div>
                         <div className="auth-error" style={{ textAlign: 'left' }}>{error}</div>
+                        <button
+                            onClick={() => navigate('/dashboard')}
+                            className="btn-primary"
+                            style={{ marginTop: 16 }}
+                        >
+                            Go to dashboard
+                        </button>
                     </>
                 )}
             </motion.div>

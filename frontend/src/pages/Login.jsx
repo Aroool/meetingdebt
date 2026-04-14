@@ -40,6 +40,14 @@ export default function Login() {
             localStorage.setItem('theme', savedTheme);
             document.body.classList.toggle('dark', savedTheme === 'dark');
         }
+        // If user came from an invite link, accept it now
+        const pendingInvite = localStorage.getItem('pendingInvite');
+        if (pendingInvite) {
+            localStorage.removeItem('pendingInvite');
+            navigate(`/invite/${pendingInvite}`);
+            return;
+        }
+
         const lastTransition = localStorage.getItem('lastTransition');
         const now = Date.now();
         const twoMins = 2 * 60 * 1000;

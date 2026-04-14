@@ -19,13 +19,14 @@ export default function JoinOrCreate() {
     }
 
     useEffect(() => {
-        const workspaceId = localStorage.getItem('workspaceId');
-        if (workspaceId) {
-            navigate('/dashboard');
+        // If user just signed up after clicking an invite link, redirect to accept it
+        const pendingInvite = localStorage.getItem('pendingInvite');
+        if (pendingInvite) {
+            localStorage.removeItem('pendingInvite');
+            navigate(`/invite/${pendingInvite}`);
+            return;
         }
-    }, [navigate]);
 
-    useEffect(() => {
         const workspaceId = localStorage.getItem('workspaceId');
         const soloMode = localStorage.getItem('soloMode');
         if (workspaceId || soloMode) {
