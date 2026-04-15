@@ -484,7 +484,11 @@ export default function Landing() {
                     <div style={S.logoDot} />
                     Meeting<span style={{ color: '#16a34a' }}>Debt</span>
                 </div>
-                <div style={{ fontSize: 11, color: dark ? '#222' : '#94a3b8' }}>© 2026 MeetingDebt · Built at Clark University</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <a href="/privacy" style={{ fontSize: 11, color: dark ? '#222' : '#94a3b8', textDecoration: 'none' }}>Privacy Policy</a>
+                    <a href="/terms" style={{ fontSize: 11, color: dark ? '#222' : '#94a3b8', textDecoration: 'none' }}>Terms of Service</a>
+                    <span style={{ fontSize: 11, color: dark ? '#222' : '#94a3b8' }}>© 2026 MeetingDebt · Built at Clark University</span>
+                </div>
             </div>
 
             <style>{`
