@@ -19,6 +19,8 @@ import MyTasks from './pages/MyTasks';
 import Feedback from './pages/Feedback';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 
 // Layout wrapper for all authenticated pages.
 // Sidebar is 52px fixed — content always starts at marginLeft: 52.
@@ -47,6 +49,8 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/invite/:token" element={<AcceptInvite />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
         <Route path="/theme-picker" element={<ProtectedRoute><ThemePicker /></ProtectedRoute>} />
 
         {/* Auth-gated routes without nav (workspace setup flows) */}
