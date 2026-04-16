@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { supabase } from '../supabase';
+import useIsMobile from '../hooks/useIsMobile';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -10,6 +11,8 @@ export default function Landing() {
     const navigate = useNavigate();
     const containerRef = useRef(null);
     const [dark, setDark] = useState(true);
+    const isMobile = useIsMobile();
+    const isTabletOrSmaller = useIsMobile(1024);
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -81,24 +84,24 @@ export default function Landing() {
 
     const S = {
         page: { background: bg, color: textPrimary, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', overflowX: 'hidden', transition: 'background 0.3s, color 0.3s' },
-        nav: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 60px', borderBottom: `0.5px solid ${dividerColor}`, background: dark ? '#080808dd' : '#f8fafc', position: 'sticky', top: 0, zIndex: 100, backdropFilter: 'blur(12px)' },
+        nav: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '16px 20px' : '20px 60px', borderBottom: `0.5px solid ${dividerColor}`, background: dark ? '#080808dd' : '#f8fafc', position: 'sticky', top: 0, zIndex: 100, backdropFilter: 'blur(12px)' },
         logo: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 800, color: textPrimary },
         logoDot: { width: 8, height: 8, borderRadius: '50%', background: '#16a34a' },
-        navLinks: { display: 'flex', gap: 28 },
+        navLinks: { display: isMobile ? 'none' : 'flex', gap: 28 },
         navLink: { fontSize: 13, color: textMuted, cursor: 'pointer', transition: 'color 0.15s' },
         navCta: { fontSize: 13, fontWeight: 700, padding: '8px 20px', borderRadius: 8, background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer' },
-        hero: { minHeight: '90vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '80px 60px', position: 'relative', overflow: 'hidden' },
+        hero: { minHeight: isMobile ? '80vh' : '90vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: isMobile ? '60px 20px' : '80px 60px', position: 'relative', overflow: 'hidden' },
         heroBg: { position: 'absolute', inset: 0, pointerEvents: 'none' },
         orb: (w, h, top, left, right, bottom, color) => ({ position: 'absolute', width: w, height: h, borderRadius: '50%', background: color, top, left, right, bottom }),
-        heroH1: { fontSize: 64, fontWeight: 900, lineHeight: 1.02, letterSpacing: -2.5, color: textPrimary, marginBottom: 20, maxWidth: 800 },
-        btnP: { padding: '14px 32px', borderRadius: 10, background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 700, fontFamily: 'inherit' },
-        btnS: { padding: '14px 32px', borderRadius: 10, background: 'transparent', color: textMuted, border: `0.5px solid ${dark ? '#ffffff20' : '#e2e8f0'}`, cursor: 'pointer', fontSize: 15, fontWeight: 500, fontFamily: 'inherit' },
-        section: (bg2) => ({ padding: '100px 60px', background: bg2 || bg, position: 'relative' }),
+        heroH1: { fontSize: isMobile ? 34 : 64, fontWeight: 900, lineHeight: 1.08, letterSpacing: isMobile ? -1 : -2.5, color: textPrimary, marginBottom: 20, maxWidth: 800 },
+        btnP: { padding: isMobile ? '13px 24px' : '14px 32px', borderRadius: 10, background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer', fontSize: isMobile ? 14 : 15, fontWeight: 700, fontFamily: 'inherit' },
+        btnS: { padding: isMobile ? '13px 24px' : '14px 32px', borderRadius: 10, background: 'transparent', color: textMuted, border: `0.5px solid ${dark ? '#ffffff20' : '#e2e8f0'}`, cursor: 'pointer', fontSize: isMobile ? 14 : 15, fontWeight: 500, fontFamily: 'inherit' },
+        section: (bg2) => ({ padding: isMobile ? '56px 20px' : '100px 60px', background: bg2 || bg, position: 'relative' }),
         sLabel: { fontSize: 11, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 },
-        sTitle: { fontSize: 42, fontWeight: 900, letterSpacing: -1.5, lineHeight: 1.05, marginBottom: 16, color: textPrimary },
-        sSub: { fontSize: 15, color: textMuted, maxWidth: 480, lineHeight: 1.7 },
-        card: { background: cardBg, border: `0.5px solid ${border}`, borderRadius: 18, padding: 32 },
-        divider: { height: '0.5px', background: dividerColor, margin: '0 60px' },
+        sTitle: { fontSize: isMobile ? 28 : 42, fontWeight: 900, letterSpacing: isMobile ? -0.5 : -1.5, lineHeight: 1.1, marginBottom: 16, color: textPrimary },
+        sSub: { fontSize: isMobile ? 14 : 15, color: textMuted, maxWidth: 480, lineHeight: 1.7 },
+        card: { background: cardBg, border: `0.5px solid ${border}`, borderRadius: 18, padding: isMobile ? 20 : 32 },
+        divider: { height: '0.5px', background: dividerColor, margin: isMobile ? '0 20px' : '0 60px' },
     };
 
     return (
@@ -157,7 +160,7 @@ export default function Landing() {
                 <p className="hero-sub" style={{ fontSize: 17, color: textMuted, lineHeight: 1.7, maxWidth: 520, margin: '0 auto 40px', position: 'relative', zIndex: 1 }}>
                     Paste any meeting transcript. AI extracts every commitment, assigns it, tracks it, and nudges your team until it's done.
                 </p>
-                <div className="hero-btns" style={{ display: 'flex', gap: 12, justifyContent: 'center', position: 'relative', zIndex: 1 }}>
+                <div className="hero-btns" style={{ display: 'flex', gap: 12, justifyContent: 'center', position: 'relative', zIndex: 1, flexWrap: 'wrap' }}>
                     <button style={S.btnP} onClick={() => navigate('/signup')}>Start for free →</button>
                     <button style={S.btnS} onClick={() => navigate('/login')}>Sign in</button>
                 </div>
@@ -169,12 +172,12 @@ export default function Landing() {
             <div style={S.divider} />
 
             {/* KILLER LINE */}
-            <section className="killer-section" style={{ padding: '80px 60px', textAlign: 'center', background: bg }}>
+            <section className="killer-section" style={{ padding: isMobile ? '56px 20px' : '80px 60px', textAlign: 'center', background: bg }}>
                 <div style={{ maxWidth: 700, margin: '0 auto' }}>
-                    <div className="killer-q1" style={{ fontSize: 30, fontWeight: 500, color: textMuted, marginBottom: 8 }}>
+                    <div className="killer-q1" style={{ fontSize: isMobile ? 20 : 30, fontWeight: 500, color: textMuted, marginBottom: 8 }}>
                         "Read.ai tells you what was said."
                     </div>
-                    <div className="killer-q2" style={{ fontSize: 30, fontWeight: 500, color: textPrimary }}>
+                    <div className="killer-q2" style={{ fontSize: isMobile ? 20 : 30, fontWeight: 500, color: textPrimary }}>
                         <span style={{ color: '#16a34a', fontWeight: 800 }}>MeetingDebt</span> makes sure it actually happens.
                     </div>
                 </div>
@@ -190,7 +193,7 @@ export default function Landing() {
                         <div style={S.sTitle}>Three steps.<br />Zero dropped balls.</div>
                         <div style={S.sSub}>From messy transcript to tracked commitments in under 60 seconds.</div>
                     </div>
-                    <div className="steps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20, marginTop: 56 }}>
+                    <div className="steps-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTabletOrSmaller ? 'repeat(2,1fr)' : 'repeat(3,1fr)', gap: 20, marginTop: 56 }}>
                         {[
                             { n: '01', icon: '📋', title: 'Paste your transcript', desc: 'Copy from Zoom, Meet, Teams, Otter, Read.ai — anywhere. Paste it in. Takes 10 seconds.' },
                             { n: '02', icon: '⚡', title: 'AI extracts commitments', desc: 'Claude reads every line and pulls out tasks, owners, and deadlines. You review and confirm.' },
@@ -216,7 +219,7 @@ export default function Landing() {
             {/* TRANSCRIPT DEMO */}
             <section className="demo-section" style={S.section(dark ? '#050505' : '#f1f5f9')}>
                 <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 32 : 60, alignItems: 'center' }}>
                         <div className="demo-left-content">
                             <div style={S.sLabel}>See it in action</div>
                             <div style={{ ...S.sTitle, fontSize: 36 }}>From messy transcript<br />to clear ownership.</div>
@@ -238,7 +241,7 @@ export default function Landing() {
                                 ))}
                             </div>
                         </div>
-                        <div className="terminal" style={{ background: '#0d0d0d', border: '0.5px solid #ffffff0f', borderRadius: 16, overflow: 'hidden' }}>
+                        <div className="terminal" style={{ background: '#0d0d0d', border: '0.5px solid #ffffff0f', borderRadius: 16, overflow: 'hidden', width: '100%' }}>
                             <div style={{ padding: '12px 16px', background: '#111', borderBottom: '0.5px solid #ffffff08', display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <div style={{ display: 'flex', gap: 5 }}>
                                     {['#ff5f57', '#febc2e', '#28c840'].map(c => (
@@ -287,7 +290,7 @@ export default function Landing() {
                 <div style={{ maxWidth: 1100, margin: '0 auto' }}>
                     <div style={S.sLabel}>Features</div>
                     <div style={{ ...S.sTitle, marginBottom: 48 }}>Everything your team needs.</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTabletOrSmaller ? 'repeat(2,1fr)' : 'repeat(3,1fr)', gap: 16 }}>
                         {[
                             { icon: '🤖', title: 'AI extraction', desc: "Claude reads your transcript and pulls every commitment, deadline, and owner." },
                             { icon: '📊', title: 'Live dashboard', desc: "See your whole team's commitments in one place. Filter by person, meeting, or status." },
@@ -315,7 +318,7 @@ export default function Landing() {
                 <div style={{ maxWidth: 1100, margin: '0 auto' }}>
                     <div style={S.sLabel}>Why not just use...</div>
                     <div style={{ ...S.sTitle, fontSize: 36, marginBottom: 48 }}>Other tools stop when<br />the meeting ends.</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
                         <div className="vs-them" style={{ ...S.card, opacity: 0.7 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: textMuted, marginBottom: 18 }}>
                                 Read.ai / Otter / Fireflies
@@ -358,7 +361,7 @@ export default function Landing() {
 
             {/* NUDGE EMAIL */}
             <section className="nudge-section" style={S.section()}>
-                <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' }}>
+                <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 32 : 60, alignItems: 'center' }}>
                     <div className="nudge-left">
                         <div style={S.sLabel}>Automated nudges</div>
                         <div style={{ ...S.sTitle, fontSize: 36 }}>Your team gets reminded.<br />Every. Single. Day.</div>
@@ -425,17 +428,17 @@ export default function Landing() {
             <div style={S.divider} />
 
             {/* CTA */}
-            <section className="cta-section" style={{ padding: '120px 60px', textAlign: 'center', position: 'relative', overflow: 'hidden', background: bg }}>
+            <section className="cta-section" style={{ padding: isMobile ? '72px 20px' : '120px 60px', textAlign: 'center', position: 'relative', overflow: 'hidden', background: bg }}>
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                     <div className="cta-orb" style={{ width: 600, height: 600, borderRadius: '50%', background: '#16a34a06' }} />
                 </div>
-                <div className="cta-h2" style={{ fontSize: 52, fontWeight: 900, color: textPrimary, letterSpacing: -2, marginBottom: 16, lineHeight: 1.05, position: 'relative' }}>
+                <div className="cta-h2" style={{ fontSize: isMobile ? 32 : 52, fontWeight: 900, color: textPrimary, letterSpacing: isMobile ? -0.5 : -2, marginBottom: 16, lineHeight: 1.1, position: 'relative' }}>
                     Stop letting commitments<br />fall through the cracks.
                 </div>
                 <div className="cta-sub" style={{ fontSize: 16, color: textMuted, marginBottom: 40, position: 'relative' }}>
                     Join teams that actually follow through on what they say in meetings.
                 </div>
-                <div className="cta-btns" style={{ display: 'flex', gap: 12, justifyContent: 'center', position: 'relative' }}>
+                <div className="cta-btns" style={{ display: 'flex', gap: 12, justifyContent: 'center', position: 'relative', flexWrap: 'wrap' }}>
                     <button style={S.btnP} onClick={() => navigate('/signup')}>Get started free →</button>
                     <button style={S.btnS} onClick={() => navigate('/login')}>Sign in</button>
                 </div>
@@ -444,7 +447,7 @@ export default function Landing() {
             <div style={S.divider} />
 
             {/* CONTACT */}
-            <section id="contact" className="contact-section" style={{ padding: '80px 60px', background: bg, textAlign: 'center' }}>
+            <section id="contact" className="contact-section" style={{ padding: isMobile ? '56px 20px' : '80px 60px', background: bg, textAlign: 'center' }}>
                 <div style={{ maxWidth: 600, margin: '0 auto' }}>
                     <div style={S.sLabel}>Get in touch</div>
                     <div style={{ ...S.sTitle, fontSize: 32, marginBottom: 12 }}>Let's collaborate</div>
@@ -479,15 +482,24 @@ export default function Landing() {
             </section>
 
             {/* FOOTER */}
-            <div style={{ padding: '28px 60px', borderTop: `0.5px solid ${dividerColor}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: bg }}>
+            <div style={{
+                padding: isMobile ? '24px 20px' : '28px 60px',
+                borderTop: `0.5px solid ${dividerColor}`,
+                display: 'flex',
+                alignItems: isMobile ? 'flex-start' : 'center',
+                justifyContent: 'space-between',
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: isMobile ? 12 : 0,
+                background: bg,
+            }}>
                 <div style={{ fontSize: 13, color: textMuted, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={S.logoDot} />
                     Meeting<span style={{ color: '#16a34a' }}>Debt</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <a href="/privacy" style={{ fontSize: 11, color: dark ? '#222' : '#94a3b8', textDecoration: 'none' }}>Privacy Policy</a>
-                    <a href="/terms" style={{ fontSize: 11, color: dark ? '#222' : '#94a3b8', textDecoration: 'none' }}>Terms of Service</a>
-                    <span style={{ fontSize: 11, color: dark ? '#222' : '#94a3b8' }}>© 2026 MeetingDebt · Built at Clark University</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                    <a href="/privacy" style={{ fontSize: 11, color: dark ? '#555' : '#94a3b8', textDecoration: 'none' }}>Privacy Policy</a>
+                    <a href="/terms" style={{ fontSize: 11, color: dark ? '#555' : '#94a3b8', textDecoration: 'none' }}>Terms of Service</a>
+                    <span style={{ fontSize: 11, color: dark ? '#444' : '#94a3b8' }}>© 2026 MeetingDebt · Built at Clark University</span>
                 </div>
             </div>
 
@@ -495,6 +507,19 @@ export default function Landing() {
                 @keyframes pulse {
                     0%, 100% { opacity: 1; transform: scale(1); }
                     50% { opacity: 0.5; transform: scale(0.8); }
+                }
+                @media (max-width: 767px) {
+                    .hero-sub {
+                        font-size: 14px !important;
+                    }
+                    .cta-btns {
+                        flex-direction: column;
+                        align-items: center;
+                    }
+                    .cta-btns button {
+                        width: 100%;
+                        max-width: 280px;
+                    }
                 }
             `}</style>
         </div>

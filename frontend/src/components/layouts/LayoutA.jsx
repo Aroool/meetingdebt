@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { gsap } from 'gsap';
 import api from '../../api';
 import CommitmentRow from '../CommitmentRow';
+import useIsMobile from '../../hooks/useIsMobile';
 
 function parseDate(s) { if (!s) return null; const [y,m,d] = s.slice(0,10).split('-').map(Number); return new Date(y, m-1, d); }
 function getStatus(c) {
@@ -204,6 +205,8 @@ export default function LayoutA({ data, onUpdate }) {
     const progressRefs = useRef([]);
     const hiddenAtRef = useRef(null);
     const hasAnimatedRef = useRef(!!sessionStorage.getItem('layoutA_animated'));
+    const [columnsReady, setColumnsReady] = useState(hasAnimatedRef.current);
+    const isMobile = useIsMobile();
     const [filterOpen, setFilterOpen] = useState(false);
     const filterRef = useRef(null);
     const filterMenuRef = useRef(null);
@@ -257,7 +260,10 @@ export default function LayoutA({ data, onUpdate }) {
 
     useEffect(() => {
         if (loading) return;
-        if (hasAnimatedRef.current) return;
+        if (hasAnimatedRef.current) {
+            setColumnsReady(true);
+            return;
+        }
         hasAnimatedRef.current = true;
         sessionStorage.setItem('layoutA_animated', '1');
 
@@ -266,21 +272,14 @@ export default function LayoutA({ data, onUpdate }) {
             tl
                 .fromTo(leftRef.current, { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.42 })
                 .fromTo(centerRef.current, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.42 }, '-=0.22')
-                .fromTo(rightRef.current, { opacity: 0, x: 14 }, { opacity: 1, x: 0, duration: 0.42 }, '-=0.22');
+                .fromTo(rightRef.current, { opacity: 0, x: 14 }, { opacity: 1, x: 0, duration: 0.42 }, '-=0.22')
+                .eventCallback('onComplete', () => setColumnsReady(true));
 
             progressRefs.current.filter(Boolean).forEach((bar, i) => {
                 gsap.fromTo(bar, { width: '0%' }, { width: bar.dataset.width, duration: 0.9, ease: 'power2.out', delay: 0.7 + i * 0.08 });
             });
         });
         return () => ctx.revert();
-    }, [loading]);
-
-    useEffect(() => {
-        if (loading) return;
-        if (!hasAnimatedRef.current) return;
-        [leftRef, centerRef, rightRef].forEach(ref => {
-            if (ref.current) ref.current.style.opacity = '1';
-        });
     }, [loading]);
 
     useEffect(() => {
@@ -391,7 +390,7 @@ export default function LayoutA({ data, onUpdate }) {
     ];
 
     return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg)', overflow: 'hidden' }}>
+        <div className="layoutA-outer" style={{ height: isMobile ? 'auto' : '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg)', overflow: isMobile ? 'visible' : 'hidden' }}>
             <style>{`
                 @media (max-width: 1180px) {
                     .layoutA-grid {
@@ -408,6 +407,21 @@ export default function LayoutA({ data, onUpdate }) {
                         min-height: auto !important;
                     }
                 }
+                @media (max-width: 767px) {
+                    .layoutA-outer {
+                        height: auto !important;
+                        overflow: visible !important;
+                    }
+                    .layoutA-grid {
+                        overflow: visible !important;
+                        height: auto !important;
+                        padding: 12px 16px 20px !important;
+                        gap: 12px !important;
+                    }
+                    .layoutA-col {
+                        overflow: visible !important;
+                    }
+                }
             `}</style>
 
             <DeleteMeetingModal
@@ -417,8 +431,8 @@ export default function LayoutA({ data, onUpdate }) {
                 onConfirm={() => handleDeleteMeeting(deleteConfirm)}
             />
 
-            <div className="layoutA-grid" style={{ flex: 1, display: 'grid', gridTemplateColumns: '280px 1fr 320px', gap: 16, padding: '16px 24px 18px', overflow: 'hidden', minHeight: 0 }}>
-                <div ref={leftRef} className="layoutA-col" style={{ display: 'flex', flexDirection: 'column', gap: 16, overflow: 'hidden', opacity: 0, minHeight: 0 }}>
+            <div className="layoutA-grid" style={{ flex: 1, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '280px 1fr 320px', gap: 16, padding: isMobile ? '12px 16px 20px' : '16px 24px 18px', overflow: isMobile ? 'visible' : 'hidden', minHeight: 0, height: isMobile ? 'auto' : undefined }}>
+                <div ref={leftRef} className="layoutA-col" style={{ display: 'flex', flexDirection: 'column', gap: 16, overflow: isMobile ? 'visible' : 'hidden', opacity: columnsReady ? 1 : 0, minHeight: 0 }}>
                     <div style={{ ...card({ padding: 18 }), flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
                         <div style={sectionLabel()}>
                             <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--red)' }} />
@@ -502,7 +516,7 @@ export default function LayoutA({ data, onUpdate }) {
                     </div>
                 </div>
 
-                <div ref={centerRef} className="layoutA-col" style={{ ...card(), display: 'flex', flexDirection: 'column', overflow: 'hidden', opacity: 0, minHeight: 0 }}>
+                <div ref={centerRef} className="layoutA-col" style={{ ...card(), display: 'flex', flexDirection: 'column', overflow: isMobile ? 'visible' : 'hidden', opacity: columnsReady ? 1 : 0, minHeight: 0 }}>
                     <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text-primary)', flex: 1 }}>Commitments</span>
                         <div ref={filterRef} style={{ position: 'relative' }}>
@@ -820,7 +834,7 @@ export default function LayoutA({ data, onUpdate }) {
                     </div>
                 </div>
 
-                <div ref={rightRef} className="layoutA-col" style={{ display: 'flex', flexDirection: 'column', gap: 16, overflow: 'hidden', opacity: 0, minHeight: 0 }}>
+                <div ref={rightRef} className="layoutA-col" style={{ display: 'flex', flexDirection: 'column', gap: 16, overflow: isMobile ? 'visible' : 'hidden', opacity: columnsReady ? 1 : 0, minHeight: 0 }}>
                     <div style={{ ...card({ padding: 18 }), flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
                         <div style={sectionLabel()}>
                             <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6' }} />

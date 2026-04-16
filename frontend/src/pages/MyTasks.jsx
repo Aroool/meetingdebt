@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import api from '../api';
+import useIsMobile from '../hooks/useIsMobile';
 
 function parseDate(s) { if (!s) return null; const [y,m,d] = s.slice(0,10).split('-').map(Number); return new Date(y, m-1, d); }
 function getStatus(c) {
@@ -109,6 +110,7 @@ export default function MyTasks() {
         return true;
     });
 
+    const isMobile = useIsMobile();
     const overdue = tasks.filter(t => getStatus(t) === 'overdue').length;
     const todayCount = tasks.filter(t => isToday(t.deadline) && getStatus(t) !== 'done').length;
     const done = tasks.filter(t => getStatus(t) === 'done').length;
@@ -120,10 +122,10 @@ export default function MyTasks() {
     };
 
     return (
-        <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', padding: '24px 32px' }}>
+        <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', padding: isMobile ? '16px' : '24px 32px', width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
 
             {/* Header */}
-            <div ref={headerRef} style={{ opacity: 0, marginBottom: 24, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div ref={headerRef} style={{ opacity: 0, marginBottom: 24, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                 <div>
                     <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: -0.5, marginBottom: 4 }}>
                         My Tasks
@@ -158,7 +160,7 @@ export default function MyTasks() {
                                 }}
                             />
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
                             <div>
                                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                                     Deadline
@@ -218,10 +220,10 @@ export default function MyTasks() {
                 </div>
             )}
 
-            <div ref={listRef} style={{ opacity: 0, display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, alignItems: 'start' }}>
+            <div ref={listRef} style={{ opacity: 0, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 320px', gap: 16, alignItems: 'start', minWidth: 0, width: '100%' }}>
 
                 {/* Main task list */}
-                <div>
+                <div style={{ minWidth: 0 }}>
                     {/* Filter bar */}
                     <div className="filter-tabs" style={{ marginBottom: 14 }}>
                         {[
@@ -365,7 +367,7 @@ export default function MyTasks() {
                 </div>
 
                 {/* Right summary */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: isMobile ? 'none' : 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
                     <div style={{ ...card, padding: 16 }}>
                         <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--accent)' }} />
