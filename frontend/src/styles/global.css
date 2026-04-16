@@ -1420,3 +1420,115 @@ body {
     background: var(--bg);
 }
 
+/* ─── Responsive / Mobile ─────────────────────────────────────────────────── */
+
+/* Tablet + mobile: tighten content padding */
+@media (max-width: 1024px) {
+    .main {
+        padding: 20px 20px;
+    }
+}
+
+@media (max-width: 767px) {
+    /* Content area */
+    .main {
+        padding: 16px 16px 16px;
+    }
+
+    /* Page titles */
+    .page-title {
+        font-size: 20px !important;
+    }
+
+    /* Dropdown menu: slide up from bottom on mobile */
+    .dropdown-menu {
+        position: fixed !important;
+        left: 10px !important;
+        right: 10px !important;
+        top: auto !important;
+        bottom: 74px !important;
+        min-width: unset !important;
+        width: auto !important;
+        max-height: 70vh;
+        overflow-y: auto;
+        border-radius: 16px !important;
+    }
+
+    /* Auth cards */
+    .auth-card {
+        margin: 12px;
+        padding: 24px 20px !important;
+    }
+
+    /* Modals — full width on mobile */
+    .modal-card,
+    [class*="modal"] {
+        margin: 12px !important;
+        max-width: calc(100vw - 24px) !important;
+        width: auto !important;
+    }
+
+    /* FAB — move up above bottom nav */
+    .fab {
+        bottom: 84px !important;
+        right: 16px !important;
+    }
+
+    /* Grid layouts — single column */
+    .two-col {
+        grid-template-columns: 1fr !important;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    /* Form fields — full width */
+    .field-input {
+        font-size: 16px !important; /* prevents iOS zoom on focus */
+    }
+
+    /* Tables — horizontal scroll */
+    .table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Hide non-essential columns on mobile */
+    .hide-mobile {
+        display: none !important;
+    }
+
+    /* Stack flex rows */
+    .stack-mobile {
+        flex-direction: column !important;
+    }
+
+    /* Full width buttons on mobile */
+    .btn-primary,
+    .btn-secondary {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+/* Small phones */
+@media (max-width: 390px) {
+    .main {
+        padding: 12px 12px;
+    }
+
+    .page-title {
+        font-size: 18px !important;
+    }
+}
+
+/* Safe area for iPhone notch / home indicator */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    @media (max-width: 767px) {
+        body {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    }
+}
+

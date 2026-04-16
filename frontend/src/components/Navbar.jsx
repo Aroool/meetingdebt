@@ -12,6 +12,16 @@ import {
     HomeIcon, ListBulletIcon, CalendarIcon, StarIcon, UsersIcon, ChatBubbleIcon,
 } from './Icons';
 
+function useIsMobile(breakpoint = 768) {
+    const [isMobile, setIsMobile] = useState(window.innerWidth < breakpoint);
+    useEffect(() => {
+        const handle = () => setIsMobile(window.innerWidth < breakpoint);
+        window.addEventListener('resize', handle);
+        return () => window.removeEventListener('resize', handle);
+    }, [breakpoint]);
+    return isMobile;
+}
+
 function getRoleFromStorage() {
     return localStorage.getItem('userRole') || 'solo';
 }
@@ -72,6 +82,7 @@ function TopBar({ dark, onToggleDark, user, workspaceName, role, isSolo,
     dropdownOpen, setDropdownOpen, dropdownRef, workspaces,
     handleSwitchWorkspace, handleLogout, navigate, fetchWorkspaces }) {
 
+    const isMobile = useIsMobile();
     const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Account';
     const email = user?.email || '';
     const activeWsId = localStorage.getItem('workspaceId');
@@ -106,64 +117,58 @@ function TopBar({ dark, onToggleDark, user, workspaceName, role, isSolo,
 
             <div style={{ flex: 1 }} />
 
-            {/* Floating pill nav — futuristic style */}
-            <div style={{
-                display: 'flex', alignItems: 'center',
-                padding: 4,
-                borderRadius: 22,
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border)',
-                boxShadow: '0 2px 16px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
-                position: 'absolute', left: '50%', transform: 'translateX(-50%)',
-                overflow: 'hidden',
-            }}>
-                {SEGMENTS.map(seg => {
-                    const isActive = seg.match.includes(location.pathname);
-                    return (
-                        <Link key={seg.to} to={seg.to} style={{
-                            padding: '7px 22px', borderRadius: 18,
-                            fontSize: 13, fontWeight: isActive ? 600 : 500,
-                            color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
-                            textDecoration: 'none',
-                            position: 'relative',
-                            zIndex: 1,
-                            transition: 'color 0.25s',
-                            lineHeight: '18px',
-                        }}>
-                            {/* Glow — soft blurred accent behind active tab */}
-                            {isActive && (
-                                <motion.div
-                                    layoutId="nav-glow"
-                                    style={{
-                                        position: 'absolute',
-                                        inset: '-10px -14px',
-                                        borderRadius: '50%',
-                                        background: 'var(--accent)',
-                                        opacity: 0.09,
-                                        filter: 'blur(16px)',
-                                        zIndex: -2,
-                                    }}
-                                    transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-                                />
-                            )}
-                            {/* Pill background for active */}
-                            {isActive && (
-                                <motion.div
-                                    layoutId="nav-pill"
-                                    style={{
-                                        position: 'absolute', inset: 0,
-                                        borderRadius: 18,
-                                        background: 'var(--accent-light)',
-                                        zIndex: -1,
-                                    }}
-                                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                                />
-                            )}
-                            {seg.label}
-                        </Link>
-                    );
-                })}
-            </div>
+            {/* Floating pill nav — desktop only */}
+            {!isMobile && (
+                <div style={{
+                    display: 'flex', alignItems: 'center',
+                    padding: 4,
+                    borderRadius: 22,
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    boxShadow: '0 2px 16px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+                    position: 'absolute', left: '50%', transform: 'translateX(-50%)',
+                    overflow: 'hidden',
+                }}>
+                    {SEGMENTS.map(seg => {
+                        const isActive = seg.match.includes(location.pathname);
+                        return (
+                            <Link key={seg.to} to={seg.to} style={{
+                                padding: '7px 22px', borderRadius: 18,
+                                fontSize: 13, fontWeight: isActive ? 600 : 500,
+                                color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
+                                textDecoration: 'none',
+                                position: 'relative',
+                                zIndex: 1,
+                                transition: 'color 0.25s',
+                                lineHeight: '18px',
+                            }}>
+                                {isActive && (
+                                    <motion.div
+                                        layoutId="nav-glow"
+                                        style={{
+                                            position: 'absolute', inset: '-10px -14px',
+                                            borderRadius: '50%', background: 'var(--accent)',
+                                            opacity: 0.09, filter: 'blur(16px)', zIndex: -2,
+                                        }}
+                                        transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                                    />
+                                )}
+                                {isActive && (
+                                    <motion.div
+                                        layoutId="nav-pill"
+                                        style={{
+                                            position: 'absolute', inset: 0, borderRadius: 18,
+                                            background: 'var(--accent-light)', zIndex: -1,
+                                        }}
+                                        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                                    />
+                                )}
+                                {seg.label}
+                            </Link>
+                        );
+                    })}
+                </div>
+            )}
 
             <div style={{ flex: 1 }} />
 
@@ -401,12 +406,12 @@ function RailBtn({ icon, label, isActive, onClick, title, expanded }) {
 // ─── Icon Rail ────────────────────────────────────────────────────────────────
 
 function Rail({ role, isSolo, user, overdueCount }) {
+    const isMobile = useIsMobile();
     const [expanded, setExpanded] = useState(false);
-    const location = useLocation();
-    const isDashboard = location.pathname === '/dashboard';
-
     const [dashLayout, setDashLayout] = useState(localStorage.getItem('dashboardLayout') || 'A');
     const [dashView, setDashView] = useState(localStorage.getItem('commitmentsView') || 'grouped');
+    const location = useLocation();
+    const isDashboard = location.pathname === '/dashboard';
 
     const name = user?.user_metadata?.full_name || user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'User';
     const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
@@ -448,6 +453,8 @@ function Rail({ role, isSolo, user, overdueCount }) {
             window.removeEventListener('viewChanged', sync);
         };
     }, []);
+
+    if (isMobile) return null;
 
     const divider = (
         <div style={{
@@ -555,9 +562,84 @@ function Rail({ role, isSolo, user, overdueCount }) {
     );
 }
 
+// ─── Bottom Nav (mobile only) ─────────────────────────────────────────────────
+
+function BottomNav({ role, overdueCount }) {
+    const location = useLocation();
+    const navItems = [
+        { to: '/dashboard', label: 'Home', icon: HomeIcon, match: ['/dashboard'] },
+        { to: '/commitments', label: 'Tasks', icon: ListBulletIcon, match: ['/commitments'], badge: overdueCount },
+        { to: '/meetings', label: 'Meetings', icon: CalendarIcon, match: ['/meetings'] },
+        { to: '/my-tasks', label: 'Personal', icon: StarIcon, match: ['/my-tasks'] },
+        { to: '/profile', label: 'Profile', icon: UserIcon, match: ['/profile', '/workspace', '/feedback'] },
+    ];
+
+    return (
+        <div style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0,
+            background: 'var(--bg-card)',
+            borderTop: '1px solid var(--border)',
+            display: 'flex', alignItems: 'stretch',
+            zIndex: 300,
+            paddingBottom: 'env(safe-area-inset-bottom)',
+            boxShadow: '0 -4px 20px rgba(0,0,0,0.06)',
+        }}>
+            {navItems.map(item => {
+                const isActive = item.match.includes(location.pathname);
+                const Icon = item.icon;
+                return (
+                    <Link
+                        key={item.to}
+                        to={item.to}
+                        style={{
+                            flex: 1, display: 'flex', flexDirection: 'column',
+                            alignItems: 'center', justifyContent: 'center',
+                            gap: 4, textDecoration: 'none',
+                            padding: '10px 0 8px',
+                            color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+                            position: 'relative',
+                            transition: 'color 0.15s',
+                        }}
+                    >
+                        {isActive && (
+                            <motion.div
+                                layoutId="bottom-nav-active"
+                                style={{
+                                    position: 'absolute', top: 0, left: 4, right: 4,
+                                    height: 2, background: 'var(--accent)',
+                                    borderRadius: '0 0 2px 2px',
+                                }}
+                                transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                            />
+                        )}
+                        <div style={{ position: 'relative' }}>
+                            <Icon size={21} />
+                            {item.badge > 0 && (
+                                <span style={{
+                                    position: 'absolute', top: -4, right: -8,
+                                    background: 'var(--red)', color: '#fff',
+                                    borderRadius: 99, minWidth: 14, height: 14,
+                                    fontSize: 8, fontWeight: 800, padding: '0 3px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                    {item.badge > 9 ? '9+' : item.badge}
+                                </span>
+                            )}
+                        </div>
+                        <span style={{ fontSize: 10, fontWeight: isActive ? 700 : 500, lineHeight: 1 }}>
+                            {item.label}
+                        </span>
+                    </Link>
+                );
+            })}
+        </div>
+    );
+}
+
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 export default function Navbar() {
+    const isMobile = useIsMobile();
     const [dark, setDark] = useState(() => document.body.classList.contains('dark'));
     const [user, setUser] = useState(null);
     const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -678,6 +760,12 @@ export default function Navbar() {
                 user={user}
                 overdueCount={overdueCount}
             />
+            {isMobile && (
+                <BottomNav
+                    role={role}
+                    overdueCount={overdueCount}
+                />
+            )}
         </>
     );
 }

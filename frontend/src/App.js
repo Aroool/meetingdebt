@@ -14,7 +14,7 @@ import JoinOrCreate from './pages/JoinOrCreate';
 import EnterInvite from './pages/EnterInvite';
 import Profile from './pages/Profile';
 import ThemePicker from './pages/ThemePicker';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import MyTasks from './pages/MyTasks';
 import Feedback from './pages/Feedback';
 import ForgotPassword from './pages/ForgotPassword';
@@ -23,11 +23,27 @@ import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 
 // Layout wrapper for all authenticated pages.
-// Sidebar is 52px fixed — content always starts at marginLeft: 52.
-// TopBar is 56px fixed — content always starts at paddingTop: 56.
+// Desktop: sidebar 52px left + topbar 52px top.
+// Mobile: no left margin, bottom nav 64px.
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handle = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handle);
+    return () => window.removeEventListener('resize', handle);
+  }, []);
+  return isMobile;
+}
+
 function ProtectedLayout({ children }) {
+  const isMobile = useIsMobile();
   return (
-    <div style={{ marginLeft: 52, paddingTop: 52, minHeight: '100vh' }}>
+    <div style={{
+      marginLeft: isMobile ? 0 : 52,
+      paddingTop: 52,
+      paddingBottom: isMobile ? 72 : 0,
+      minHeight: '100vh',
+    }}>
       {children}
     </div>
   );
