@@ -1069,6 +1069,10 @@ app.post('/profile/delete-account', requireAuth, async (req, res) => {
         await supabase.from('workspace_members').delete().eq('user_id', userId);
         await supabase.from('commitments').delete().eq('user_id', userId);
         await supabase.from('meetings').delete().eq('user_id', userId);
+        // Hard delete from auth.users so the email can be re-used for signup
+        if (supabaseAdmin) {
+            await supabaseAdmin.auth.admin.deleteUser(userId);
+        }
         return res.json({ success: true });
     } catch (error) {
         return res.status(500).json({ error: error.message });
