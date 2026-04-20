@@ -1065,10 +1065,52 @@ app.patch('/profile/settings', requireAuth, async (req, res) => {
 app.post('/profile/delete-account', requireAuth, async (req, res) => {
     try {
         const userId = req.userId;
+
+        // Handle workspaces owned by this user
+        const { data: ownedWorkspaces } = await supabase
+            .from('workspaces')
+            .select('id')
+            .eq('owner_id', userId);
+
+        if (ownedWorkspaces && ownedWorkspaces.length > 0) {
+            for (const workspace of ownedWorkspaces) {
+                // Get all other members of this workspace
+                const { data: otherMembers } = await supabase
+                    .from('workspace_members')
+                    .select('user_id')
+                    .eq('workspace_id', workspace.id)
+                    .neq('user_id', userId);
+
+                if (!otherMembers || otherMembers.length === 0) {
+                    // No other members — delete the whole workspace and its data
+                    await supabase.from('notifications').delete().eq('workspace_id', workspace.id);
+                    await supabase.from('commitments').delete().eq('workspace_id', workspace.id);
+                    await supabase.from('meetings').delete().eq('workspace_id', workspace.id);
+                    await supabase.from('workspace_members').delete().eq('workspace_id', workspace.id);
+                    await supabase.from('workspaces').delete().eq('id', workspace.id);
+                } else {
+                    // Transfer ownership to the next member
+                    const newOwner = otherMembers[0].user_id;
+                    await supabase
+                        .from('workspaces')
+                        .update({ owner_id: newOwner })
+                        .eq('id', workspace.id);
+                    // Promote new owner to manager role
+                    await supabase
+                        .from('workspace_members')
+                        .update({ role: 'manager' })
+                        .eq('workspace_id', workspace.id)
+                        .eq('user_id', newOwner);
+                }
+            }
+        }
+
+        // Clean up user's personal data
         await supabase.from('notifications').delete().eq('user_id', userId);
         await supabase.from('workspace_members').delete().eq('user_id', userId);
         await supabase.from('commitments').delete().eq('user_id', userId);
         await supabase.from('meetings').delete().eq('user_id', userId);
+
         // Hard delete from auth.users so the email can be re-used for signup
         if (supabaseAdmin) {
             await supabaseAdmin.auth.admin.deleteUser(userId);
