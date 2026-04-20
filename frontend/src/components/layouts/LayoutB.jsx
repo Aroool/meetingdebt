@@ -152,7 +152,7 @@ function FocusTab({ commitments, members, onUpdate, currentUserId }) {
                         <div style={{ position: 'absolute', bottom: -18, left: 28, right: 28, height: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 20, zIndex: -2, opacity: 0.5 }} />
 
                         {/* Main card */}
-                        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '32px 36px' }}>
+                        <div className="layoutB-focus-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '32px 36px' }}>
 
                             {/* Meeting label */}
                             <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -291,7 +291,7 @@ function BoardTab({ commitments, members, onUpdate, currentUserId }) {
             </div>
 
             {/* Columns */}
-            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, padding: 12, overflow: 'hidden' }}>
+            <div className="layoutB-board-cols" style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, padding: 12, overflow: 'hidden' }}>
                 {COLS.map(col => {
                     const tasks = filtered.filter(c => getStatus(c) === col.key);
                     const isHovered = hoveredCol === col.key;
@@ -300,6 +300,7 @@ function BoardTab({ commitments, members, onUpdate, currentUserId }) {
                             onDragOver={e => { e.preventDefault(); setHoveredCol(col.key); }}
                             onDragLeave={() => setHoveredCol(null)}
                             onDrop={() => handleDrop(col.key)}
+                            className="layoutB-board-col"
                             style={{ background: isHovered ? 'var(--accent-light)' : 'var(--bg-card)', border: `1px solid ${isHovered ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 14, display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'all 0.2s' }}
                         >
                             <div style={{ padding: '12px 14px 10px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -384,6 +385,24 @@ export default function LayoutB({ data, onUpdate }) {
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg)', overflow: 'hidden' }}>
+            <style>{`
+                @media (max-width: 767px) {
+                    .layoutB-board-cols {
+                        display: flex !important;
+                        flex-direction: row !important;
+                        overflow-x: auto !important;
+                        gap: 10px !important;
+                        padding-bottom: 8px !important;
+                    }
+                    .layoutB-board-col {
+                        min-width: 200px !important;
+                        flex-shrink: 0 !important;
+                    }
+                    .layoutB-focus-card {
+                        padding: 24px 20px !important;
+                    }
+                }
+            `}</style>
 
             {/* Tabs */}
             <div style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', padding: '0 24px', display: 'flex', alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
