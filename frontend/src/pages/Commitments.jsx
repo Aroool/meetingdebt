@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api';
 import CommitmentRow from '../components/CommitmentRow';
 import { supabase } from '../supabase';
+import useIsMobile from '../hooks/useIsMobile';
 
 
 const SORT_OPTIONS = [
@@ -123,6 +124,8 @@ export default function Commitments() {
         return acc;
     }, {});
 
+    const isMobile = useIsMobile();
+
     const card = {
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
@@ -130,7 +133,7 @@ export default function Commitments() {
     };
 
     return (
-        <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', padding: '24px 32px' }}>
+        <div style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--bg)', padding: isMobile ? '16px' : '24px 32px' }}>
 
             {/* Header */}
             <motion.div
@@ -138,7 +141,7 @@ export default function Commitments() {
                 animate={{ opacity: 1, y: 0 }}
                 style={{ marginBottom: 20 }}
             >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
                     <div>
                         <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: -0.5, marginBottom: 4 }}>
                             {localStorage.getItem('userRole') === 'member' ? 'My Tasks' : 'Commitments'}
@@ -163,7 +166,7 @@ export default function Commitments() {
                 </div>
 
                 {/* Stat pills */}
-                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
                     {[
                         { label: 'Overdue', value: overdue, color: 'var(--red)', bg: 'var(--red-light)', filter: 'Overdue' },
                         { label: 'Pending', value: pending, color: 'var(--amber)', bg: 'var(--amber-light)', filter: 'Pending' },

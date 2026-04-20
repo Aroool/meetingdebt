@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
 import TeamMemberModal from '../components/TeamMemberModal';
 import api from '../api';
+import useIsMobile from '../hooks/useIsMobile';
 
 
 function RightPanel({ ws, isActive, onSwitch }) {
@@ -66,7 +67,7 @@ function RightPanel({ ws, isActive, onSwitch }) {
                 border: '0.5px solid var(--border)',
                 borderRadius: 14, overflow: 'hidden',
                 display: 'flex', flexDirection: 'column',
-                height: '100%',
+                minHeight: 400,
             }}
         >
             {/* Header */}
@@ -108,7 +109,7 @@ function RightPanel({ ws, isActive, onSwitch }) {
             </div>
 
             {/* Stats row */}
-            <div style={{
+            <div className="ws-stats-grid" style={{
                 display: 'grid', gridTemplateColumns: 'repeat(5,1fr)',
                 borderBottom: '0.5px solid var(--border)', flexShrink: 0,
             }}>
@@ -242,10 +243,10 @@ function RightPanel({ ws, isActive, onSwitch }) {
             {ws.role === 'manager' && (
                 <div style={{
                     borderTop: '0.5px solid var(--border)', padding: '12px 20px',
-                    display: 'grid', gridTemplateColumns: '1fr auto', gap: 16,
+                    display: 'flex', flexWrap: 'wrap', gap: 16,
                     alignItems: 'start', flexShrink: 0, background: 'var(--bg-card)'
                 }}>
-                    <div>
+                    <div style={{ flex: 1, minWidth: 200 }}>
                         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
                             Invite member
                         </div>
@@ -299,11 +300,20 @@ function RightPanel({ ws, isActive, onSwitch }) {
     );
 }
 
+const wsStyles = `
+    @media (max-width: 767px) {
+        .ws-stats-grid { grid-template-columns: repeat(3, 1fr) !important; }
+        .ws-stats-grid > div:nth-child(3) { border-right: none !important; }
+        .ws-left-panel { max-height: 280px; overflow-y: auto; }
+    }
+`;
+
 export default function Workspace() {
     const [workspaces, setWorkspaces] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState(null);
     const navigate = useNavigate();
+    const isMobile = useIsMobile();
     const activeWsId = localStorage.getItem('workspaceId');
 
     const fetchWorkspaces = useCallback(async () => {
@@ -364,10 +374,11 @@ export default function Workspace() {
 
     return (
         <div className="main">
+            <style>{wsStyles}</style>
             <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}
+                style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}
             >
                 <div>
                     <div className="page-title">My Teams</div>
@@ -375,7 +386,7 @@ export default function Workspace() {
                         {workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''} · Click to view details
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <motion.button
                         whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                         onClick={() => navigate('/create-workspace')}
@@ -409,9 +420,9 @@ export default function Workspace() {
                     <div className="empty-sub">Create a team or join one with an invite code.</div>
                 </div>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 12, height: 520 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '240px 1fr', gap: 12, height: isMobile ? 'auto' : 520 }}>
                     {/* Left panel */}
-                    <div style={{
+                    <div className="ws-left-panel" style={{
                         background: 'var(--bg-card)', border: '0.5px solid var(--border)',
                         borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column'
                     }}>

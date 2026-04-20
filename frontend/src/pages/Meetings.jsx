@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 import api from '../api';
 import CommitmentRow from '../components/CommitmentRow';
+import useIsMobile from '../hooks/useIsMobile';
 
 function parseDate(s) { if (!s) return null; const [y,m,d] = s.slice(0,10).split('-').map(Number); return new Date(y, m-1, d); }
 function getStatus(c) {
@@ -24,6 +25,7 @@ export default function Meetings() {
     const [deleting, setDeleting] = useState(false);
     const location = useLocation();
 
+    const isMobile = useIsMobile();
     const role = localStorage.getItem('userRole') || 'solo';
     const workspaceId = localStorage.getItem('workspaceId');
     const isSolo = localStorage.getItem('soloMode') === 'true';
@@ -102,7 +104,7 @@ export default function Meetings() {
     }
 
     return (
-        <div style={{ padding: '24px 32px', minHeight: 'calc(100vh - 52px)', background: 'var(--bg)' }}>
+        <div style={{ padding: isMobile ? '16px' : '24px 32px', minHeight: 'calc(100vh - 52px)', background: 'var(--bg)' }}>
             <motion.div className="page-header" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="page-title">Meetings</div>
                 <div className="page-sub">
@@ -149,7 +151,9 @@ export default function Meetings() {
                                 position: 'fixed', top: '50%', left: '50%',
                                 transform: 'translate(-50%, -50%)',
                                 background: 'var(--bg-card)', border: '1px solid var(--border)',
-                                borderRadius: 16, padding: 24, width: 360, zIndex: 99,
+                                borderRadius: 16, padding: 24,
+                                width: 'min(360px, calc(100vw - 32px))',
+                                zIndex: 99,
                                 boxShadow: '0 16px 48px rgba(0,0,0,0.16)',
                             }}
                         >
