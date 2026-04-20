@@ -5,6 +5,7 @@ import LayoutPicker from '../components/LayoutPicker';
 import LayoutA from '../components/layouts/LayoutA';
 import LayoutB from '../components/layouts/LayoutB';
 import { motion } from 'framer-motion';
+import useIsMobile from '../hooks/useIsMobile';
 
 
 function parseDate(s) { if (!s) return null; const [y,m,d] = s.slice(0,10).split('-').map(Number); return new Date(y, m-1, d); }
@@ -135,17 +136,25 @@ export default function Dashboard() {
         userName, currentRole, workspaceName,
     };
 
+    const isMobile = useIsMobile();
     const LayoutComponent = layout === 'B' ? LayoutB : LayoutA;
 
     return (
-        <div style={{ height: 'calc(100vh - 52px)', background: 'var(--bg)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flex: 1, overflow: 'hidden' }}>
+        <div style={{
+            height: isMobile ? 'auto' : 'calc(100vh - 52px)',
+            minHeight: isMobile ? 'calc(100vh - 124px)' : undefined,
+            background: 'var(--bg)',
+            overflow: isMobile ? 'visible' : 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+        }}>
+            <div style={{ flex: 1, overflow: isMobile ? 'visible' : 'hidden' }}>
                 <motion.div
                     key={layout}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.2 }}
-                    style={{ height: '100%' }}
+                    style={{ height: isMobile ? 'auto' : '100%' }}
                 >
                     <LayoutComponent
                         data={sharedData}
