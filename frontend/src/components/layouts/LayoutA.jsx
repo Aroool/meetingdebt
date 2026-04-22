@@ -330,7 +330,7 @@ export default function LayoutA({ data, onUpdate }) {
     }).slice(0, 5);
 
     const filtered = commitments.filter(c => {
-        if (personFilter === '__unassigned__') return !c.assigned_to && getStatus(c) !== 'done';
+        if (personFilter === '__unassigned__') return !c.assigned_to && !c.owner && getStatus(c) !== 'done';
         if (personFilter && c.owner !== personFilter) return false;
         if (filter === 'All') return true;
         const s = getStatus(c);
@@ -454,9 +454,9 @@ export default function LayoutA({ data, onUpdate }) {
                             <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6' }} />
                             Accountability
                         </div>
-                        {/* Unassigned pill — always shown */}
+                        {/* Unassigned pill — only truly unassigned (no owner name and no linked user) */}
                         {(() => {
-                            const unassignedCount = commitments.filter(c => !c.assigned_to && getStatus(c) !== 'done').length;
+                            const unassignedCount = commitments.filter(c => !c.assigned_to && !c.owner && getStatus(c) !== 'done').length;
                             return unassignedCount > 0 ? (
                                 <div
                                     onClick={() => setPersonFilter(personFilter === '__unassigned__' ? null : '__unassigned__')}
