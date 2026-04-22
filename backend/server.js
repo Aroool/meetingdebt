@@ -517,7 +517,16 @@ app.get('/meetings', requireAuth, async (req, res) => {
             .order('created_at', { ascending: false });
 
         if (workspaceId) {
-            query = query.eq('workspace_id', workspaceId);
+            // Fetch workspace meetings AND user's personal solo meetings so nothing vanishes after joining a team
+            const { data: wsMeetings, error: e1 } = await supabase
+                .from('meetings').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false });
+            if (e1) throw e1;
+            const { data: soloMeetings, error: e2 } = await supabase
+                .from('meetings').select('*').is('workspace_id', null).eq('user_id', userId).order('created_at', { ascending: false });
+            if (e2) throw e2;
+            const all = [...(wsMeetings || []), ...(soloMeetings || [])];
+            all.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            return res.json(all);
         } else {
             query = query.eq('user_id', userId);
         }
@@ -586,7 +595,17 @@ app.get('/commitments', requireAuth, async (req, res) => {
             .order('created_at', { ascending: false });
 
         if (workspaceId) {
-            query = query.eq('workspace_id', workspaceId);
+            // Include workspace commitments AND user's personal solo commitments so they don't vanish after joining a team
+            const { data: wsData, error: e1 } = await supabase
+                .from('commitments').select('*, meetings(title)').eq('workspace_id', workspaceId).order('created_at', { ascending: false });
+            if (e1) throw e1;
+            const { data: soloData, error: e2 } = await supabase
+                .from('commitments').select('*, meetings(title)').is('workspace_id', null).eq('user_id', userId).order('created_at', { ascending: false });
+            if (e2) throw e2;
+            const all = [...(wsData || []), ...(soloData || [])];
+            all.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            const flat = all.map(c => ({ ...c, meeting_title: c.meetings?.title || null }));
+            return res.json(flat);
         } else {
             query = query.eq('user_id', userId);
         }
