@@ -547,6 +547,33 @@ function Rail({ role, isSolo, user, overdueCount, workspaces, handleSwitchWorksp
                 <RailItem key={item.to + item.label} item={item} location={location} expanded={expanded} />
             ))}
 
+            {/* Workspace switcher section */}
+            {workspaces && workspaces.length > 0 && (
+                <>
+                    {divider}
+                    <motion.div
+                        animate={{ opacity: expanded ? 1 : 0 }}
+                        transition={{ duration: 0.15 }}
+                        style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 10px 4px', pointerEvents: 'none' }}
+                    >
+                        Workspaces
+                    </motion.div>
+                    {workspaces.map(ws => (
+                        <RailWorkspaceItem
+                            key={ws.id}
+                            ws={ws}
+                            expanded={expanded}
+                            onSwitch={handleSwitchWorkspace}
+                        />
+                    ))}
+                    <RailItem
+                        item={{ to: '/create-workspace', label: 'New workspace', icon: PlusIcon, accent: true }}
+                        location={{ pathname: '' }}
+                        expanded={expanded}
+                    />
+                </>
+            )}
+
             {isDashboard && (
                 <>
                     {divider}
@@ -587,35 +614,6 @@ function Rail({ role, isSolo, user, overdueCount, workspaces, handleSwitchWorksp
                             />
                         </>
                     )}
-                </>
-            )}
-
-            {/* Workspace switcher section */}
-            {workspaces && workspaces.length > 0 && (
-                <>
-                    {divider}
-                    {/* Section label — only visible when expanded */}
-                    <motion.div
-                        animate={{ opacity: expanded ? 1 : 0 }}
-                        transition={{ duration: 0.15 }}
-                        style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 10px 4px', pointerEvents: 'none' }}
-                    >
-                        Workspaces
-                    </motion.div>
-                    {workspaces.map(ws => (
-                        <RailWorkspaceItem
-                            key={ws.id}
-                            ws={ws}
-                            expanded={expanded}
-                            onSwitch={handleSwitchWorkspace}
-                        />
-                    ))}
-                    {/* Create new workspace */}
-                    <RailItem
-                        item={{ to: '/create-workspace', label: 'New workspace', icon: PlusIcon, accent: true }}
-                        location={{ pathname: '' }}
-                        expanded={expanded}
-                    />
                 </>
             )}
 
@@ -739,7 +737,7 @@ export default function Navbar() {
     async function fetchWorkspaces(userId) {
         if (!userId) return;
         try {
-            const { data } = await axios.get(`${API}/workspaces?userId=${userId}`);
+            const { data } = await api.get('/workspaces');
             setWorkspaces(data);
         } catch (e) { }
     }
