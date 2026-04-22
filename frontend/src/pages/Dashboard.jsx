@@ -38,10 +38,11 @@ export default function Dashboard() {
         });
         function handleSwitch() {
             setCurrentRole(localStorage.getItem('userRole') || 'solo');
+            fetchData();
         }
         window.addEventListener('workspaceSwitched', handleSwitch);
         return () => window.removeEventListener('workspaceSwitched', handleSwitch);
-    }, []);
+    }, [fetchData]);
 
     const fetchData = useCallback(async () => {
         try {

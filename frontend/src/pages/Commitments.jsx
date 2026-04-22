@@ -73,6 +73,11 @@ export default function Commitments() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
+    useEffect(() => {
+        window.addEventListener('workspaceSwitched', fetchData);
+        return () => window.removeEventListener('workspaceSwitched', fetchData);
+    }, [fetchData]);
+
     // All unique owners for person filter
     const allPeople = ['All', ...new Set(commitments.map(c => c.owner).filter(Boolean))];
 

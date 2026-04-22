@@ -61,6 +61,11 @@ export default function Meetings() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
+    useEffect(() => {
+        window.addEventListener('workspaceSwitched', fetchData);
+        return () => window.removeEventListener('workspaceSwitched', fetchData);
+    }, [fetchData]);
+
     // Handle navigation state
     useEffect(() => {
         const stateId = location.state?.selectedMeetingId;
