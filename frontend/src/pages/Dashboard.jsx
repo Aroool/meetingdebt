@@ -36,13 +36,7 @@ export default function Dashboard() {
                 setUserName(meta?.first_name || meta?.full_name?.split(' ')[0] || '');
             });
         });
-        function handleSwitch() {
-            setCurrentRole(localStorage.getItem('userRole') || 'solo');
-            fetchData();
-        }
-        window.addEventListener('workspaceSwitched', handleSwitch);
-        return () => window.removeEventListener('workspaceSwitched', handleSwitch);
-    }, [fetchData]);
+    }, []);
 
     const fetchData = useCallback(async () => {
         try {
@@ -77,6 +71,16 @@ export default function Dashboard() {
     }, []);
 
     useEffect(() => { fetchData(); }, [fetchData]);
+
+    // Reload data when workspace is switched
+    useEffect(() => {
+        function handleSwitch() {
+            setCurrentRole(localStorage.getItem('userRole') || 'solo');
+            fetchData();
+        }
+        window.addEventListener('workspaceSwitched', handleSwitch);
+        return () => window.removeEventListener('workspaceSwitched', handleSwitch);
+    }, [fetchData]);
 
     // Listen for layout changes dispatched from sidebar
     useEffect(() => {

@@ -3,8 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabase';
 import NotificationBell from './NotificationBell';
-import axios from 'axios';
-import API from '../config';
 import api from '../api';
 import {
     MoonIcon, SunIcon, UserIcon, SettingsIcon, LogOutIcon,
