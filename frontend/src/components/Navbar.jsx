@@ -403,9 +403,65 @@ function RailBtn({ icon, label, isActive, onClick, title, expanded }) {
     );
 }
 
+// ─── Rail Workspace Item ──────────────────────────────────────────────────────
+
+function RailWorkspaceItem({ ws, expanded, onSwitch }) {
+    const [hovered, setHovered] = useState(false);
+    const isActive = localStorage.getItem('workspaceId') === ws.id;
+
+    return (
+        <div
+            title={expanded ? undefined : ws.name}
+            onClick={() => !isActive && onSwitch(ws)}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            style={{
+                display: 'flex', alignItems: 'center',
+                height: 36, borderRadius: 9, flexShrink: 0,
+                cursor: isActive ? 'default' : 'pointer',
+                overflow: 'hidden', margin: '1px 0',
+                background: isActive ? 'var(--accent-light)' : hovered ? 'rgba(128,128,128,0.08)' : 'transparent',
+                transition: 'background 0.12s',
+            }}
+        >
+            <div style={{
+                width: 36, height: 36, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                position: 'relative',
+            }}>
+                <div style={{
+                    width: 22, height: 22, borderRadius: 6,
+                    background: isActive ? 'var(--accent)' : 'var(--border)',
+                    color: isActive ? '#fff' : 'var(--text-muted)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 9, fontWeight: 800,
+                    transition: 'background 0.15s, color 0.15s',
+                }}>
+                    {ws.name.charAt(0).toUpperCase()}
+                </div>
+                {isActive && (
+                    <span style={{
+                        position: 'absolute', top: 6, right: 6,
+                        width: 5, height: 5, borderRadius: '50%',
+                        background: 'var(--accent)',
+                    }} />
+                )}
+            </div>
+            <motion.div
+                animate={{ opacity: expanded ? 1 : 0, x: expanded ? 0 : -6 }}
+                transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                style={{ minWidth: 0, flex: 1, pointerEvents: 'none' }}
+            >
+                <div style={{ fontSize: 12, fontWeight: isActive ? 600 : 500, color: isActive ? 'var(--accent-text)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ws.name}</div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{ws.role}</div>
+            </motion.div>
+        </div>
+    );
+}
+
 // ─── Icon Rail ────────────────────────────────────────────────────────────────
 
-function Rail({ role, isSolo, user, overdueCount }) {
+function Rail({ role, isSolo, user, overdueCount, workspaces, handleSwitchWorkspace, workspaceName }) {
     const isMobile = useIsMobile();
     const [expanded, setExpanded] = useState(false);
     const [dashLayout, setDashLayout] = useState(localStorage.getItem('dashboardLayout') || 'A');
@@ -531,6 +587,35 @@ function Rail({ role, isSolo, user, overdueCount }) {
                             />
                         </>
                     )}
+                </>
+            )}
+
+            {/* Workspace switcher section */}
+            {workspaces && workspaces.length > 0 && (
+                <>
+                    {divider}
+                    {/* Section label — only visible when expanded */}
+                    <motion.div
+                        animate={{ opacity: expanded ? 1 : 0 }}
+                        transition={{ duration: 0.15 }}
+                        style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 10px 4px', pointerEvents: 'none' }}
+                    >
+                        Workspaces
+                    </motion.div>
+                    {workspaces.map(ws => (
+                        <RailWorkspaceItem
+                            key={ws.id}
+                            ws={ws}
+                            expanded={expanded}
+                            onSwitch={handleSwitchWorkspace}
+                        />
+                    ))}
+                    {/* Create new workspace */}
+                    <RailItem
+                        item={{ to: '/create-workspace', label: 'New workspace', icon: PlusIcon, accent: true }}
+                        location={{ pathname: '' }}
+                        expanded={expanded}
+                    />
                 </>
             )}
 
@@ -759,6 +844,9 @@ export default function Navbar() {
                 isSolo={isSolo}
                 user={user}
                 overdueCount={overdueCount}
+                workspaces={workspaces}
+                handleSwitchWorkspace={handleSwitchWorkspace}
+                workspaceName={workspaceName}
             />
             {isMobile && (
                 <BottomNav
