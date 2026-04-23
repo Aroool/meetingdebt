@@ -743,9 +743,6 @@ export default function Feedback() {
                     )}
                 </div>
 
-                <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', marginTop: 26 }}>
-                    Built by Arulprashath Rajarajan · Clark University · Demo day April 28, 2026
-                </div>
             </div>
         </div>
     );
