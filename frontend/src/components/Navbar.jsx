@@ -462,6 +462,7 @@ function RailWorkspaceItem({ ws, expanded, onSwitch }) {
 function Rail({ role, isSolo, user, overdueCount, workspaces, handleSwitchWorkspace, workspaceName }) {
     const isMobile = useIsMobile();
     const [expanded, setExpanded] = useState(false);
+    const [wsOpen, setWsOpen] = useState(false);
     const [dashLayout, setDashLayout] = useState(localStorage.getItem('dashboardLayout') || 'A');
     const [dashView, setDashView] = useState(localStorage.getItem('commitmentsView') || 'grouped');
     const location = useLocation();
@@ -545,30 +546,72 @@ function Rail({ role, isSolo, user, overdueCount, workspaces, handleSwitchWorksp
                 <RailItem key={item.to + item.label} item={item} location={location} expanded={expanded} />
             ))}
 
-            {/* Workspace switcher section */}
+            {/* Workspace switcher section — collapsible */}
             {workspaces && workspaces.length > 0 && (
                 <>
                     {divider}
-                    <motion.div
-                        animate={{ opacity: expanded ? 1 : 0 }}
-                        transition={{ duration: 0.15 }}
-                        style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 10px 4px', pointerEvents: 'none' }}
+                    {/* Header row: icon + "Workspaces" label + chevron */}
+                    <div
+                        onClick={() => expanded && setWsOpen(o => !o)}
+                        title={expanded ? undefined : 'Workspaces'}
+                        style={{
+                            display: 'flex', alignItems: 'center',
+                            height: 36, borderRadius: 9, flexShrink: 0,
+                            cursor: expanded ? 'pointer' : 'default',
+                            overflow: 'hidden', margin: '1px 0',
+                            color: 'var(--text-muted)',
+                            transition: 'background 0.12s',
+                        }}
                     >
-                        Workspaces
-                    </motion.div>
-                    {workspaces.map(ws => (
-                        <RailWorkspaceItem
-                            key={ws.id}
-                            ws={ws}
-                            expanded={expanded}
-                            onSwitch={handleSwitchWorkspace}
-                        />
-                    ))}
-                    <RailItem
-                        item={{ to: '/create-workspace', label: 'New workspace', icon: PlusIcon, accent: true }}
-                        location={{ pathname: '' }}
-                        expanded={expanded}
-                    />
+                        {/* Building icon slot */}
+                        <div style={{ width: 36, height: 36, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <BuildingIcon size={16} />
+                        </div>
+                        {/* Label */}
+                        <motion.span
+                            animate={{ opacity: expanded ? 1 : 0, x: expanded ? 0 : -6 }}
+                            transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                            style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', flex: 1, whiteSpace: 'nowrap', pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '0.06em' }}
+                        >
+                            Workspaces
+                        </motion.span>
+                        {/* Chevron arrow */}
+                        <motion.div
+                            animate={{ opacity: expanded ? 1 : 0, rotate: wsOpen ? 90 : 0 }}
+                            transition={{ duration: 0.18 }}
+                            style={{ marginRight: 10, flexShrink: 0, display: 'flex', alignItems: 'center' }}
+                        >
+                            <ChevronRightIcon size={12} />
+                        </motion.div>
+                    </div>
+
+                    {/* Collapsible list */}
+                    <AnimatePresence initial={false}>
+                        {wsOpen && (
+                            <motion.div
+                                key="ws-list"
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                                style={{ overflow: 'hidden' }}
+                            >
+                                {workspaces.map(ws => (
+                                    <RailWorkspaceItem
+                                        key={ws.id}
+                                        ws={ws}
+                                        expanded={expanded}
+                                        onSwitch={handleSwitchWorkspace}
+                                    />
+                                ))}
+                                <RailItem
+                                    item={{ to: '/create-workspace', label: 'New workspace', icon: PlusIcon, accent: true }}
+                                    location={{ pathname: '' }}
+                                    expanded={expanded}
+                                />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </>
             )}
 
