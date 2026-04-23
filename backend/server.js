@@ -1298,12 +1298,12 @@ app.post('/feedback', requireAuth, async (req, res) => {
 
 app.get('/feedback', requireAuth, async (req, res) => {
     try {
-        // Only return feedback submitted by the authenticated user's email
+        // Return all feedback for social proof ("What others said")
         const { data, error } = await supabase
             .from('feedback')
             .select('*')
-            .eq('email', req.userEmail)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(50);
         if (error) throw error;
         return res.json(data);
     } catch (err) {
