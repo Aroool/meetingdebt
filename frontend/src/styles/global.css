@@ -533,7 +533,7 @@ body {
 .fab {
     position: fixed;
     bottom: 28px;
-    right: 28px;
+    right: 88px;
     width: 52px;
     height: 52px;
     background: var(--accent);
@@ -1468,10 +1468,10 @@ body {
         width: auto !important;
     }
 
-    /* FAB — move up above bottom nav */
+    /* FAB — move up above bottom nav, stack left of chat bubble */
     .fab {
         bottom: 84px !important;
-        right: 16px !important;
+        right: 76px !important;
     }
 
     /* Grid layouts — single column */
