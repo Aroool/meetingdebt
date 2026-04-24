@@ -17,6 +17,7 @@ import ThemePicker from './pages/ThemePicker';
 import { useEffect, useState } from 'react';
 import MyTasks from './pages/MyTasks';
 import Feedback from './pages/Feedback';
+import Transcripts from './pages/Transcripts';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Privacy from './pages/Privacy';
@@ -140,6 +141,14 @@ function App() {
             <Navbar />
             <ProtectedLayout>
               <Feedback />
+            </ProtectedLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/transcripts" element={
+          <ProtectedRoute>
+            <Navbar />
+            <ProtectedLayout>
+              <Transcripts />
             </ProtectedLayout>
           </ProtectedRoute>
         } />

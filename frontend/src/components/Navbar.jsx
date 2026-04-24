@@ -7,7 +7,7 @@ import api from '../api';
 import {
     MoonIcon, SunIcon, UserIcon, SettingsIcon, LogOutIcon,
     BuildingIcon, PlusIcon, ChevronRightIcon, ArrowUpIcon,
-    HomeIcon, ListBulletIcon, CalendarIcon, StarIcon, UsersIcon, ChatBubbleIcon,
+    HomeIcon, ListBulletIcon, CalendarIcon, StarIcon, UsersIcon, ChatBubbleIcon, DocumentTextIcon,
 } from './Icons';
 
 function useIsMobile(breakpoint = 768) {
@@ -31,7 +31,7 @@ function getIsSolo() {
 const SEGMENTS = [
     { label: 'Dashboard', to: '/dashboard', match: ['/dashboard', '/commitments'] },
     { label: 'Personal', to: '/my-tasks', match: ['/my-tasks'] },
-    { label: 'Team', to: '/workspace', match: ['/workspace', '/meetings'] },
+    { label: 'Team', to: '/workspace', match: ['/workspace', '/meetings', '/transcripts'] },
 ];
 
 // ─── Small inline SVG icons for layout/view toggles ──────────────────────────
@@ -531,6 +531,7 @@ function Rail({ role, isSolo, user, overdueCount, workspaces, handleSwitchWorksp
         { to: '/dashboard', label: 'Dashboard', icon: HomeIcon },
         { to: '/commitments', label: role === 'member' ? 'My Tasks' : 'Commitments', icon: ListBulletIcon, badge: overdueCount > 0 ? overdueCount : null },
         { to: '/meetings', label: 'Meetings', icon: CalendarIcon },
+        { to: '/transcripts', label: 'Transcripts', icon: DocumentTextIcon },
         { to: '/my-tasks', label: 'Personal', icon: StarIcon },
     ];
 
