@@ -63,45 +63,45 @@ export default function ChatBubble() {
 
     return (
         <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
-            {/* Chat panel */}
+            {/* Chat panel — opens upward and to the left so it clears the right column */}
             <AnimatePresence>
                 {open && (
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.92, y: 16 }}
+                        initial={{ opacity: 0, scale: 0.93, y: 12 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.92, y: 16 }}
-                        transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                        exit={{ opacity: 0, scale: 0.93, y: 12 }}
+                        transition={{ duration: 0.17, ease: [0.4, 0, 0.2, 1] }}
                         style={{
-                            position: 'absolute', bottom: 56, right: 0,
-                            width: 340, maxHeight: 480,
-                            background: 'var(--bg-card)',
+                            position: 'absolute', bottom: 58, right: 0,
+                            width: 320, maxHeight: 460,
+                            background: 'var(--bg)',
                             border: '1px solid var(--border)',
-                            borderRadius: 18,
-                            boxShadow: '0 12px 40px rgba(0,0,0,0.18)',
+                            borderRadius: 16,
+                            boxShadow: '0 16px 48px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.1)',
                             display: 'flex', flexDirection: 'column',
                             overflow: 'hidden',
                         }}
                     >
                         {/* Header */}
                         <div style={{
-                            padding: '12px 14px',
+                            padding: '11px 14px',
                             borderBottom: '1px solid var(--border)',
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            flexShrink: 0,
+                            flexShrink: 0, background: 'var(--bg-card)',
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <div style={{
-                                    width: 28, height: 28, borderRadius: '50%',
+                                    width: 30, height: 30, borderRadius: '50%',
                                     background: 'var(--accent-light)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: 13,
+                                    fontSize: 13, fontWeight: 700, color: 'var(--accent-text)',
                                 }}>✦</div>
                                 <div>
-                                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
                                         MeetingDebt AI
                                     </div>
-                                    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                                        Ask about meetings & deadlines
+                                    <div style={{ fontSize: 10, color: 'var(--accent-text)', fontWeight: 500 }}>
+                                        ● Online
                                     </div>
                                 </div>
                             </div>
@@ -112,11 +112,11 @@ export default function ChatBubble() {
                                     border: '1px solid var(--border)',
                                     background: 'transparent', color: 'var(--text-muted)',
                                     cursor: 'pointer', fontFamily: 'inherit',
-                                    transition: 'color 0.15s',
+                                    transition: 'color 0.15s, border-color 0.15s',
                                     whiteSpace: 'nowrap',
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.color = 'var(--accent-text)'}
-                                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent-text)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
                             >
                                 Open full ↗
                             </button>
@@ -254,21 +254,27 @@ export default function ChatBubble() {
             {/* Trigger button */}
             <motion.button
                 onClick={() => setOpen(o => !o)}
-                whileHover={{ scale: 1.06 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.93 }}
                 style={{
-                    width: 48, height: 48, borderRadius: '50%',
+                    width: 46, height: 46, borderRadius: '50%',
                     background: open ? 'var(--bg-card)' : 'var(--accent)',
-                    border: open ? '1px solid var(--border)' : 'none',
-                    boxShadow: '0 4px 18px rgba(0,0,0,0.18)',
+                    border: open ? '1.5px solid var(--border)' : 'none',
+                    boxShadow: open ? 'none' : '0 4px 20px rgba(22,163,74,0.35)',
                     cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: open ? 18 : 20,
+                    fontSize: open ? 16 : 18,
                     color: open ? 'var(--text-muted)' : '#fff',
-                    transition: 'background 0.2s, color 0.2s',
+                    transition: 'background 0.18s, box-shadow 0.18s',
                 }}
             >
-                {open ? '✕' : '✦'}
+                <motion.span
+                    animate={{ rotate: open ? 45 : 0 }}
+                    transition={{ duration: 0.18 }}
+                    style={{ display: 'inline-block', lineHeight: 1 }}
+                >
+                    {open ? '✕' : '✦'}
+                </motion.span>
             </motion.button>
 
             {/* Unread dot */}
