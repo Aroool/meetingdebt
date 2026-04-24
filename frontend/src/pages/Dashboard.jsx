@@ -171,19 +171,6 @@ export default function Dashboard() {
                 </motion.div>
             </div>
 
-            {currentRole !== 'member' && (
-                <motion.button
-                    className="fab"
-                    onClick={() => setModalOpen(true)}
-                    whileHover={{ scale: 1.08 }}
-                    whileTap={{ scale: 0.95 }}
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
-                >
-                    +
-                </motion.button>
-            )}
 
             <NewMeetingModal
                 isOpen={modalOpen}

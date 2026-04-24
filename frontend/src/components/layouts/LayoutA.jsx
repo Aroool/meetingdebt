@@ -178,7 +178,7 @@ function DeleteMeetingModal({ deleteConfirm, deleting, onCancel, onConfirm }) {
     );
 }
 
-export default function LayoutA({ data, onUpdate }) {
+export default function LayoutA({ data, onUpdate, onOpenModal }) {
     const { commitments, members, loading, overdue, pending, blocked, done, total, currentRole } = data;
 
     const [filter, setFilter] = useState('All');
@@ -832,6 +832,37 @@ export default function LayoutA({ data, onUpdate }) {
                             })
                         )}
                     </div>
+
+                    {/* New Meeting button — bottom center of commitments, managers only */}
+                    {currentRole !== 'member' && onOpenModal && (
+                        <div style={{
+                            flexShrink: 0,
+                            padding: '10px 16px 14px',
+                            borderTop: '1px solid var(--border)',
+                            display: 'flex',
+                            justifyContent: 'center',
+                        }}>
+                            <button
+                                onClick={onOpenModal}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 7,
+                                    padding: '8px 22px',
+                                    borderRadius: 10,
+                                    border: '1px solid var(--accent)',
+                                    background: 'var(--accent-light)',
+                                    color: 'var(--accent-text)',
+                                    fontSize: 12, fontWeight: 700,
+                                    cursor: 'pointer', fontFamily: 'inherit',
+                                    transition: 'background 0.15s, box-shadow 0.15s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(22,163,74,0.25)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent-light)'; e.currentTarget.style.color = 'var(--accent-text)'; e.currentTarget.style.boxShadow = 'none'; }}
+                            >
+                                <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
+                                New Meeting
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <div ref={rightRef} className="layoutA-col" style={{ display: 'flex', flexDirection: 'column', gap: 16, overflow: isMobile ? 'visible' : 'hidden', opacity: columnsReady ? 1 : 0, minHeight: 0 }}>
