@@ -15,9 +15,12 @@ import EnterInvite from './pages/EnterInvite';
 import Profile from './pages/Profile';
 import ThemePicker from './pages/ThemePicker';
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import MyTasks from './pages/MyTasks';
 import Feedback from './pages/Feedback';
 import Transcripts from './pages/Transcripts';
+import Chat from './pages/Chat';
+import ChatBubble from './components/ChatBubble';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Privacy from './pages/Privacy';
@@ -50,7 +53,10 @@ function ProtectedLayout({ children }) {
   );
 }
 
-function App() {
+function AppInner() {
+  const location = useLocation();
+  const hideBubble = ['/chat', '/', '/login', '/signup', '/forgot-password', '/reset-password'].includes(location.pathname);
+
   useEffect(() => {
     const theme = localStorage.getItem('theme');
     if (theme === 'dark') document.body.classList.add('dark');
@@ -152,9 +158,24 @@ function App() {
             </ProtectedLayout>
           </ProtectedRoute>
         } />
+        <Route path="/chat" element={
+          <ProtectedRoute>
+            <Navbar />
+            <ProtectedLayout>
+              <Chat />
+            </ProtectedLayout>
+          </ProtectedRoute>
+        } />
       </Routes>
+
+      {/* Floating chat bubble — shown on all authenticated pages except /chat */}
+      {!hideBubble && <ChatBubble />}
     </div>
   );
+}
+
+function App() {
+  return <AppInner />;
 }
 
 export default App;

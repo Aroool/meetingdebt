@@ -1732,6 +1732,116 @@ app.get('/trigger-overdue-check', requireAuth, async (req, res) => {
 });
 
 
+// ─── AI CHAT ──────────────────────────────────────────────────────────────────
+app.post('/chat', requireAuth, async (req, res) => {
+    try {
+        const { message, history = [], workspaceId } = req.body;
+        const userId = req.userId;
+        if (!message?.trim()) return res.status(400).json({ error: 'Message required' });
+
+        const today = new Date().toISOString().split('T')[0];
+
+        // Fetch commitments
+        let commitments = [];
+        if (workspaceId) {
+            const { data: wsData } = await supabase
+                .from('commitments').select('*, meetings(title)')
+                .eq('workspace_id', workspaceId)
+                .order('created_at', { ascending: false }).limit(60);
+            const { data: soloData } = await supabase
+                .from('commitments').select('*, meetings(title)')
+                .is('workspace_id', null).eq('user_id', userId)
+                .order('created_at', { ascending: false }).limit(20);
+            commitments = [...(wsData || []), ...(soloData || [])];
+        } else {
+            const { data } = await supabase
+                .from('commitments').select('*, meetings(title)')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false }).limit(50);
+            commitments = data || [];
+        }
+
+        // Fetch recent meetings with transcripts
+        let meetings = [];
+        if (workspaceId) {
+            const { data: wsMeetings } = await supabase
+                .from('meetings').select('*')
+                .eq('workspace_id', workspaceId)
+                .order('created_at', { ascending: false }).limit(6);
+            const { data: soloMeetings } = await supabase
+                .from('meetings').select('*')
+                .is('workspace_id', null).eq('user_id', userId)
+                .order('created_at', { ascending: false }).limit(2);
+            meetings = [...(wsMeetings || []), ...(soloMeetings || [])];
+        } else {
+            const { data } = await supabase
+                .from('meetings').select('*')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false }).limit(5);
+            meetings = data || [];
+        }
+
+        // Build commitments context
+        const commitmentLines = commitments.map(c => {
+            const isOverdue = c.deadline && c.deadline < today && c.status !== 'completed';
+            const statusLabel = c.status === 'completed' ? 'DONE'
+                : c.status === 'blocked' ? 'BLOCKED'
+                : isOverdue ? 'OVERDUE'
+                : 'PENDING';
+            return `- [${statusLabel}] "${c.task}" | owner: ${c.owner || 'unassigned'} | deadline: ${c.deadline || 'none'} | type: ${c.type || 'action_item'} | meeting: ${c.meetings?.title || 'N/A'}`;
+        }).join('\n');
+
+        // Build meetings + transcripts context (cap transcript at 2500 chars each)
+        const meetingLines = meetings.map(m => {
+            const transcript = m.transcript
+                ? (m.transcript.length > 2500 ? m.transcript.slice(0, 2500) + '\n...[truncated]' : m.transcript)
+                : 'No transcript saved.';
+            return `=== Meeting: "${m.title}" (${(m.created_at || '').slice(0, 10)}) ===\n${transcript}`;
+        }).join('\n\n');
+
+        const systemPrompt = `You are MeetingDebt AI — a smart, concise assistant embedded in a meeting commitment tracker app.
+
+Today's date: ${today}
+
+## Current commitments (${commitments.length} total):
+${commitmentLines || 'No commitments found.'}
+
+## Recent meetings & transcripts:
+${meetingLines || 'No meetings found.'}
+
+You help users by answering questions like:
+- "What's due this week?" or "Who is overdue?"
+- "What did we decide about X?" or "Summarise the last meeting"
+- "How did [person] feel in the meeting?" — analyse tone and mood from the transcript text
+- "What is [person] working on?"
+- "Who has the most tasks?" or "What's blocked?"
+
+Guidelines:
+- Be concise and conversational. Don't add unnecessary filler.
+- Use bullet points when listing multiple items.
+- For mood/sentiment questions, quote the actual words from the transcript to support your analysis.
+- If you don't have enough context, say so honestly.
+- Never make up deadlines or names not present in the data.`;
+
+        const messages = [
+            ...history.slice(-10).map(h => ({ role: h.role, content: h.content })),
+            { role: 'user', content: message },
+        ];
+
+        const response = await anthropic.messages.create({
+            model: 'claude-haiku-4-5',
+            max_tokens: 700,
+            system: systemPrompt,
+            messages,
+        });
+
+        return res.json({ reply: response.content[0].text });
+    } catch (err) {
+        console.error('Chat error:', err);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`MeetingDebt backend running on port ${PORT}`);
 });

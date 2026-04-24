@@ -7,7 +7,7 @@ import api from '../api';
 import {
     MoonIcon, SunIcon, UserIcon, SettingsIcon, LogOutIcon,
     BuildingIcon, PlusIcon, ChevronRightIcon, ArrowUpIcon,
-    HomeIcon, ListBulletIcon, CalendarIcon, StarIcon, UsersIcon, ChatBubbleIcon, DocumentTextIcon,
+    HomeIcon, ListBulletIcon, CalendarIcon, StarIcon, UsersIcon, ChatBubbleIcon, DocumentTextIcon, SparklesIcon,
 } from './Icons';
 
 function useIsMobile(breakpoint = 768) {
@@ -537,6 +537,7 @@ function Rail({ role, isSolo, user, overdueCount, workspaces, handleSwitchWorksp
 
     const secondaryNav = [
         ...(!isSolo ? [{ to: '/workspace', label: 'Team', icon: UsersIcon }] : []),
+        { to: '/chat', label: 'Ask AI', icon: SparklesIcon },
         { to: '/feedback', label: 'Feedback', icon: ChatBubbleIcon },
         ...(isSolo ? [{ to: '/workspace', label: 'Upgrade', icon: ArrowUpIcon, accent: true }] : []),
     ];
