@@ -13,6 +13,7 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExt
     const [extracted, setExtracted] = useState(null); // { meeting, commitments, members }
     const [assignments, setAssignments] = useState({}); // commitmentIndex -> userId
     const [saving, setSaving] = useState(false);
+    const [editingTask, setEditingTask] = useState(null); // index being edited
     const workspaceId = localStorage.getItem('workspaceId');
 
     useEffect(() => {
@@ -55,6 +56,38 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExt
         setExtracted(null);
         setAssignments({});
         setSaving(false);
+        setEditingTask(null);
+    }
+
+    function updateCommitment(i, field, value) {
+        setExtracted(prev => ({
+            ...prev,
+            commitments: prev.commitments.map((c, idx) => idx === i ? { ...c, [field]: value } : c)
+        }));
+    }
+
+    function deleteCommitment(i) {
+        setExtracted(prev => ({
+            ...prev,
+            commitments: prev.commitments.filter((_, idx) => idx !== i)
+        }));
+        setAssignments(prev => {
+            const next = {};
+            Object.entries(prev).forEach(([k, v]) => {
+                const ki = parseInt(k);
+                if (ki < i) next[ki] = v;
+                else if (ki > i) next[ki - 1] = v;
+            });
+            return next;
+        });
+    }
+
+    function addCommitment() {
+        setExtracted(prev => ({
+            ...prev,
+            commitments: [...prev.commitments, { task: '', owner: '', deadline: null, type: 'action_item' }]
+        }));
+        setEditingTask((extracted?.commitments?.length) || 0);
     }
 
     function handleClose() {
@@ -232,23 +265,24 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExt
                                     <div>
                                         <div className="modal-title">Confirm assignments</div>
                                         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                                            {extracted.commitments.length} commitments extracted · review and confirm
+                                            {extracted.commitments.length} commitments · click task to edit, ✕ to remove
                                         </div>
                                     </div>
                                     <button className="modal-close" onClick={handleClose}>✕</button>
                                 </div>
 
-                                <div style={{ padding: '16px 24px', maxHeight: 400, overflowY: 'auto' }}>
+                                <div style={{ padding: '16px 24px', maxHeight: 420, overflowY: 'auto' }}>
                                     {extracted.commitments.map((c, i) => {
                                         const assignedUserId = assignments[i];
                                         const isMatched = !!assignedUserId;
+                                        const isEditing = editingTask === i;
 
                                         return (
                                             <motion.div
                                                 key={i}
                                                 initial={{ opacity: 0, y: 8 }}
                                                 animate={{ opacity: 1, y: 0 }}
-                                                transition={{ delay: i * 0.06 }}
+                                                transition={{ delay: i * 0.04 }}
                                                 style={{
                                                     padding: '12px 14px',
                                                     borderRadius: 10,
@@ -263,77 +297,143 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExt
                                                         width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
                                                         background: isMatched ? 'var(--accent)' : 'var(--amber)',
                                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        fontSize: 10, color: '#fff', fontWeight: 700, marginTop: 1
+                                                        fontSize: 10, color: '#fff', fontWeight: 700, marginTop: 2
                                                     }}>
                                                         {isMatched ? '✓' : '!'}
                                                     </div>
 
                                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
-                                                            {c.task}
-                                                        </div>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                                        {/* Task — editable */}
+                                                        {isEditing ? (
+                                                            <input
+                                                                autoFocus
+                                                                value={c.task}
+                                                                onChange={e => updateCommitment(i, 'task', e.target.value)}
+                                                                onBlur={() => setEditingTask(null)}
+                                                                onKeyDown={e => e.key === 'Enter' && setEditingTask(null)}
+                                                                style={{
+                                                                    width: '100%', fontSize: 13, fontWeight: 600,
+                                                                    color: 'var(--text-primary)', background: 'var(--bg)',
+                                                                    border: '1px solid var(--accent)', borderRadius: 6,
+                                                                    padding: '4px 8px', outline: 'none', fontFamily: 'inherit',
+                                                                    marginBottom: 6, boxSizing: 'border-box',
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <div
+                                                                onClick={() => setEditingTask(i)}
+                                                                title="Click to edit"
+                                                                style={{
+                                                                    fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
+                                                                    marginBottom: 6, cursor: 'text',
+                                                                    borderBottom: '1px dashed transparent',
+                                                                    transition: 'border-color 0.15s',
+                                                                }}
+                                                                onMouseEnter={e => e.currentTarget.style.borderBottomColor = 'var(--text-muted)'}
+                                                                onMouseLeave={e => e.currentTarget.style.borderBottomColor = 'transparent'}
+                                                            >
+                                                                {c.task || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Click to add task...</span>}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Owner + Deadline + Type row */}
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
                                                             <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                                                Said by: <strong>{c.owner}</strong>
+                                                                By: <strong>{c.owner || '—'}</strong>
                                                             </span>
-                                                            {c.deadline && (
-                                                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                                                    · Due: {c.deadline}
-                                                                </span>
-                                                            )}
-                                                            <span style={{
-                                                                fontSize: 9, fontWeight: 700, padding: '1px 7px', borderRadius: 20,
-                                                                background: c.type === 'action_item' ? '#E6F1FB' : c.type === 'blocker' ? '#FCEBEB' : '#F0F0F0',
-                                                                color: c.type === 'action_item' ? '#0C447C' : c.type === 'blocker' ? '#A32D2D' : '#555'
-                                                            }}>
-                                                                {c.type?.replace('_', ' ')}
+
+                                                            {/* Deadline — editable date input */}
+                                                            <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                                · Due:
+                                                                <input
+                                                                    type="date"
+                                                                    value={c.deadline || ''}
+                                                                    onChange={e => updateCommitment(i, 'deadline', e.target.value || null)}
+                                                                    style={{
+                                                                        fontSize: 11, fontFamily: 'inherit',
+                                                                        background: 'transparent', border: 'none',
+                                                                        borderBottom: '1px dashed var(--text-muted)',
+                                                                        color: 'var(--text-primary)', cursor: 'pointer',
+                                                                        outline: 'none', padding: '0 2px',
+                                                                    }}
+                                                                />
                                                             </span>
+
+                                                            {/* Type — editable select */}
+                                                            <select
+                                                                value={c.type || 'action_item'}
+                                                                onChange={e => updateCommitment(i, 'type', e.target.value)}
+                                                                style={{
+                                                                    fontSize: 9, fontWeight: 700, padding: '1px 7px', borderRadius: 20,
+                                                                    background: c.type === 'action_item' ? '#E6F1FB' : c.type === 'blocker' ? '#FCEBEB' : '#F0F0F0',
+                                                                    color: c.type === 'action_item' ? '#0C447C' : c.type === 'blocker' ? '#A32D2D' : '#555',
+                                                                    border: 'none', cursor: 'pointer', fontFamily: 'inherit', outline: 'none',
+                                                                }}
+                                                            >
+                                                                <option value="action_item">action item</option>
+                                                                <option value="decision">decision</option>
+                                                                <option value="blocker">blocker</option>
+                                                            </select>
                                                         </div>
 
-                                                        {/* Assignment dropdown */}
-                                                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                            <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
-                                                                Assign to:
-                                                            </span>
+                                                        {/* Assign + Delete row */}
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                                            <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>Assign to:</span>
                                                             <select
                                                                 value={assignedUserId || ''}
-                                                                onChange={e => setAssignments(prev => ({
-                                                                    ...prev,
-                                                                    [i]: e.target.value || null
-                                                                }))}
+                                                                onChange={e => setAssignments(prev => ({ ...prev, [i]: e.target.value || null }))}
                                                                 style={{
                                                                     fontSize: 12, fontWeight: 600,
                                                                     border: `1px solid ${isMatched ? 'var(--accent)' : 'var(--amber)'}`,
                                                                     borderRadius: 6, padding: '3px 8px',
-                                                                    background: 'var(--bg-card)',
-                                                                    color: 'var(--text-primary)',
-                                                                    cursor: 'pointer', fontFamily: 'inherit',
-                                                                    outline: 'none',
+                                                                    background: 'var(--bg-card)', color: 'var(--text-primary)',
+                                                                    cursor: 'pointer', fontFamily: 'inherit', outline: 'none',
                                                                 }}
                                                             >
                                                                 <option value="">— Unassigned —</option>
                                                                 {extracted.members?.map(m => (
-                                                                    <option key={m.user_id} value={m.user_id}>
-                                                                        {m.name || m.email}
-                                                                    </option>
+                                                                    <option key={m.user_id} value={m.user_id}>{m.name || m.email}</option>
                                                                 ))}
                                                             </select>
-                                                            {isMatched && (
-                                                                <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>
-                                                                    ✓ Auto-matched
-                                                                </span>
-                                                            )}
-                                                            {!isMatched && (
-                                                                <span style={{ fontSize: 11, color: 'var(--amber)', fontWeight: 600 }}>
-                                                                    ⚠ No match found
-                                                                </span>
-                                                            )}
+                                                            {isMatched && <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>✓ Auto-matched</span>}
+                                                            {!isMatched && <span style={{ fontSize: 11, color: 'var(--amber)', fontWeight: 600 }}>⚠ No match</span>}
+
+                                                            {/* Delete button */}
+                                                            <button
+                                                                onClick={() => deleteCommitment(i)}
+                                                                title="Remove this commitment"
+                                                                style={{
+                                                                    marginLeft: 'auto', background: 'none', border: 'none',
+                                                                    cursor: 'pointer', color: 'var(--text-muted)', fontSize: 14,
+                                                                    padding: '2px 4px', borderRadius: 4, lineHeight: 1,
+                                                                    transition: 'color 0.15s',
+                                                                }}
+                                                                onMouseEnter={e => e.currentTarget.style.color = 'var(--red)'}
+                                                                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+                                                            >
+                                                                ✕
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </motion.div>
                                         );
                                     })}
+
+                                    {/* Add commitment manually */}
+                                    <button
+                                        onClick={addCommitment}
+                                        style={{
+                                            width: '100%', padding: '9px', borderRadius: 10,
+                                            border: '1px dashed var(--border)', background: 'none',
+                                            color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer',
+                                            fontFamily: 'inherit', transition: 'color 0.15s, border-color 0.15s',
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                                    >
+                                        + Add commitment manually
+                                    </button>
                                 </div>
 
                                 {error && (
