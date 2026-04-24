@@ -386,7 +386,8 @@ ${transcript}`
         const matchMember = buildMatcher(members);
         const commitments = parsed.commitments.map(c => ({
             ...c,
-            assigned_to: matchMember(c.owner)
+            // In solo mode (no workspace/members), assign everything to the user themselves
+            assigned_to: members.length > 0 ? matchMember(c.owner) : userId
         }));
 
         // Meeting is NOT created here — only a preview is returned.

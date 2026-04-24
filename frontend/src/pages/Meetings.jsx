@@ -26,38 +26,66 @@ export default function Meetings() {
     const location = useLocation();
 
     const isMobile = useIsMobile();
-    const role = localStorage.getItem('userRole') || 'solo';
-    const workspaceId = localStorage.getItem('workspaceId');
-    const isSolo = localStorage.getItem('soloMode') === 'true';
+    const [wsContext, setWsContext] = useState(() => ({
+        wsId: localStorage.getItem('workspaceId'),
+        solo: localStorage.getItem('soloMode') === 'true',
+    }));
+
+    useEffect(() => {
+        function handleSwitch() {
+            setWsContext({
+                wsId: localStorage.getItem('workspaceId'),
+                solo: localStorage.getItem('soloMode') === 'true',
+            });
+        }
+        window.addEventListener('workspaceSwitched', handleSwitch);
+        return () => window.removeEventListener('workspaceSwitched', handleSwitch);
+    }, []);
 
     const fetchData = useCallback(async () => {
+        // Always read fresh from localStorage so workspace switches are reflected
+        const wsId = localStorage.getItem('workspaceId');
+        const currentRole = localStorage.getItem('userRole') || 'solo';
+        const solo = localStorage.getItem('soloMode') === 'true';
+
         try {
-            const [teamRes, commitmentsRes, membersRes] = await Promise.all([
-                workspaceId && !isSolo
-                    ? api.get('/meetings', { params: { workspaceId } })
+            const [teamRes, personalRes, commitmentsRes, membersRes] = await Promise.all([
+                // Team meetings — only when in a real workspace
+                wsId && !solo
+                    ? api.get('/meetings', { params: { workspaceId: wsId } })
                     : Promise.resolve({ data: [] }),
-                workspaceId
-                    ? api.get('/commitments', { params: { workspaceId } })
-                    : Promise.resolve({ data: [] }),
-                workspaceId && role === 'manager'
-                    ? api.get(`/workspaces/${workspaceId}/members`)
+                // Personal/solo meetings — ALWAYS fetch so they never vanish
+                api.get('/meetings', { params: {} }),
+                // Commitments
+                wsId && !solo
+                    ? api.get('/commitments', { params: { workspaceId: wsId } })
+                    : api.get('/commitments', { params: {} }),
+                // Members
+                wsId && currentRole === 'manager'
+                    ? api.get(`/workspaces/${wsId}/members`)
                     : Promise.resolve({ data: [] }),
             ]);
-            setTeamMeetings(teamRes.data);
-            setPersonalMeetings([]);
-            setCommitments(commitmentsRes.data);
-            setMembers(membersRes.data);
+
+            const teamData = teamRes.data || [];
+            // Personal = meetings with no workspace_id (solo meetings)
+            const personalData = (personalRes.data || []).filter(m => !m.workspace_id);
+
+            setTeamMeetings(teamData);
+            setPersonalMeetings(personalData);
+            setCommitments(commitmentsRes.data || []);
+            setMembers(membersRes.data || []);
 
             // Auto-expand first meeting
-            if (teamRes.data.length > 0) {
-                setExpandedIds(new Set([teamRes.data[0].id]));
+            const firstList = teamData.length > 0 ? teamData : personalData;
+            if (firstList.length > 0) {
+                setExpandedIds(new Set([firstList[0].id]));
             }
         } catch (err) {
             console.error(err);
         } finally {
             setLoading(false);
         }
-    }, [workspaceId, role, isSolo]);
+    }, []);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -98,8 +126,10 @@ export default function Meetings() {
         }
     }
 
-    const activeMeetings = tab === 'team' ? teamMeetings : personalMeetings;
-    const showTabs = !isSolo && workspaceId;
+    const showTabs = !wsContext.solo && !!wsContext.wsId;
+    const activeMeetings = showTabs
+        ? (tab === 'team' ? teamMeetings : personalMeetings)
+        : personalMeetings;
 
     function formatDate(d) {
         return new Date(d).toLocaleDateString('en-US', {
@@ -115,7 +145,7 @@ export default function Meetings() {
                 <div className="page-sub">
                     {showTabs
                         ? `${teamMeetings.length} team · ${personalMeetings.length} personal`
-                        : `${teamMeetings.length} meetings recorded`}
+                        : `${personalMeetings.length} meetings recorded`}
                 </div>
             </motion.div>
 
@@ -192,7 +222,7 @@ export default function Meetings() {
                         {tab === 'team' ? 'No team meetings yet' : 'No personal meetings yet'}
                     </div>
                     <div className="empty-sub">
-                        {tab === 'team' && role === 'member'
+                        {tab === 'team' && localStorage.getItem('userRole') === 'member'
                             ? "Your manager hasn't added any meetings yet"
                             : 'Extract a transcript from the dashboard to create a meeting'}
                     </div>
@@ -251,7 +281,7 @@ export default function Meetings() {
                                         <span className="pill pill-neutral">{mCommitments.length}</span>
 
                                         {/* Delete button — manager only */}
-                                        {role === 'manager' && (
+                                        {localStorage.getItem('userRole') === 'manager' && (
                                             <button
                                                 onClick={e => { e.stopPropagation(); setDeleteConfirm(m); }}
                                                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-light)'; e.currentTarget.style.color = 'var(--red)'; e.currentTarget.style.borderColor = 'var(--red)'; }}
