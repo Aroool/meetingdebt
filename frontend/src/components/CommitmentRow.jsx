@@ -220,8 +220,13 @@ function MemberProfilePopup({ member, commitments, onClose }) {
 export default function CommitmentRow({ commitment, index, onUpdate, members = [], commitments = [] }) {
     const [localStatus, setLocalStatus] = useState(getStatusKey(commitment));
     const [menuOpen, setMenuOpen] = useState(false);
+    const [activeSubmenu, setActiveSubmenu] = useState(null); // 'status' | 'reassign' | null
     const [saving, setSaving] = useState(false);
     const [reassigning, setReassigning] = useState(false);
+    const statusItemRef = useRef(null);
+    const reassignItemRef = useRef(null);
+    const submenuRef = useRef(null);
+    const submenuTimeoutRef = useRef(null);
     const [currentUserId, setCurrentUserId] = useState('');
     const [currentUserName, setCurrentUserName] = useState('');
     const [profileMember, setProfileMember] = useState(null);
@@ -261,11 +266,25 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
 
     useEffect(() => { setLocalStatus(getStatusKey(commitment)); }, [commitment]);
 
+    function closeAll() {
+        setMenuOpen(false);
+        setActiveSubmenu(null);
+        clearTimeout(submenuTimeoutRef.current);
+    }
+
+    function handleSubmenuEnter(key) {
+        clearTimeout(submenuTimeoutRef.current);
+        setActiveSubmenu(key);
+    }
+
+    function handleSubmenuLeave() {
+        submenuTimeoutRef.current = setTimeout(() => setActiveSubmenu(null), 120);
+    }
+
     useEffect(() => {
         function handlePointerDown(e) {
-            if (menuOpen && !menuButtonRef.current?.contains(e.target) && !menuRef.current?.contains(e.target)) {
-                setMenuOpen(false);
-            }
+            const clickedInMenu = menuButtonRef.current?.contains(e.target) || menuRef.current?.contains(e.target) || submenuRef.current?.contains(e.target);
+            if (menuOpen && !clickedInMenu) closeAll();
         }
         document.addEventListener('mousedown', handlePointerDown);
         return () => document.removeEventListener('mousedown', handlePointerDown);
@@ -477,31 +496,96 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
                         ···
                     </motion.button>
 
-                    <PortalMenu open={menuOpen} menuRef={menuRef} position={menuPosition} width={200}>
-                        {/* Status section */}
-                        <div style={{ padding: '6px 10px 4px', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                            Status
-                        </div>
-                        {STATUSES.map(s => (
-                            <div key={s.key} onClick={() => changeStatus(s.key)}
-                                className={`status-option${localStatus === s.key ? ' active' : ''}`}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-primary)' }}>
-                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
-                                    {s.label}
-                                </div>
-                                {localStatus === s.key && <span style={{ color: s.color, fontSize: 12 }}>✓</span>}
+                    {/* Main menu — two items only */}
+                    <PortalMenu open={menuOpen} menuRef={menuRef} position={menuPosition} width={160}>
+                        {/* Change Status row */}
+                        <div
+                            ref={statusItemRef}
+                            onMouseEnter={() => handleSubmenuEnter('status')}
+                            onMouseLeave={handleSubmenuLeave}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 13, color: activeSubmenu === 'status' ? 'var(--accent-text)' : 'var(--text-primary)', background: activeSubmenu === 'status' ? 'var(--accent-light)' : 'transparent', transition: 'background 0.12s', userSelect: 'none' }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: getPill(localStatus).color, flexShrink: 0 }} />
+                                Change Status
                             </div>
-                        ))}
+                            <span style={{ fontSize: 10, opacity: 0.5 }}>›</span>
+                        </div>
 
-                        {/* Reassign section — manager only */}
+                        {/* Reassign row — manager only */}
                         {isManager && (
-                            <>
-                                <div style={{ height: 1, background: 'var(--border)', margin: '6px 4px' }} />
-                                <div style={{ padding: '6px 10px 4px', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                            <div
+                                ref={reassignItemRef}
+                                onMouseEnter={() => handleSubmenuEnter('reassign')}
+                                onMouseLeave={handleSubmenuLeave}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 13, color: activeSubmenu === 'reassign' ? 'var(--accent-text)' : 'var(--text-primary)', background: activeSubmenu === 'reassign' ? 'var(--accent-light)' : 'transparent', transition: 'background 0.12s', userSelect: 'none' }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontSize: 12 }}>👤</span>
                                     Reassign to
                                 </div>
-                                <div onClick={() => reassignTo(null)}
-                                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 7, cursor: 'pointer', fontSize: 12, color: !commitment.assigned_to ? 'var(--accent-text)' : 'var(--text-muted)', background: !commitment.assigned_to ? 'var(--accent-light)' : 'transparent', transition: 'background 0.1s' }}
+                                <span style={{ fontSize: 10, opacity: 0.5 }}>›</span>
+                            </div>
+                        )}
+                    </PortalMenu>
+
+                    {/* Status submenu */}
+                    {menuOpen && activeSubmenu === 'status' && (() => {
+                        const anchor = statusItemRef.current;
+                        if (!anchor) return null;
+                        const rect = anchor.getBoundingClientRect();
+                        return createPortal(
+                            <div
+                                ref={submenuRef}
+                                onMouseEnter={() => handleSubmenuEnter('status')}
+                                onMouseLeave={handleSubmenuLeave}
+                                style={{
+                                    position: 'fixed',
+                                    top: rect.top, left: rect.right + 6,
+                                    background: 'var(--bg-card)', border: '1px solid var(--border)',
+                                    borderRadius: 12, padding: 4, zIndex: 10000,
+                                    minWidth: 150, boxShadow: '0 14px 32px rgba(0,0,0,0.14)',
+                                }}
+                            >
+                                {STATUSES.map(s => (
+                                    <div key={s.key} onClick={() => { changeStatus(s.key); closeAll(); }}
+                                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 13, color: localStatus === s.key ? 'var(--accent-text)' : 'var(--text-primary)', background: localStatus === s.key ? 'var(--accent-light)' : 'transparent', transition: 'background 0.1s' }}
+                                        onMouseEnter={e => { if (localStatus !== s.key) e.currentTarget.style.background = 'var(--bg)'; }}
+                                        onMouseLeave={e => { if (localStatus !== s.key) e.currentTarget.style.background = 'transparent'; }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+                                            {s.label}
+                                        </div>
+                                        {localStatus === s.key && <span style={{ color: s.color, fontSize: 11 }}>✓</span>}
+                                    </div>
+                                ))}
+                            </div>,
+                            document.body
+                        );
+                    })()}
+
+                    {/* Reassign submenu */}
+                    {menuOpen && activeSubmenu === 'reassign' && isManager && (() => {
+                        const anchor = reassignItemRef.current;
+                        if (!anchor) return null;
+                        const rect = anchor.getBoundingClientRect();
+                        return createPortal(
+                            <div
+                                ref={submenuRef}
+                                onMouseEnter={() => handleSubmenuEnter('reassign')}
+                                onMouseLeave={handleSubmenuLeave}
+                                style={{
+                                    position: 'fixed',
+                                    top: rect.top, left: rect.right + 6,
+                                    background: 'var(--bg-card)', border: '1px solid var(--border)',
+                                    borderRadius: 12, padding: 4, zIndex: 10000,
+                                    minWidth: 180, boxShadow: '0 14px 32px rgba(0,0,0,0.14)',
+                                    maxHeight: 260, overflowY: 'auto',
+                                }}
+                            >
+                                <div onClick={() => { reassignTo(null); closeAll(); }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 12, color: !commitment.assigned_to ? 'var(--accent-text)' : 'var(--text-primary)', background: !commitment.assigned_to ? 'var(--accent-light)' : 'transparent', transition: 'background 0.1s' }}
                                     onMouseEnter={e => { if (commitment.assigned_to) e.currentTarget.style.background = 'var(--bg)'; }}
                                     onMouseLeave={e => { if (commitment.assigned_to) e.currentTarget.style.background = 'transparent'; }}>
                                     <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>—</div>
@@ -514,8 +598,8 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
                                     const memberName = isCurrentUser ? 'You' : m.name || m.email?.split('@')[0] || 'Member';
                                     const mav = avColors[i % avColors.length];
                                     return (
-                                        <div key={m.user_id} onClick={() => reassignTo(m.user_id)}
-                                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 7, cursor: 'pointer', fontSize: 12, color: 'var(--text-primary)', background: isAssigned ? 'var(--accent-light)' : 'transparent', transition: 'background 0.1s' }}
+                                        <div key={m.user_id} onClick={() => { reassignTo(m.user_id); closeAll(); }}
+                                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 12, color: 'var(--text-primary)', background: isAssigned ? 'var(--accent-light)' : 'transparent', transition: 'background 0.1s' }}
                                             onMouseEnter={e => { if (!isAssigned) e.currentTarget.style.background = 'var(--bg)'; }}
                                             onMouseLeave={e => { if (!isAssigned) e.currentTarget.style.background = 'transparent'; }}>
                                             <div style={{ width: 24, height: 24, borderRadius: '50%', background: mav.bg, color: mav.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, flexShrink: 0 }}>
@@ -529,9 +613,10 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
                                         </div>
                                     );
                                 })}
-                            </>
-                        )}
-                    </PortalMenu>
+                            </div>,
+                            document.body
+                        );
+                    })()}
                 </div>
             </motion.div>
 
