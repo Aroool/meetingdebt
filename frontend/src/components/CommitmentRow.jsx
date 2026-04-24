@@ -225,6 +225,10 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
     const [currentUserId, setCurrentUserId] = useState('');
     const [currentUserName, setCurrentUserName] = useState('');
     const [profileMember, setProfileMember] = useState(null);
+    const [editingTask, setEditingTask] = useState(false);
+    const [editingDeadline, setEditingDeadline] = useState(false);
+    const [localTask, setLocalTask] = useState(commitment.task || '');
+    const [localDeadline, setLocalDeadline] = useState(commitment.deadline || '');
 
     const menuButtonRef = useRef(null);
     const menuRef = useRef(null);
@@ -336,6 +340,19 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
         if (member) { setMenuOpen(false); setProfileMember(member); }
     }
 
+    async function saveEdit(field, value) {
+        const trimmed = typeof value === 'string' ? value.trim() : value;
+        if (field === 'task' && !trimmed) return; // don't save empty task
+        try {
+            await api.patch(`/commitments/${commitment.id}`, { [field]: trimmed || null });
+            onUpdate?.();
+        } catch (err) {
+            console.error('Edit failed:', err);
+            if (field === 'task') setLocalTask(commitment.task || '');
+            if (field === 'deadline') setLocalDeadline(commitment.deadline || '');
+        }
+    }
+
     const pill = getPill(localStatus);
     const isTeamContext = uniqueMembers.length > 0;
     const ownerDisplay = displayName(commitment.owner);
@@ -368,9 +385,37 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
 
                 {/* Task info */}
                 <div className="commit-info" style={{ flex: 1, minWidth: 0 }}>
-                    <div className="commit-task" style={{ textDecoration: isCompleted ? 'line-through' : 'none', color: isCompleted ? 'var(--text-muted)' : 'var(--text-primary)' }}>
-                        {commitment.task}
-                    </div>
+                    {/* Editable task title */}
+                    {editingTask ? (
+                        <input
+                            autoFocus
+                            value={localTask}
+                            onChange={e => setLocalTask(e.target.value)}
+                            onBlur={() => { setEditingTask(false); saveEdit('task', localTask); }}
+                            onKeyDown={e => { if (e.key === 'Enter') { setEditingTask(false); saveEdit('task', localTask); } if (e.key === 'Escape') { setEditingTask(false); setLocalTask(commitment.task || ''); } }}
+                            onClick={e => e.stopPropagation()}
+                            style={{
+                                width: '100%', fontSize: 13, fontWeight: 600,
+                                color: 'var(--text-primary)', background: 'var(--bg-card)',
+                                border: '1px solid var(--accent)', borderRadius: 6,
+                                padding: '3px 7px', outline: 'none', fontFamily: 'inherit',
+                                boxSizing: 'border-box', marginBottom: 2,
+                            }}
+                        />
+                    ) : (
+                        <div
+                            className="commit-task"
+                            onClick={() => { setEditingTask(true); setMenuOpen(false); }}
+                            title="Click to edit task"
+                            style={{
+                                textDecoration: isCompleted ? 'line-through' : 'none',
+                                color: isCompleted ? 'var(--text-muted)' : 'var(--text-primary)',
+                                cursor: 'text',
+                            }}
+                        >
+                            {localTask}
+                        </div>
+                    )}
                     <div className="commit-meta" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
                         <span style={{ fontWeight: ownerDisplay === 'You' ? 700 : 400, color: ownerDisplay === 'You' ? 'var(--accent-text)' : 'var(--text-muted)' }}>
                             {ownerDisplay}
@@ -389,7 +434,30 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
                             </>
                         ) : null}
                         {commitment.meeting_title && <span style={{ color: 'var(--text-muted)' }}>· {commitment.meeting_title}</span>}
-                        {deadlineDisplay && <span style={{ color: 'var(--text-muted)' }}>· {deadlineDisplay}</span>}
+
+                        {/* Editable deadline */}
+                        {editingDeadline ? (
+                            <input
+                                autoFocus
+                                type="date"
+                                value={localDeadline || ''}
+                                onChange={e => setLocalDeadline(e.target.value)}
+                                onBlur={() => { setEditingDeadline(false); saveEdit('deadline', localDeadline); }}
+                                onKeyDown={e => { if (e.key === 'Escape') { setEditingDeadline(false); setLocalDeadline(commitment.deadline || ''); } }}
+                                onClick={e => e.stopPropagation()}
+                                style={{ fontSize: 11, fontFamily: 'inherit', background: 'var(--bg-card)', border: '1px solid var(--accent)', borderRadius: 4, color: 'var(--text-primary)', outline: 'none', padding: '1px 4px' }}
+                            />
+                        ) : (
+                            <span
+                                onClick={() => { setEditingDeadline(true); setMenuOpen(false); }}
+                                title="Click to edit deadline"
+                                style={{ color: 'var(--text-muted)', cursor: 'pointer', borderBottom: '1px dashed transparent', transition: 'border-color 0.15s' }}
+                                onMouseEnter={e => e.currentTarget.style.borderBottomColor = 'var(--text-muted)'}
+                                onMouseLeave={e => e.currentTarget.style.borderBottomColor = 'transparent'}
+                            >
+                                {localDeadline ? `· ${safeDateText(localDeadline)}` : <span style={{ opacity: 0.4 }}>· add deadline</span>}
+                            </span>
+                        )}
                     </div>
                 </div>
 
