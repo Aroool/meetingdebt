@@ -337,6 +337,8 @@ app.get('/', (req, res) => {
 app.post('/extract-preview', aiLimiter, requireAuth, async (req, res) => {
     try {
         const { transcript, meetingTitle, workspaceId } = req.body;
+        // Store transcript so it can be passed back and saved with the meeting
+
         const userId = req.userId;
         const ownerEmail = req.userEmail;
         if (!transcript) return res.status(400).json({ error: 'Transcript required' });
@@ -392,7 +394,7 @@ ${transcript}`
 
         // Meeting is NOT created here — only a preview is returned.
         // The meeting record is created in /save-commitments once the user confirms.
-        return res.json({ commitments });
+        return res.json({ commitments, transcript });
 
     } catch (error) {
         console.error('Extract preview error:', error);
@@ -403,7 +405,7 @@ ${transcript}`
 // Save commitments after manager confirms
 app.post('/save-commitments', requireAuth, async (req, res) => {
     try {
-        const { meeting: meetingPayload, commitments, workspaceId } = req.body;
+        const { meeting: meetingPayload, commitments, workspaceId, transcript } = req.body;
         const userId = req.userId;
 
         // Verify workspace membership — manager required to create meetings
@@ -424,6 +426,7 @@ app.post('/save-commitments', requireAuth, async (req, res) => {
                     owner_email: req.userEmail,
                     user_id: userId,
                     workspace_id: workspaceId || null,
+                    transcript: transcript || null,
                 })
                 .select()
                 .single();

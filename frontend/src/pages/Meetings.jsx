@@ -13,6 +13,55 @@ function getStatus(c) {
     return 'pending';
 }
 
+function TranscriptSection({ transcript }) {
+    const [open, setOpen] = useState(false);
+    return (
+        <div style={{ borderTop: '1px solid var(--border)' }}>
+            <div
+                onClick={() => setOpen(o => !o)}
+                style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 16px', cursor: 'pointer',
+                    background: open ? 'var(--bg)' : 'transparent',
+                    transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+                onMouseLeave={e => e.currentTarget.style.background = open ? 'var(--bg)' : 'transparent'}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 11 }}>📄</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>View transcript</span>
+                </div>
+                <span style={{ fontSize: 10, color: 'var(--text-muted)', transition: 'transform 0.2s', display: 'inline-block', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+            </div>
+            <AnimatePresence initial={false}>
+                {open && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        style={{ overflow: 'hidden' }}
+                    >
+                        <pre style={{
+                            margin: 0, padding: '12px 16px 16px',
+                            fontSize: 12, lineHeight: 1.7,
+                            color: 'var(--text-secondary)',
+                            whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                            fontFamily: 'inherit',
+                            maxHeight: 320, overflowY: 'auto',
+                            background: 'var(--bg)',
+                            borderTop: '1px solid var(--border)',
+                        }}>
+                            {transcript}
+                        </pre>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
 export default function Meetings() {
     const [teamMeetings, setTeamMeetings] = useState([]);
     const [personalMeetings, setPersonalMeetings] = useState([]);
@@ -310,7 +359,7 @@ export default function Meetings() {
                                     </div>
                                 </div>
 
-                                {/* Commitments — collapsible */}
+                                {/* Commitments + Transcript — collapsible */}
                                 <AnimatePresence initial={false}>
                                     {isExpanded && (
                                         <motion.div
@@ -338,6 +387,11 @@ export default function Meetings() {
                                                     ))
                                                 )}
                                             </div>
+
+                                            {/* Transcript section */}
+                                            {m.transcript && (
+                                                <TranscriptSection transcript={m.transcript} />
+                                            )}
                                         </motion.div>
                                     )}
                                 </AnimatePresence>

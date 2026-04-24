@@ -139,7 +139,7 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExt
                 if (c.assigned_to) initialAssignments[i] = c.assigned_to;
             });
 
-            setExtracted({ ...data, members });
+            setExtracted({ ...data, members, transcript });
             setAssignments(initialAssignments);
             setStep('confirm');
 
@@ -161,6 +161,7 @@ export default function NewMeetingModal({ isOpen, onClose, onSuccess, pendingExt
                     assigned_to: assignments[i] || null,
                 })),
                 workspaceId,
+                transcript: extracted.transcript || null,
             });
             reset();
             onClose();
