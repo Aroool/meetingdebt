@@ -34,6 +34,14 @@ const SEGMENTS = [
     { label: 'Team', to: '/workspace', match: ['/workspace', '/meetings', '/transcripts'] },
 ];
 
+/* Pages reachable via sidebar that aren't in SEGMENTS — get a dynamic 4th tab */
+const EXTRA_ROUTES = {
+    '/feedback':    'Feedback',
+    '/chat':        'Ask AI',
+    '/profile':     'Profile',
+};
+// Note: /transcripts is already inside Team's match array above
+
 // ─── Small inline SVG icons for layout/view toggles ──────────────────────────
 function LayoutGridIcon({ size = 14 }) {
     return (
@@ -116,57 +124,105 @@ function TopBar({ dark, onToggleDark, user, workspaceName, role, isSolo,
             <div style={{ flex: 1 }} />
 
             {/* Floating pill nav — desktop only */}
-            {!isMobile && (
-                <div style={{
-                    display: 'flex', alignItems: 'center',
-                    padding: 4,
-                    borderRadius: 22,
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border)',
-                    boxShadow: '0 2px 16px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
-                    position: 'absolute', left: '50%', transform: 'translateX(-50%)',
-                    overflow: 'hidden',
-                }}>
-                    {SEGMENTS.map(seg => {
-                        const isActive = seg.match.includes(location.pathname);
-                        return (
-                            <Link key={seg.to} to={seg.to} style={{
-                                padding: '7px 22px', borderRadius: 18,
-                                fontSize: 13, fontWeight: isActive ? 600 : 500,
-                                color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
-                                textDecoration: 'none',
-                                position: 'relative',
-                                zIndex: 1,
-                                transition: 'color 0.25s',
-                                lineHeight: '18px',
-                            }}>
-                                {isActive && (
-                                    <motion.div
-                                        layoutId="nav-glow"
-                                        style={{
-                                            position: 'absolute', inset: '-10px -14px',
-                                            borderRadius: '50%', background: 'var(--accent)',
-                                            opacity: 0.09, filter: 'blur(16px)', zIndex: -2,
-                                        }}
-                                        transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-                                    />
-                                )}
-                                {isActive && (
-                                    <motion.div
-                                        layoutId="nav-pill"
-                                        style={{
-                                            position: 'absolute', inset: 0, borderRadius: 18,
-                                            background: 'var(--accent-light)', zIndex: -1,
-                                        }}
-                                        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                                    />
-                                )}
-                                {seg.label}
-                            </Link>
-                        );
-                    })}
-                </div>
-            )}
+            {!isMobile && (() => {
+                const inMain = SEGMENTS.some(s => s.match.includes(location.pathname));
+                const extraLabel = !inMain ? (EXTRA_ROUTES[location.pathname] || null) : null;
+
+                return (
+                    <div style={{
+                        display: 'flex', alignItems: 'center',
+                        padding: 4,
+                        borderRadius: 22,
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border)',
+                        boxShadow: '0 2px 16px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+                        position: 'absolute', left: '50%', transform: 'translateX(-50%)',
+                    }}>
+                        {SEGMENTS.map(seg => {
+                            const isActive = seg.match.includes(location.pathname);
+                            return (
+                                <Link key={seg.to} to={seg.to} style={{
+                                    padding: '7px 22px', borderRadius: 18,
+                                    fontSize: 13, fontWeight: isActive ? 600 : 500,
+                                    color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
+                                    textDecoration: 'none',
+                                    position: 'relative', zIndex: 1,
+                                    transition: 'color 0.25s',
+                                    lineHeight: '18px',
+                                    whiteSpace: 'nowrap',
+                                }}>
+                                    {isActive && (
+                                        <motion.div
+                                            layoutId="nav-glow"
+                                            style={{
+                                                position: 'absolute', inset: '-10px -14px',
+                                                borderRadius: '50%', background: 'var(--accent)',
+                                                opacity: 0.09, filter: 'blur(16px)', zIndex: -2,
+                                            }}
+                                            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                                        />
+                                    )}
+                                    {isActive && (
+                                        <motion.div
+                                            layoutId="nav-pill"
+                                            style={{
+                                                position: 'absolute', inset: 0, borderRadius: 18,
+                                                background: 'var(--accent-light)', zIndex: -1,
+                                            }}
+                                            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                                        />
+                                    )}
+                                    {seg.label}
+                                </Link>
+                            );
+                        })}
+
+                        {/* Dynamic 4th tab — slides in when on a sidebar-only page */}
+                        <AnimatePresence>
+                            {extraLabel && (
+                                <motion.div
+                                    key={extraLabel}
+                                    initial={{ width: 0, opacity: 0 }}
+                                    animate={{ width: 'auto', opacity: 1 }}
+                                    exit={{ width: 0, opacity: 0 }}
+                                    transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                                    style={{ overflow: 'hidden', display: 'flex', alignItems: 'center' }}
+                                >
+                                    <div style={{
+                                        padding: '7px 22px', borderRadius: 18,
+                                        fontSize: 13, fontWeight: 600,
+                                        color: 'var(--accent-text)',
+                                        position: 'relative', zIndex: 1,
+                                        lineHeight: '18px',
+                                        whiteSpace: 'nowrap',
+                                    }}>
+                                        {/* Active pill bg */}
+                                        <motion.div
+                                            layoutId="nav-pill"
+                                            style={{
+                                                position: 'absolute', inset: 0, borderRadius: 18,
+                                                background: 'var(--accent-light)', zIndex: -1,
+                                            }}
+                                            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                                        />
+                                        {/* Active glow */}
+                                        <motion.div
+                                            layoutId="nav-glow"
+                                            style={{
+                                                position: 'absolute', inset: '-10px -14px',
+                                                borderRadius: '50%', background: 'var(--accent)',
+                                                opacity: 0.09, filter: 'blur(16px)', zIndex: -2,
+                                            }}
+                                            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                                        />
+                                        {extraLabel}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                );
+            })()}
 
             <div style={{ flex: 1 }} />
 
