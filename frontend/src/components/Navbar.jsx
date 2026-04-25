@@ -31,16 +31,16 @@ function getIsSolo() {
 const SEGMENTS = [
     { label: 'Dashboard', to: '/dashboard', match: ['/dashboard', '/commitments'] },
     { label: 'Personal', to: '/my-tasks', match: ['/my-tasks'] },
-    { label: 'Team', to: '/workspace', match: ['/workspace', '/meetings', '/transcripts'] },
+    { label: 'Team', to: '/workspace', match: ['/workspace', '/meetings'] },
 ];
 
 /* Pages reachable via sidebar that aren't in SEGMENTS — get a dynamic 4th tab */
 const EXTRA_ROUTES = {
+    '/transcripts': 'Transcripts',
     '/feedback':    'Feedback',
     '/chat':        'Ask AI',
     '/profile':     'Profile',
 };
-// Note: /transcripts is already inside Team's match array above
 
 // ─── Small inline SVG icons for layout/view toggles ──────────────────────────
 function LayoutGridIcon({ size = 14 }) {
