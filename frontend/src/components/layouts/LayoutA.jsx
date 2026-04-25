@@ -6,6 +6,144 @@ import CommitmentRow from '../CommitmentRow';
 import useIsMobile from '../../hooks/useIsMobile';
 
 function parseDate(s) { if (!s) return null; const [y,m,d] = s.slice(0,10).split('-').map(Number); return new Date(y, m-1, d); }
+
+// ─── Onboarding Empty State ────────────────────────────────────────────────────
+function OnboardingEmptyState({ onOpenModal, currentRole }) {
+    const steps = [
+        { done: true,    icon: '✓', label: 'Account ready', sub: 'You\'re signed in and good to go' },
+        { done: false,   icon: '2', label: 'Add your first meeting', sub: 'Paste a transcript and let AI extract tasks', cta: true },
+        { done: false,   icon: '3', label: 'Track commitments', sub: 'Deadlines, assignees, overdue alerts — all automatic' },
+    ];
+
+    const howItWorks = [
+        { icon: '📋', label: 'Paste transcript' },
+        { icon: '🤖', label: 'AI extracts tasks' },
+        { icon: '👤', label: 'Assign to team' },
+        { icon: '⏰', label: 'Track deadlines' },
+    ];
+
+    return (
+        <div style={{ padding: '28px 20px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {/* Welcome */}
+            <div style={{ textAlign: 'center' }}>
+                <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+                    style={{ fontSize: 36, marginBottom: 10 }}
+                >👋</motion.div>
+                <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1, duration: 0.3 }}
+                >
+                    <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
+                        Welcome to MeetingDebt
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                        You're all set up. Let's track your first meeting.
+                    </div>
+                </motion.div>
+            </div>
+
+            {/* Steps */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {steps.map((step, i) => (
+                    <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.15 + i * 0.08, duration: 0.3 }}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            padding: '12px 14px', borderRadius: 12,
+                            border: `1px solid ${step.cta ? 'var(--accent)' : 'var(--border)'}`,
+                            background: step.cta ? 'var(--accent-light)' : step.done ? 'transparent' : 'var(--bg)',
+                            opacity: !step.done && !step.cta ? 0.45 : 1,
+                        }}
+                    >
+                        {/* Step icon */}
+                        <div style={{
+                            width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 11, fontWeight: 800,
+                            background: step.done ? 'var(--accent)' : step.cta ? 'var(--accent)' : 'var(--border)',
+                            color: step.done || step.cta ? '#fff' : 'var(--text-muted)',
+                        }}>
+                            {step.icon}
+                        </div>
+
+                        {/* Text */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                                fontSize: 12.5, fontWeight: 700,
+                                color: step.cta ? 'var(--accent-text)' : 'var(--text-primary)',
+                                marginBottom: 1,
+                            }}>
+                                {step.label}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                {step.sub}
+                            </div>
+                        </div>
+
+                        {/* CTA */}
+                        {step.cta && currentRole !== 'member' && (
+                            <button
+                                onClick={onOpenModal}
+                                style={{
+                                    flexShrink: 0,
+                                    padding: '6px 14px', borderRadius: 8,
+                                    background: 'var(--accent)', color: '#fff',
+                                    border: 'none', cursor: 'pointer',
+                                    fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
+                                    transition: 'opacity 0.15s',
+                                    whiteSpace: 'nowrap',
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                            >
+                                + New Meeting
+                            </button>
+                        )}
+
+                        {step.done && (
+                            <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, flexShrink: 0 }}>Done</span>
+                        )}
+                    </motion.div>
+                ))}
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: 1, background: 'var(--border)' }} />
+
+            {/* How it works */}
+            <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12, textAlign: 'center' }}>
+                    How it works
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0 }}>
+                    {howItWorks.map((h, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.4 + i * 0.07 }}
+                                style={{ textAlign: 'center', padding: '0 8px' }}
+                            >
+                                <div style={{ fontSize: 20, marginBottom: 4 }}>{h.icon}</div>
+                                <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{h.label}</div>
+                            </motion.div>
+                            {i < howItWorks.length - 1 && (
+                                <div style={{ color: 'var(--border)', fontSize: 14, fontWeight: 300, flexShrink: 0 }}>→</div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
 function getStatus(c) {
     if (c.status === 'completed') return 'done';
     if (c.status === 'blocked') return 'blocked';
@@ -584,16 +722,21 @@ export default function LayoutA({ data, onUpdate, onOpenModal }) {
                                 Loading...
                             </div>
                         ) : filtered.length === 0 ? (
-                            <div style={{ padding: '72px 0', textAlign: 'center' }}>
-                                <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>
-                                    {personFilter ? `No tasks for ${personFilter}` : filter === 'All' ? 'No commitments yet' : `No ${filter.toLowerCase()} tasks`}
-                                </div>
-                                {filter === 'All' && !personFilter && (
-                                    <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
-                                        Click + to add your first meeting
+                            /* Show full onboarding guide when truly empty (no filter active),
+                               otherwise show a simple "no results" message */
+                            filter === 'All' && !personFilter && commitments.length === 0 ? (
+                                <OnboardingEmptyState onOpenModal={onOpenModal} currentRole={currentRole} />
+                            ) : (
+                                <div style={{ padding: '60px 0', textAlign: 'center' }}>
+                                    <div style={{ fontSize: 28, marginBottom: 10 }}>🔍</div>
+                                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+                                        {personFilter ? `No tasks for ${personFilter}` : `No ${filter.toLowerCase()} tasks`}
                                     </div>
-                                )}
-                            </div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                        {personFilter ? 'Try a different team member' : 'Try a different filter'}
+                                    </div>
+                                </div>
+                            )
                         ) : view === 'flat' ? (
                             <div
                                 style={{
@@ -833,8 +976,8 @@ export default function LayoutA({ data, onUpdate, onOpenModal }) {
                         )}
                     </div>
 
-                    {/* New Meeting button — bottom center of commitments, managers only */}
-                    {currentRole !== 'member' && onOpenModal && (
+                    {/* New Meeting button — hidden during onboarding (it already has a CTA) */}
+                    {currentRole !== 'member' && onOpenModal && commitments.length > 0 && (
                         <div style={{
                             flexShrink: 0,
                             padding: '10px 16px 14px',
