@@ -5,12 +5,15 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { supabase } from '../supabase';
 import useIsMobile from '../hooks/useIsMobile';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+
 gsap.registerPlugin(ScrollTrigger);
 
 export default function Landing() {
     const navigate = useNavigate();
     const containerRef = useRef(null);
     const [dark, setDark] = useState(true);
+    const [testimonials, setTestimonials] = useState([]);
     const isMobile = useIsMobile();
     const isTabletOrSmaller = useIsMobile(1024);
 
@@ -19,6 +22,13 @@ export default function Landing() {
             if (session) navigate('/dashboard');
         });
     }, [navigate]);
+
+    useEffect(() => {
+        fetch(`${API_URL}/public/feedback`)
+            .then(r => r.json())
+            .then(data => { if (Array.isArray(data)) setTestimonials(data); })
+            .catch(() => {});
+    }, []);
 
     function scrollTo(id) {
         document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -407,6 +417,87 @@ export default function Landing() {
                     </div>
                 </div>
             </section>
+
+            <div style={S.divider} />
+
+            {/* TESTIMONIALS — only renders when there are real responses */}
+            {testimonials.length >= 1 && (
+                <section style={{ ...S.section(dark ? '#050505' : '#f8fafc'), overflow: 'hidden' }}>
+                    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+                        {/* Header */}
+                        <div style={{ textAlign: 'center', marginBottom: isMobile ? 36 : 52 }}>
+                            <div style={S.sLabel}>What users say</div>
+                            <div style={{ ...S.sTitle, fontSize: isMobile ? 28 : 36 }}>
+                                Real feedback, real teams.
+                            </div>
+                        </div>
+
+                        {/* Cards grid */}
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: isMobile ? '1fr' : testimonials.length === 1 ? '1fr' : testimonials.length === 2 ? '1fr 1fr' : 'repeat(3, 1fr)',
+                            gap: 20,
+                        }}>
+                            {testimonials.slice(0, 3).map((t, i) => {
+                                const stars = t.ui_rating || t.ease_rating || 5;
+                                const initials = (t.name || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                                const colors = ['#16a34a', '#2563eb', '#7c3aed', '#ea580c'];
+                                const color = colors[i % colors.length];
+                                return (
+                                    <div key={i} style={{
+                                        background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
+                                        border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+                                        borderRadius: 18,
+                                        padding: '24px 26px',
+                                        display: 'flex', flexDirection: 'column', gap: 16,
+                                        transition: 'transform 0.2s',
+                                    }}
+                                        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
+                                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                                    >
+                                        {/* Stars */}
+                                        <div style={{ display: 'flex', gap: 3 }}>
+                                            {[1,2,3,4,5].map(n => (
+                                                <span key={n} style={{ fontSize: 14, color: n <= stars ? '#f59e0b' : (dark ? '#333' : '#ddd') }}>★</span>
+                                            ))}
+                                        </div>
+
+                                        {/* Quote */}
+                                        <div style={{
+                                            fontSize: 14, lineHeight: 1.7,
+                                            color: dark ? 'rgba(255,255,255,0.75)' : '#374151',
+                                            flex: 1,
+                                            fontStyle: 'italic',
+                                        }}>
+                                            "{t.comments}"
+                                        </div>
+
+                                        {/* Author */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <div style={{
+                                                width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                                                background: color + '22', color,
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: 11, fontWeight: 800,
+                                            }}>{initials}</div>
+                                            <div>
+                                                <div style={{ fontSize: 13, fontWeight: 700, color: dark ? '#fff' : '#111' }}>
+                                                    {t.name || 'Anonymous'}
+                                                </div>
+                                                {t.role && (
+                                                    <div style={{ fontSize: 11, color: dark ? 'rgba(255,255,255,0.4)' : '#6b7280', textTransform: 'capitalize' }}>
+                                                        {t.role}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </section>
+            )}
 
             <div style={S.divider} />
 

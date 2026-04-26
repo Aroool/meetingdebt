@@ -1300,6 +1300,24 @@ app.post('/feedback', requireAuth, async (req, res) => {
     }
 });
 
+// Public endpoint — no auth, used by landing page for social proof
+app.get('/public/feedback', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('feedback')
+            .select('name, role, comments, ui_rating, ease_rating, created_at')
+            .not('comments', 'is', null)
+            .neq('comments', '')
+            .gte('ui_rating', 3)
+            .order('ui_rating', { ascending: false })
+            .limit(6);
+        if (error) throw error;
+        return res.json(data || []);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/feedback', requireAuth, async (req, res) => {
     try {
         // Return all feedback for social proof ("What others said")
