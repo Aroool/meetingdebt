@@ -747,73 +747,215 @@ function Rail({ role, isSolo, user, overdueCount, workspaces, handleSwitchWorksp
 
 function BottomNav({ role, overdueCount }) {
     const location = useLocation();
-    const navItems = [
+    const navigate = useNavigate();
+    const [moreOpen, setMoreOpen] = useState(false);
+
+    const mainItems = [
         { to: '/dashboard', label: 'Home', icon: HomeIcon, match: ['/dashboard'] },
         { to: '/commitments', label: 'Tasks', icon: ListBulletIcon, match: ['/commitments'], badge: overdueCount },
         { to: '/meetings', label: 'Meetings', icon: CalendarIcon, match: ['/meetings'] },
         { to: '/my-tasks', label: 'Personal', icon: StarIcon, match: ['/my-tasks'] },
-        { to: '/profile', label: 'Profile', icon: UserIcon, match: ['/profile', '/workspace', '/feedback'] },
     ];
 
+    const moreItems = [
+        { to: '/transcripts', label: 'Transcripts', icon: DocumentTextIcon },
+        { to: '/chat', label: 'Ask AI', icon: SparklesIcon },
+        { to: '/feedback', label: 'Feedback', icon: ChatBubbleIcon },
+        { to: '/workspace', label: 'Team / Workspace', icon: UsersIcon },
+        { to: '/profile', label: 'Profile', icon: UserIcon },
+    ];
+
+    // Check if current route is in "More" items — highlight the "More" button
+    const isMoreActive = moreItems.some(i => i.to === location.pathname) ||
+        ['/profile', '/workspace', '/feedback', '/transcripts', '/chat'].includes(location.pathname);
+
     return (
-        <div style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0,
-            background: 'var(--bg-card)',
-            borderTop: '1px solid var(--border)',
-            display: 'flex', alignItems: 'stretch',
-            zIndex: 300,
-            paddingBottom: 'env(safe-area-inset-bottom)',
-            boxShadow: '0 -4px 20px rgba(0,0,0,0.06)',
-        }}>
-            {navItems.map(item => {
-                const isActive = item.match.includes(location.pathname);
-                const Icon = item.icon;
-                return (
-                    <Link
-                        key={item.to}
-                        to={item.to}
-                        style={{
-                            flex: 1, display: 'flex', flexDirection: 'column',
-                            alignItems: 'center', justifyContent: 'center',
-                            gap: 4, textDecoration: 'none',
-                            padding: '10px 0 8px',
-                            color: isActive ? 'var(--accent)' : 'var(--text-muted)',
-                            position: 'relative',
-                            transition: 'color 0.15s',
-                        }}
-                    >
-                        {isActive && (
-                            <motion.div
-                                layoutId="bottom-nav-active"
-                                style={{
-                                    position: 'absolute', top: 0, left: 4, right: 4,
-                                    height: 2, background: 'var(--accent)',
-                                    borderRadius: '0 0 2px 2px',
-                                }}
-                                transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                            />
-                        )}
-                        <div style={{ position: 'relative' }}>
-                            <Icon size={21} />
-                            {item.badge > 0 && (
-                                <span style={{
-                                    position: 'absolute', top: -4, right: -8,
-                                    background: 'var(--red)', color: '#fff',
-                                    borderRadius: 99, minWidth: 14, height: 14,
-                                    fontSize: 8, fontWeight: 800, padding: '0 3px',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                }}>
-                                    {item.badge > 9 ? '9+' : item.badge}
-                                </span>
+        <>
+            {/* More sheet overlay */}
+            <AnimatePresence>
+                {moreOpen && (
+                    <>
+                        {/* Backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.15 }}
+                            onClick={() => setMoreOpen(false)}
+                            style={{
+                                position: 'fixed', inset: 0,
+                                background: 'rgba(0,0,0,0.4)',
+                                zIndex: 400,
+                            }}
+                        />
+                        {/* Sheet */}
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                            style={{
+                                position: 'fixed', left: 0, right: 0, bottom: 0,
+                                background: 'var(--bg-card)',
+                                borderRadius: '20px 20px 0 0',
+                                zIndex: 401,
+                                paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)',
+                                boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
+                            }}
+                        >
+                            {/* Handle */}
+                            <div style={{
+                                width: 36, height: 4, borderRadius: 2,
+                                background: 'var(--border)',
+                                margin: '12px auto 16px',
+                            }} />
+                            <div style={{
+                                padding: '0 16px',
+                                fontSize: 11, fontWeight: 700,
+                                color: 'var(--text-muted)',
+                                textTransform: 'uppercase', letterSpacing: '0.07em',
+                                marginBottom: 8,
+                            }}>
+                                More
+                            </div>
+                            {moreItems.map(item => {
+                                const isActive = location.pathname === item.to;
+                                const Icon = item.icon;
+                                return (
+                                    <div
+                                        key={item.to}
+                                        onClick={() => { navigate(item.to); setMoreOpen(false); }}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 14,
+                                            padding: '13px 16px',
+                                            cursor: 'pointer',
+                                            color: isActive ? 'var(--accent-text)' : 'var(--text-primary)',
+                                            background: isActive ? 'var(--accent-light)' : 'transparent',
+                                            borderRadius: 10,
+                                            margin: '2px 8px',
+                                            transition: 'background 0.12s',
+                                        }}
+                                    >
+                                        <Icon size={20} />
+                                        <span style={{ fontSize: 15, fontWeight: isActive ? 600 : 500 }}>
+                                            {item.label}
+                                        </span>
+                                        {isActive && (
+                                            <div style={{
+                                                marginLeft: 'auto',
+                                                width: 6, height: 6, borderRadius: '50%',
+                                                background: 'var(--accent)',
+                                            }} />
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* Bottom bar */}
+            <div style={{
+                position: 'fixed', bottom: 0, left: 0, right: 0,
+                background: 'var(--bg-card)',
+                borderTop: '1px solid var(--border)',
+                display: 'flex', alignItems: 'stretch',
+                zIndex: 300,
+                paddingBottom: 'env(safe-area-inset-bottom)',
+                boxShadow: '0 -4px 20px rgba(0,0,0,0.06)',
+            }}>
+                {mainItems.map(item => {
+                    const isActive = item.match.includes(location.pathname);
+                    const Icon = item.icon;
+                    return (
+                        <Link
+                            key={item.to}
+                            to={item.to}
+                            style={{
+                                flex: 1, display: 'flex', flexDirection: 'column',
+                                alignItems: 'center', justifyContent: 'center',
+                                gap: 4, textDecoration: 'none',
+                                padding: '10px 0 8px',
+                                color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+                                position: 'relative',
+                                transition: 'color 0.15s',
+                            }}
+                        >
+                            {isActive && (
+                                <motion.div
+                                    layoutId="bottom-nav-active"
+                                    style={{
+                                        position: 'absolute', top: 0, left: 4, right: 4,
+                                        height: 2, background: 'var(--accent)',
+                                        borderRadius: '0 0 2px 2px',
+                                    }}
+                                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                                />
                             )}
-                        </div>
-                        <span style={{ fontSize: 10, fontWeight: isActive ? 700 : 500, lineHeight: 1 }}>
-                            {item.label}
-                        </span>
-                    </Link>
-                );
-            })}
-        </div>
+                            <div style={{ position: 'relative' }}>
+                                <Icon size={21} />
+                                {item.badge > 0 && (
+                                    <span style={{
+                                        position: 'absolute', top: -4, right: -8,
+                                        background: 'var(--red)', color: '#fff',
+                                        borderRadius: 99, minWidth: 14, height: 14,
+                                        fontSize: 8, fontWeight: 800, padding: '0 3px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
+                                        {item.badge > 9 ? '9+' : item.badge}
+                                    </span>
+                                )}
+                            </div>
+                            <span style={{ fontSize: 10, fontWeight: isActive ? 700 : 500, lineHeight: 1 }}>
+                                {item.label}
+                            </span>
+                        </Link>
+                    );
+                })}
+
+                {/* More button */}
+                <button
+                    onClick={() => setMoreOpen(o => !o)}
+                    style={{
+                        flex: 1, display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center',
+                        gap: 4, border: 'none', background: 'transparent',
+                        padding: '10px 0 8px',
+                        color: isMoreActive || moreOpen ? 'var(--accent)' : 'var(--text-muted)',
+                        position: 'relative',
+                        cursor: 'pointer',
+                        transition: 'color 0.15s',
+                    }}
+                >
+                    {(isMoreActive || moreOpen) && (
+                        <motion.div
+                            layoutId="bottom-nav-active"
+                            style={{
+                                position: 'absolute', top: 0, left: 4, right: 4,
+                                height: 2, background: 'var(--accent)',
+                                borderRadius: '0 0 2px 2px',
+                            }}
+                            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                        />
+                    )}
+                    {/* Three-dot icon */}
+                    <div style={{ display: 'flex', gap: 3, alignItems: 'center', height: 21 }}>
+                        {[0,1,2].map(i => (
+                            <div key={i} style={{
+                                width: 4, height: 4, borderRadius: '50%',
+                                background: 'currentColor',
+                                transition: 'transform 0.15s',
+                                transform: moreOpen ? 'scale(1.2)' : 'scale(1)',
+                            }} />
+                        ))}
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: isMoreActive || moreOpen ? 700 : 500, lineHeight: 1 }}>
+                        More
+                    </span>
+                </button>
+            </div>
+        </>
     );
 }
 
