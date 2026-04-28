@@ -15,9 +15,48 @@ function formatTime(str) {
     return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
-function TranscriptCard({ meeting, isOpen, onToggle }) {
+function renderSummaryLine(text) {
+    return text.split('\n').map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return null;
+        const isBullet = /^[•\-\*]/.test(trimmed);
+        const content = isBullet ? trimmed.slice(1).trim() : trimmed;
+        const parts = content.split(/(\*\*[^*]+\*\*)/g).map((part, j) => {
+            if (/^\*\*/.test(part)) return <strong key={j}>{part.slice(2, -2)}</strong>;
+            return part;
+        });
+        return (
+            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 5, alignItems: 'flex-start' }}>
+                {isBullet && <span style={{ color: 'var(--accent)', flexShrink: 0, marginTop: 2, fontSize: 12 }}>•</span>}
+                <span>{parts}</span>
+            </div>
+        );
+    }).filter(Boolean);
+}
+
+function TranscriptCard({ meeting, isOpen, onToggle, onSummaryGenerated }) {
     const wordCount = meeting.transcript ? meeting.transcript.trim().split(/\s+/).length : 0;
     const isPersonal = !meeting.workspace_id;
+    const [summary, setSummary] = useState(meeting.summary || null);
+    const [summaryLoading, setSummaryLoading] = useState(false);
+    const [summaryError, setSummaryError] = useState(null);
+    const [showSummary, setShowSummary] = useState(!!meeting.summary);
+
+    async function handleGenerateSummary(e) {
+        e.stopPropagation();
+        setSummaryLoading(true);
+        setSummaryError(null);
+        try {
+            const { data } = await api.post(`/meetings/${meeting.id}/summary`);
+            setSummary(data.summary);
+            setShowSummary(true);
+            if (onSummaryGenerated) onSummaryGenerated(meeting.id, data.summary);
+        } catch (err) {
+            setSummaryError('Failed to generate summary. Try again.');
+        } finally {
+            setSummaryLoading(false);
+        }
+    }
 
     return (
         <div style={{
@@ -72,6 +111,14 @@ function TranscriptCard({ meeting, isOpen, onToggle }) {
                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                             {wordCount.toLocaleString()} words
                         </span>
+                        {summary && (
+                            <span style={{
+                                fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 20,
+                                background: 'rgba(234,179,8,0.12)', color: '#b45309',
+                            }}>
+                                ✦ AI Summary
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -97,43 +144,131 @@ function TranscriptCard({ meeting, isOpen, onToggle }) {
                     >
                         <div style={{
                             borderTop: '1px solid var(--border)',
-                            padding: '16px',
                             background: 'var(--bg)',
                         }}>
-                            <pre style={{
-                                margin: 0,
-                                fontSize: 13, lineHeight: 1.8,
-                                color: 'var(--text-secondary)',
-                                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                                fontFamily: 'inherit',
-                                maxHeight: 420, overflowY: 'auto',
-                            }}>
-                                {meeting.transcript}
-                            </pre>
-                            <div style={{
-                                marginTop: 12, paddingTop: 12,
-                                borderTop: '1px solid var(--border)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            }}>
-                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                    {wordCount.toLocaleString()} words · saved {formatDate(meeting.created_at)}
-                                </span>
-                                <button
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(meeting.transcript);
-                                    }}
-                                    style={{
-                                        fontSize: 11, padding: '4px 12px', borderRadius: 6,
-                                        border: '1px solid var(--border)',
-                                        background: 'var(--bg-card)', color: 'var(--text-muted)',
-                                        cursor: 'pointer', fontFamily: 'inherit',
-                                        transition: 'color 0.15s, border-color 0.15s',
-                                    }}
-                                    onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent-text)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
-                                >
-                                    Copy
-                                </button>
+                            {/* AI Summary section */}
+                            <AnimatePresence>
+                                {showSummary && summary && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        style={{
+                                            borderBottom: '1px solid var(--border)',
+                                            padding: '14px 16px',
+                                            background: 'rgba(234,179,8,0.04)',
+                                        }}
+                                    >
+                                        <div style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                            marginBottom: 10,
+                                        }}>
+                                            <div style={{
+                                                display: 'flex', alignItems: 'center', gap: 6,
+                                                fontSize: 11, fontWeight: 700, color: '#b45309',
+                                                textTransform: 'uppercase', letterSpacing: '0.05em',
+                                            }}>
+                                                <span style={{ fontSize: 13 }}>✦</span>
+                                                AI Summary
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 6 }}>
+                                                <button
+                                                    onClick={handleGenerateSummary}
+                                                    disabled={summaryLoading}
+                                                    style={{
+                                                        fontSize: 10, padding: '3px 8px', borderRadius: 5,
+                                                        border: '1px solid var(--border)',
+                                                        background: 'transparent', color: 'var(--text-muted)',
+                                                        cursor: summaryLoading ? 'default' : 'pointer',
+                                                        fontFamily: 'inherit',
+                                                    }}
+                                                >
+                                                    {summaryLoading ? '...' : '↺ Regenerate'}
+                                                </button>
+                                                <button
+                                                    onClick={() => setShowSummary(false)}
+                                                    style={{
+                                                        fontSize: 10, padding: '3px 8px', borderRadius: 5,
+                                                        border: '1px solid var(--border)',
+                                                        background: 'transparent', color: 'var(--text-muted)',
+                                                        cursor: 'pointer', fontFamily: 'inherit',
+                                                    }}
+                                                >
+                                                    Hide
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--text-primary)' }}>
+                                            {renderSummaryLine(summary)}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* Raw transcript */}
+                            <div style={{ padding: '16px' }}>
+                                <pre style={{
+                                    margin: 0,
+                                    fontSize: 13, lineHeight: 1.8,
+                                    color: 'var(--text-secondary)',
+                                    whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                                    fontFamily: 'inherit',
+                                    maxHeight: 420, overflowY: 'auto',
+                                }}>
+                                    {meeting.transcript}
+                                </pre>
+                                <div style={{
+                                    marginTop: 12, paddingTop: 12,
+                                    borderTop: '1px solid var(--border)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    flexWrap: 'wrap', gap: 8,
+                                }}>
+                                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                        {wordCount.toLocaleString()} words · saved {formatDate(meeting.created_at)}
+                                    </span>
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                        {!showSummary && (
+                                            <button
+                                                onClick={e => { e.stopPropagation(); if (summary) { setShowSummary(true); } else { handleGenerateSummary(e); } }}
+                                                disabled={summaryLoading}
+                                                style={{
+                                                    fontSize: 11, padding: '4px 12px', borderRadius: 6,
+                                                    border: '1px solid var(--border)',
+                                                    background: summaryLoading ? 'var(--bg)' : 'var(--accent-light)',
+                                                    color: summaryLoading ? 'var(--text-muted)' : 'var(--accent-text)',
+                                                    cursor: summaryLoading ? 'default' : 'pointer',
+                                                    fontFamily: 'inherit',
+                                                    transition: 'opacity 0.15s',
+                                                    display: 'flex', alignItems: 'center', gap: 5,
+                                                }}
+                                            >
+                                                {summaryLoading ? (
+                                                    <>
+                                                        <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>◌</span>
+                                                        Generating…
+                                                    </>
+                                                ) : summary ? '✦ Show Summary' : '✦ Generate Summary'}
+                                            </button>
+                                        )}
+                                        {summaryError && (
+                                            <span style={{ fontSize: 11, color: 'var(--red)' }}>{summaryError}</span>
+                                        )}
+                                        <button
+                                            onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(meeting.transcript); }}
+                                            style={{
+                                                fontSize: 11, padding: '4px 12px', borderRadius: 6,
+                                                border: '1px solid var(--border)',
+                                                background: 'var(--bg-card)', color: 'var(--text-muted)',
+                                                cursor: 'pointer', fontFamily: 'inherit',
+                                                transition: 'color 0.15s, border-color 0.15s',
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent-text)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </motion.div>
@@ -300,10 +435,20 @@ export default function Transcripts() {
                             meeting={m}
                             isOpen={openId === m.id}
                             onToggle={() => setOpenId(prev => prev === m.id ? null : m.id)}
+                            onSummaryGenerated={(id, s) => {
+                                setMeetings(prev => prev.map(x => x.id === id ? { ...x, summary: s } : x));
+                            }}
                         />
                     ))}
                 </div>
             )}
+
+            <style>{`
+                @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to   { transform: rotate(360deg); }
+                }
+            `}</style>
         </div>
     );
 }
