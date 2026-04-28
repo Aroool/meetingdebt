@@ -1259,6 +1259,62 @@ app.delete('/meetings/:id', requireAuth, async (req, res) => {
     }
 });
 
+// Generate AI summary for a meeting transcript
+app.post('/meetings/:id/summary', requireAuth, aiLimiter, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.userId;
+
+        // Fetch the meeting
+        const { data: meeting, error: fetchErr } = await supabase
+            .from('meetings')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (fetchErr || !meeting) return res.status(404).json({ error: 'Meeting not found' });
+
+        // Auth check — owner or workspace member
+        const ownsIt = meeting.user_id === userId;
+        let isMember = false;
+        if (!ownsIt && meeting.workspace_id) {
+            const membership = await getWorkspaceMembership(userId, meeting.workspace_id);
+            isMember = !!membership;
+        }
+        if (!ownsIt && !isMember) return res.status(403).json({ error: 'Not authorized' });
+
+        if (!meeting.transcript || !meeting.transcript.trim()) {
+            return res.status(400).json({ error: 'No transcript to summarize' });
+        }
+
+        // Call Claude to generate a concise summary
+        const truncated = meeting.transcript.slice(0, 8000); // cap at 8k chars
+        const message = await anthropic.messages.create({
+            model: 'claude-haiku-4-5',
+            max_tokens: 512,
+            messages: [{
+                role: 'user',
+                content: `Summarize the following meeting transcript in 3-5 concise bullet points. Focus on: key decisions made, action items assigned, and important discussion outcomes. Format with bullet points starting with •.
+
+Meeting: "${meeting.title || 'Untitled'}"
+
+Transcript:
+${truncated}`,
+            }],
+        });
+
+        const summary = message.content[0]?.text?.trim() || '';
+
+        // Save summary to DB
+        await supabase.from('meetings').update({ summary }).eq('id', id);
+
+        return res.json({ summary });
+    } catch (err) {
+        console.error('Summary error:', err);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // Get personal tasks
 app.get('/personal-tasks', requireAuth, async (req, res) => {
     try {
