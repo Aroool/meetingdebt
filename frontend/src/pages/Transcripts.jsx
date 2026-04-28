@@ -122,11 +122,61 @@ function TranscriptCard({ meeting, isOpen, onToggle, onSummaryGenerated }) {
                     </div>
                 </div>
 
+                {/* Action buttons — visible when card is open */}
+                <AnimatePresence>
+                    {isOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, width: 0 }}
+                            animate={{ opacity: 1, width: 'auto' }}
+                            exit={{ opacity: 0, width: 0 }}
+                            transition={{ duration: 0.15 }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', flexShrink: 0 }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <button
+                                onClick={e => { e.stopPropagation(); if (summary && !showSummary) { setShowSummary(true); } else { handleGenerateSummary(e); } }}
+                                disabled={summaryLoading}
+                                title={summary ? 'Show AI summary' : 'Generate AI summary'}
+                                style={{
+                                    fontSize: 11, padding: '5px 10px', borderRadius: 7,
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--accent-light)',
+                                    color: summaryLoading ? 'var(--text-muted)' : 'var(--accent-text)',
+                                    cursor: summaryLoading ? 'default' : 'pointer',
+                                    fontFamily: 'inherit', fontWeight: 600,
+                                    whiteSpace: 'nowrap',
+                                    display: 'flex', alignItems: 'center', gap: 4,
+                                    transition: 'opacity 0.15s',
+                                }}
+                            >
+                                {summaryLoading ? '◌ Generating…' : summary ? '✦ Summary' : '✦ Summarise'}
+                            </button>
+                            <button
+                                onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(meeting.transcript); }}
+                                title="Copy transcript"
+                                style={{
+                                    fontSize: 11, padding: '5px 10px', borderRadius: 7,
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--bg-card)', color: 'var(--text-muted)',
+                                    cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500,
+                                    whiteSpace: 'nowrap',
+                                    transition: 'color 0.15s, border-color 0.15s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent-text)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                            >
+                                Copy
+                            </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 {/* Chevron */}
                 <div style={{
                     flexShrink: 0, color: 'var(--text-muted)', fontSize: 11,
                     transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                     transition: 'transform 0.2s',
+                    marginLeft: isOpen ? 6 : 0,
                 }}>
                     ▼
                 </div>
