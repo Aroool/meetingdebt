@@ -1135,9 +1135,12 @@ app.post('/profile/delete-account', requireAuth, async (req, res) => {
         await supabase.from('meetings').delete().eq('user_id', userId);
 
         // Hard delete from auth.users so the email can be re-used for signup
-        if (supabaseAdmin) {
-            await supabaseAdmin.auth.admin.deleteUser(userId);
+        if (!supabaseAdmin) {
+            return res.status(500).json({ error: 'Server is missing SUPABASE_SERVICE_ROLE_KEY — account cannot be fully deleted. Contact the admin.' });
         }
+        const { error: authDeleteErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
+        if (authDeleteErr) throw authDeleteErr;
+
         return res.json({ success: true });
     } catch (error) {
         return res.status(500).json({ error: error.message });
