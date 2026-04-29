@@ -493,7 +493,11 @@ export default function LayoutA({ data, onUpdate, onOpenModal }) {
     const groupedCommitments = Object.entries(
         filtered.reduce((acc, c) => {
             const key = c.meeting_id || 'no-meeting';
-            const title = c.meetings?.title || c.meeting_title || 'Untitled Meeting';
+            const rawTitle = c.meetings?.title || c.meeting_title;
+            const isPersonal = c.is_personal || !c.workspace_id;
+            const title = rawTitle && rawTitle !== 'Untitled Meeting'
+                ? rawTitle
+                : isPersonal ? '🗂 Personal Tasks' : 'Untitled Meeting';
             if (!acc[key]) acc[key] = { title, items: [] };
             acc[key].items.push(c);
             return acc;

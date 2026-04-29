@@ -422,7 +422,7 @@ app.post('/save-commitments', requireAuth, async (req, res) => {
             const { data: newMeeting, error: meetingError } = await supabase
                 .from('meetings')
                 .insert({
-                    title: meetingPayload?.title || 'Untitled Meeting',
+                    title: meetingPayload?.title || (workspaceId ? 'Untitled Meeting' : 'Personal Tasks'),
                     owner_email: req.userEmail,
                     user_id: userId,
                     workspace_id: workspaceId || null,
