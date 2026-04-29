@@ -992,6 +992,47 @@ app.get('/workspaces/:workspaceId', requireAuth, async (req, res) => {
     }
 });
 
+// Leave a workspace — any member (but not the owner)
+app.post('/workspaces/:workspaceId/leave', requireAuth, async (req, res) => {
+    try {
+        const { workspaceId } = req.params;
+        const userId = req.userId;
+
+        const { data: workspace } = await supabase
+            .from('workspaces').select('owner_id, name').eq('id', workspaceId).single();
+
+        if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+        if (workspace.owner_id === userId) {
+            return res.status(400).json({ error: 'You are the owner — delete the workspace instead of leaving it.' });
+        }
+
+        const membership = await getWorkspaceMembership(userId, workspaceId);
+        if (!membership) return res.status(404).json({ error: 'You are not a member of this workspace' });
+
+        // Orphan their assigned commitments
+        await supabase.from('commitments')
+            .update({ assigned_to: null })
+            .eq('assigned_to', userId)
+            .eq('workspace_id', workspaceId);
+
+        // Notify the workspace owner
+        await supabase.from('notifications').insert({
+            user_id: workspace.owner_id,
+            workspace_id: workspaceId,
+            type: 'member_left',
+            message: `${membership.name || membership.email} left the workspace "${workspace.name}"`,
+        });
+
+        // Remove from workspace
+        await supabase.from('workspace_members')
+            .delete().eq('workspace_id', workspaceId).eq('user_id', userId);
+
+        return res.json({ success: true });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // Delete a workspace — owner only
 app.delete('/workspaces/:workspaceId', requireAuth, async (req, res) => {
     try {
@@ -1294,12 +1335,15 @@ app.post('/personal-tasks', requireAuth, async (req, res) => {
         const { task, deadline, notes, workspaceId } = req.body;
         const userId = req.userId;
 
-        // Get user's name from auth
-        const { data: { user } } = await supabase.auth.admin.getUserById(userId);
-        const ownerName = user?.user_metadata?.first_name
-            || user?.user_metadata?.full_name?.split(' ')[0]
-            || user?.email?.split('@')[0]
-            || 'Me';
+        // Get user's name from auth — use supabaseAdmin (service role) not anon client
+        let ownerName = req.userEmail?.split('@')[0] || 'Me';
+        if (supabaseAdmin) {
+            const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(userId);
+            ownerName = user?.user_metadata?.full_name?.split(' ')[0]
+                || user?.user_metadata?.first_name
+                || user?.email?.split('@')[0]
+                || 'Me';
+        }
 
         const { data, error } = await supabase
             .from('commitments')

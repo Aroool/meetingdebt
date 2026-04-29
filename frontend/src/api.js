@@ -21,13 +21,17 @@ api.interceptors.response.use(
     (response) => response,
     async (error) => {
         if (error.response?.status === 401) {
-            // Try refreshing the session
+            // Try refreshing the session first
             const { data: { session } } = await supabase.auth.refreshSession();
             if (session) {
                 // Retry the original request with new token
                 error.config.headers.Authorization = `Bearer ${session.access_token}`;
                 return api.request(error.config);
             }
+            // Refresh failed — session is dead, kick to login
+            await supabase.auth.signOut();
+            localStorage.clear();
+            window.location.href = '/login';
         }
         return Promise.reject(error);
     }

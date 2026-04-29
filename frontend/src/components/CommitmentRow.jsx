@@ -237,9 +237,14 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
 
     const menuButtonRef = useRef(null);
     const menuRef = useRef(null);
-    const isManager = localStorage.getItem('userRole') === 'manager';
+    const role = localStorage.getItem('userRole') || 'solo';
+    const isManager = role === 'manager';
+    const isSolo = role === 'solo';
     // Members can only change status on tasks assigned to them
-    const isMyTask = (commitment.assigned_to && commitment.assigned_to === currentUserId) ||
+    // Solo users can always change their own tasks (no workspace context)
+    const isMyTask = isSolo ||
+        (commitment.assigned_to && commitment.assigned_to === currentUserId) ||
+        (!commitment.workspace_id && commitment.user_id === currentUserId) ||
         (commitment.owner?.trim().toLowerCase() === currentUserName?.trim().toLowerCase());
     const canChangeStatus = isManager || isMyTask;
 

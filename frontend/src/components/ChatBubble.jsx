@@ -28,19 +28,31 @@ const QUICK = [
 export default function ChatBubble() {
     const [open, setOpen] = useState(false);
     const [input, setInput] = useState('');
+    const [seenCount, setSeenCount] = useState(() =>
+        parseInt(localStorage.getItem('chat_bubble_seen') || '0', 10)
+    );
     const { messages, loading, error, sendMessage } = useChat();
     const bottomRef = useRef(null);
     const inputRef = useRef(null);
     const navigate = useNavigate();
+
+    // Count only AI messages received since bubble was last opened
+    const totalAI = messages.filter(m => m.role === 'assistant').length;
+    const unread = Math.max(0, totalAI - seenCount);
 
     // Scroll to bottom whenever messages change
     useEffect(() => {
         if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, loading, open]);
 
-    // Focus input when opened
+    // Focus input when opened + mark all as seen
     useEffect(() => {
-        if (open) setTimeout(() => inputRef.current?.focus(), 180);
+        if (open) {
+            setTimeout(() => inputRef.current?.focus(), 180);
+            const count = messages.filter(m => m.role === 'assistant').length;
+            setSeenCount(count);
+            localStorage.setItem('chat_bubble_seen', String(count));
+        }
     }, [open]);
 
     function handleSend() {
