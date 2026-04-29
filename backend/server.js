@@ -1139,8 +1139,57 @@ app.post('/profile/delete-account', requireAuth, async (req, res) => {
         // Clean up user's personal data
         await supabase.from('notifications').delete().eq('user_id', userId);
         await supabase.from('workspace_members').delete().eq('user_id', userId);
-        await supabase.from('commitments').delete().eq('user_id', userId);
-        await supabase.from('meetings').delete().eq('user_id', userId);
+
+        // Personal commitments — delete entirely
+        await supabase.from('commitments').delete()
+            .eq('user_id', userId).eq('is_personal', true);
+
+        // Workspace commitments assigned TO this user — orphan them so manager can reassign
+        const { data: assignedCommitments } = await supabase
+            .from('commitments')
+            .select('id, workspace_id, task, owner')
+            .eq('assigned_to', userId)
+            .not('workspace_id', 'is', null);
+
+        if (assignedCommitments?.length > 0) {
+            // Null out assigned_to so they show as unassigned
+            await supabase.from('commitments')
+                .update({ assigned_to: null })
+                .eq('assigned_to', userId);
+
+            // Notify each workspace manager
+            const wsIds = [...new Set(assignedCommitments.map(c => c.workspace_id))];
+            for (const wsId of wsIds) {
+                const { data: ws } = await supabase
+                    .from('workspaces').select('owner_id').eq('id', wsId).single();
+                if (ws?.owner_id && ws.owner_id !== userId) {
+                    const count = assignedCommitments.filter(c => c.workspace_id === wsId).length;
+                    const name = assignedCommitments[0].owner || 'A team member';
+                    await supabase.from('notifications').insert({
+                        user_id: ws.owner_id,
+                        workspace_id: wsId,
+                        type: 'member_left',
+                        message: `${name} deleted their account — ${count} task${count !== 1 ? 's' : ''} need reassigning`,
+                    });
+                }
+            }
+        }
+
+        // Workspace commitments created by this user (not assigned) — null out user_id only
+        await supabase.from('commitments')
+            .update({ user_id: null })
+            .eq('user_id', userId)
+            .not('workspace_id', 'is', null);
+
+        // Personal meetings — delete
+        await supabase.from('meetings').delete()
+            .eq('user_id', userId).is('workspace_id', null);
+
+        // Workspace meetings created by this user — keep but de-reference
+        await supabase.from('meetings')
+            .update({ user_id: null })
+            .eq('user_id', userId)
+            .not('workspace_id', 'is', null);
 
         // Hard delete from auth.users so the email can be re-used for signup
         if (!supabaseAdmin) {

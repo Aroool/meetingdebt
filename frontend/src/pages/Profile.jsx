@@ -151,10 +151,19 @@ export default function Profile() {
         if (deleteConfirm !== 'DELETE') return;
         setDeleting(true);
         try {
+            // Call backend FIRST — deletes all data + auth.users record
+            await api.post('/profile/delete-account');
+            // Then sign out locally
             await supabase.auth.signOut();
             localStorage.clear();
             navigate('/');
-        } catch (err) { console.error(err); } finally { setDeleting(false); }
+        } catch (err) {
+            console.error(err);
+            const msg = err.response?.data?.error || 'Failed to delete account. Please try again.';
+            alert(msg);
+        } finally {
+            setDeleting(false);
+        }
     }
 
     function switchWorkspace(ws) {
