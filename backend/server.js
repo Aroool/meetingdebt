@@ -599,12 +599,20 @@ app.get('/commitments', requireAuth, async (req, res) => {
             .order('created_at', { ascending: false });
 
         if (workspaceId) {
-            // Include workspace commitments AND user's personal solo commitments so they don't vanish after joining a team
+            // Workspace commitments — never include personal tasks (is_personal = true)
             const { data: wsData, error: e1 } = await supabase
-                .from('commitments').select('*, meetings(title)').eq('workspace_id', workspaceId).order('created_at', { ascending: false });
+                .from('commitments').select('*, meetings(title)')
+                .eq('workspace_id', workspaceId)
+                .neq('is_personal', true)
+                .order('created_at', { ascending: false });
             if (e1) throw e1;
+            // Also include the current user's solo (non-personal) commitments so they don't vanish after joining a team
             const { data: soloData, error: e2 } = await supabase
-                .from('commitments').select('*, meetings(title)').is('workspace_id', null).eq('user_id', userId).order('created_at', { ascending: false });
+                .from('commitments').select('*, meetings(title)')
+                .is('workspace_id', null)
+                .neq('is_personal', true)
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false });
             if (e2) throw e2;
             const all = [...(wsData || []), ...(soloData || [])];
             all.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -1192,7 +1200,7 @@ app.post('/personal-tasks', requireAuth, async (req, res) => {
                 notes: notes || null,
                 status: 'pending',
                 user_id: userId,
-                workspace_id: workspaceId || null,
+                workspace_id: null,   // personal tasks are NEVER workspace-scoped
                 meeting_id: null,
                 is_personal: true,
                 owner: ownerName,
