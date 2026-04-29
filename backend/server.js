@@ -1182,12 +1182,10 @@ app.patch('/profile/update-name', requireAuth, async (req, res) => {
 
         if (!fullName) return res.status(400).json({ error: 'Name is required' });
 
-        // 1. Update Supabase auth user metadata
-        const userClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY, {
-            global: { headers: { Authorization: `Bearer ${req.userToken}` } }
-        });
-        const { error: authErr } = await userClient.auth.updateUser({
-            data: { full_name: fullName, first_name, last_name, nickname, bio, avatar_url }
+        // 1. Update Supabase auth user metadata via admin client
+        if (!supabaseAdmin) return res.status(500).json({ error: 'Admin client not configured' });
+        const { error: authErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+            user_metadata: { full_name: fullName, first_name, last_name, nickname, bio, avatar_url }
         });
         if (authErr) throw authErr;
 
