@@ -1971,42 +1971,68 @@ app.get('/trigger-overdue-check', requireAuth, async (req, res) => {
 // ─── FEEDBACK BLAST ───────────────────────────────────────────────────────────
 function feedbackEmailHtml(name) {
     return `
-    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:40px 24px;background:#ffffff">
-      <!-- Logo -->
-      <div style="margin-bottom:32px;display:flex;align-items:center;gap:8px">
-        <div style="width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block"></div>
-        <span style="font-size:17px;font-weight:800;color:#0f172a">Meeting<span style="color:#16a34a">Debt</span></span>
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:580px;margin:0 auto;background:#ffffff">
+
+      <!-- Header bar -->
+      <div style="background:#0f172a;padding:20px 32px;border-radius:12px 12px 0 0;display:flex;align-items:center;gap:10px">
+        <div style="width:9px;height:9px;border-radius:50%;background:#16a34a;display:inline-block;margin-right:4px"></div>
+        <span style="font-size:18px;font-weight:800;color:#ffffff;letter-spacing:-0.02em">Meeting<span style="color:#16a34a">Debt</span></span>
       </div>
 
-      <!-- Hero -->
-      <h1 style="font-size:24px;font-weight:700;color:#0f172a;margin:0 0 12px">
-        Hey ${name}, quick question 👋
-      </h1>
-      <p style="font-size:15px;color:#475569;line-height:1.7;margin:0 0 24px">
-        I'm Arul, the founder of MeetingDebt. You've been one of our early users and
-        that means a lot to me. I'd love to hear what you actually think — what's
-        working, what's confusing, what you wish it did better.
-      </p>
-      <p style="font-size:15px;color:#475569;line-height:1.7;margin:0 0 32px">
-        It takes less than 2 minutes, and your answer will directly shape what we
-        build next.
-      </p>
+      <!-- Body -->
+      <div style="padding:40px 32px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px">
 
-      <!-- CTA -->
-      <a href="${process.env.FRONTEND_URL}/feedback"
-         style="display:inline-block;background:#16a34a;color:#ffffff;padding:14px 32px;
-                border-radius:10px;text-decoration:none;font-size:15px;font-weight:600;
-                letter-spacing:-0.01em">
-        Share your feedback →
-      </a>
+        <!-- Greeting -->
+        <h1 style="font-size:26px;font-weight:800;color:#0f172a;margin:0 0 6px;letter-spacing:-0.02em">
+          Hey ${name}! 👋
+        </h1>
+        <p style="font-size:13px;font-weight:600;color:#16a34a;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 28px">
+          You're one of our first users — that's a big deal.
+        </p>
 
-      <!-- Divider -->
-      <hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0" />
+        <!-- Main message -->
+        <p style="font-size:15px;color:#334155;line-height:1.8;margin:0 0 16px">
+          I'm <strong>Arul</strong>, the person who built MeetingDebt (yes, just one person — send help 😅).
+          You signed up and actually used it, which honestly made my day.
+        </p>
+        <p style="font-size:15px;color:#334155;line-height:1.8;margin:0 0 16px">
+          Now I need a favour. No — not money. Just 2 minutes of your honest thoughts.
+        </p>
+        <p style="font-size:15px;color:#334155;line-height:1.8;margin:0 0 32px">
+          What did you like? What was confusing? What made you go <em>"why on earth does it work like that?"</em>
+          — I want to know all of it. Good, bad, ugly. Your feedback literally decides what gets built next.
+        </p>
 
-      <p style="font-size:13px;color:#94a3b8;line-height:1.6;margin:0">
-        You're receiving this because you signed up for MeetingDebt.<br>
-        Reply directly to this email — I read every response.
-      </p>
+        <!-- Highlight box -->
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:18px 22px;margin:0 0 32px">
+          <p style="font-size:14px;color:#15803d;font-weight:600;margin:0 0 6px">🎯 What I'm asking</p>
+          <ul style="font-size:14px;color:#166534;line-height:1.9;margin:0;padding-left:18px">
+            <li>Was the app actually useful for your team?</li>
+            <li>What feature do you wish existed?</li>
+            <li>Would you recommend it to a colleague? (be honest!)</li>
+          </ul>
+        </div>
+
+        <!-- CTA -->
+        <a href="${process.env.FRONTEND_URL}/feedback"
+           style="display:inline-block;background:#16a34a;color:#ffffff;padding:15px 36px;
+                  border-radius:10px;text-decoration:none;font-size:15px;font-weight:700;
+                  letter-spacing:-0.01em;box-shadow:0 4px 14px rgba(22,163,74,0.35)">
+          Give feedback (2 min) →
+        </a>
+
+        <p style="font-size:14px;color:#64748b;margin:24px 0 0;line-height:1.7">
+          P.S. If you reply directly to this email, I'll actually read it. Not a bot. Promise. 🤞
+        </p>
+
+        <!-- Divider -->
+        <hr style="border:none;border-top:1px solid #f1f5f9;margin:36px 0 24px" />
+
+        <p style="font-size:12px;color:#94a3b8;line-height:1.7;margin:0">
+          You're receiving this because you signed up for MeetingDebt as an early user.<br>
+          Made with ☕ and way too many late nights by Arul.
+        </p>
+      </div>
     </div>`;
 }
 
@@ -2021,19 +2047,26 @@ app.post('/admin/feedback-blast', async (req, res) => {
     const { to } = req.body; // if provided, send only to this email (test mode)
 
     try {
+        if (!supabaseAdmin) return res.status(500).json({ error: 'supabaseAdmin not configured' });
+
         if (to) {
-            // Single test email
-            const name = to.split('@')[0];
+            // Look up real name from Supabase auth
+            const { data: { users: allUsers } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
+            const match = allUsers?.find(u => u.email?.toLowerCase() === to.toLowerCase());
+            const name = match?.user_metadata?.first_name
+                || match?.user_metadata?.full_name?.split(' ')[0]
+                || match?.email?.split('@')[0]
+                || to.split('@')[0];
+
             await sendEmail({
                 to,
-                subject: "Quick question from MeetingDebt's founder 🙏",
+                subject: `Hey ${name}, got 2 minutes? 🙏`,
                 html: feedbackEmailHtml(name),
             });
-            return res.json({ success: true, sent: [to] });
+            return res.json({ success: true, sent: [to], name });
         }
 
         // Blast to all users
-        if (!supabaseAdmin) return res.status(500).json({ error: 'supabaseAdmin not configured' });
         const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
         if (error) return res.status(500).json({ error: error.message });
 
@@ -2047,7 +2080,7 @@ app.post('/admin/feedback-blast', async (req, res) => {
             try {
                 await sendEmail({
                     to: user.email,
-                    subject: "Quick question from MeetingDebt's founder 🙏",
+                    subject: `Hey ${name}, got 2 minutes? 🙏`,
                     html: feedbackEmailHtml(name),
                 });
                 sent.push(user.email);
