@@ -110,18 +110,21 @@ export default function Profile() {
     async function saveProfile() {
         setSaving(true);
         try {
-            const fullName = form.first_name && form.last_name
-                ? `${form.first_name.trim()} ${form.last_name.trim()}`
-                : form.full_name;
-            await supabase.auth.updateUser({
-                data: { full_name: fullName, first_name: form.first_name, last_name: form.last_name, nickname: form.nickname, bio: form.bio, avatar_url: form.avatar_url }
+            // Single backend call — updates auth metadata + workspace_members.name + commitments.owner
+            const { data } = await api.patch('/profile/update-name', {
+                full_name: form.full_name,
+                first_name: form.first_name,
+                last_name: form.last_name,
+                nickname: form.nickname,
+                bio: form.bio,
+                avatar_url: form.avatar_url,
             });
-            setForm(prev => ({ ...prev, full_name: fullName }));
+            setForm(prev => ({ ...prev, full_name: data.full_name }));
             setSaveSuccess(true);
             window.dispatchEvent(new Event('profileUpdated'));
             setTimeout(() => setSaveSuccess(false), 3000);
         } catch (err) {
-            alert('Failed to save: ' + err.message);
+            alert('Failed to save: ' + (err.response?.data?.error || err.message));
         } finally {
             setSaving(false);
         }

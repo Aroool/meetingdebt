@@ -1170,6 +1170,47 @@ app.get('/notifications', requireAuth, async (req, res) => {
 });
 
 // Update settings (nudge preference)
+// Update display name everywhere — auth metadata, workspace_members, commitments.owner
+app.patch('/profile/update-name', requireAuth, async (req, res) => {
+    try {
+        const { full_name, first_name, last_name, nickname, bio, avatar_url } = req.body;
+        const userId = req.userId;
+
+        const fullName = (first_name && last_name)
+            ? `${first_name.trim()} ${last_name.trim()}`
+            : full_name?.trim();
+
+        if (!fullName) return res.status(400).json({ error: 'Name is required' });
+
+        // 1. Update Supabase auth user metadata
+        const userClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY, {
+            global: { headers: { Authorization: `Bearer ${req.userToken}` } }
+        });
+        const { error: authErr } = await userClient.auth.updateUser({
+            data: { full_name: fullName, first_name, last_name, nickname, bio, avatar_url }
+        });
+        if (authErr) throw authErr;
+
+        // 2. Update name in all workspace_members rows for this user
+        const { error: memberErr } = await supabase
+            .from('workspace_members')
+            .update({ name: fullName })
+            .eq('user_id', userId);
+        if (memberErr) console.error('workspace_members name update failed:', memberErr.message);
+
+        // 3. Update owner field on all commitments assigned to this user
+        const { error: commitErr } = await supabase
+            .from('commitments')
+            .update({ owner: fullName })
+            .eq('assigned_to', userId);
+        if (commitErr) console.error('commitments owner update failed:', commitErr.message);
+
+        return res.json({ success: true, full_name: fullName });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 app.patch('/profile/settings', requireAuth, async (req, res) => {
     try {
         const { nudge_enabled, workspaceId } = req.body;
