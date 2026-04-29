@@ -238,6 +238,10 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
     const menuButtonRef = useRef(null);
     const menuRef = useRef(null);
     const isManager = localStorage.getItem('userRole') === 'manager';
+    // Members can only change status on tasks assigned to them
+    const isMyTask = (commitment.assigned_to && commitment.assigned_to === currentUserId) ||
+        (commitment.owner?.trim().toLowerCase() === currentUserName?.trim().toLowerCase());
+    const canChangeStatus = isManager || isMyTask;
 
     const uniqueMembers = useMemo(() => {
         const seen = new Set();
@@ -498,19 +502,25 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
 
                     {/* Main menu — two items only */}
                     <PortalMenu open={menuOpen} menuRef={menuRef} position={menuPosition} width={160}>
-                        {/* Change Status row */}
-                        <div
-                            ref={statusItemRef}
-                            onMouseEnter={() => handleSubmenuEnter('status')}
-                            onMouseLeave={handleSubmenuLeave}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 13, color: activeSubmenu === 'status' ? 'var(--accent-text)' : 'var(--text-primary)', background: activeSubmenu === 'status' ? 'var(--accent-light)' : 'transparent', transition: 'background 0.12s', userSelect: 'none' }}
-                        >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: getPill(localStatus).color, flexShrink: 0 }} />
-                                Change Status
+                        {/* Change Status row — manager always, member only on their own tasks */}
+                        {canChangeStatus ? (
+                            <div
+                                ref={statusItemRef}
+                                onMouseEnter={() => handleSubmenuEnter('status')}
+                                onMouseLeave={handleSubmenuLeave}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 13, color: activeSubmenu === 'status' ? 'var(--accent-text)' : 'var(--text-primary)', background: activeSubmenu === 'status' ? 'var(--accent-light)' : 'transparent', transition: 'background 0.12s', userSelect: 'none' }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: getPill(localStatus).color, flexShrink: 0 }} />
+                                    Change Status
+                                </div>
+                                <span style={{ fontSize: 10, opacity: 0.5 }}>›</span>
                             </div>
-                            <span style={{ fontSize: 10, opacity: 0.5 }}>›</span>
-                        </div>
+                        ) : (
+                            <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', userSelect: 'none' }}>
+                                Only {commitment.owner?.split(' ')[0] || 'the assignee'} can update this
+                            </div>
+                        )}
 
                         {/* Reassign row — manager only */}
                         {isManager && (
@@ -529,8 +539,8 @@ export default function CommitmentRow({ commitment, index, onUpdate, members = [
                         )}
                     </PortalMenu>
 
-                    {/* Status submenu */}
-                    {menuOpen && activeSubmenu === 'status' && (() => {
+                    {/* Status submenu — only if permitted */}
+                    {menuOpen && activeSubmenu === 'status' && canChangeStatus && (() => {
                         const anchor = statusItemRef.current;
                         if (!anchor) return null;
                         const rect = anchor.getBoundingClientRect();
