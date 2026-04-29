@@ -120,6 +120,8 @@ export default function Profile() {
                 avatar_url: form.avatar_url,
             });
             setForm(prev => ({ ...prev, full_name: data.full_name }));
+            // Refresh the local Supabase session so the new name appears immediately
+            await supabase.auth.refreshSession();
             setSaveSuccess(true);
             window.dispatchEvent(new Event('profileUpdated'));
             setTimeout(() => setSaveSuccess(false), 3000);
