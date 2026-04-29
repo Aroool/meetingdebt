@@ -1968,6 +1968,99 @@ app.get('/trigger-overdue-check', requireAuth, async (req, res) => {
 });
 
 
+// ─── FEEDBACK BLAST ───────────────────────────────────────────────────────────
+function feedbackEmailHtml(name) {
+    return `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:40px 24px;background:#ffffff">
+      <!-- Logo -->
+      <div style="margin-bottom:32px;display:flex;align-items:center;gap:8px">
+        <div style="width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block"></div>
+        <span style="font-size:17px;font-weight:800;color:#0f172a">Meeting<span style="color:#16a34a">Debt</span></span>
+      </div>
+
+      <!-- Hero -->
+      <h1 style="font-size:24px;font-weight:700;color:#0f172a;margin:0 0 12px">
+        Hey ${name}, quick question 👋
+      </h1>
+      <p style="font-size:15px;color:#475569;line-height:1.7;margin:0 0 24px">
+        I'm Arul, the founder of MeetingDebt. You've been one of our early users and
+        that means a lot to me. I'd love to hear what you actually think — what's
+        working, what's confusing, what you wish it did better.
+      </p>
+      <p style="font-size:15px;color:#475569;line-height:1.7;margin:0 0 32px">
+        It takes less than 2 minutes, and your answer will directly shape what we
+        build next.
+      </p>
+
+      <!-- CTA -->
+      <a href="${process.env.FRONTEND_URL}/feedback"
+         style="display:inline-block;background:#16a34a;color:#ffffff;padding:14px 32px;
+                border-radius:10px;text-decoration:none;font-size:15px;font-weight:600;
+                letter-spacing:-0.01em">
+        Share your feedback →
+      </a>
+
+      <!-- Divider -->
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:40px 0" />
+
+      <p style="font-size:13px;color:#94a3b8;line-height:1.6;margin:0">
+        You're receiving this because you signed up for MeetingDebt.<br>
+        Reply directly to this email — I read every response.
+      </p>
+    </div>`;
+}
+
+// Admin-only: send feedback request to a single email (test) or all users (blast)
+// Protected by ADMIN_SECRET env var — never exposed in frontend
+app.post('/admin/feedback-blast', async (req, res) => {
+    const secret = req.headers['x-admin-secret'];
+    if (!secret || secret !== process.env.ADMIN_SECRET) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const { to } = req.body; // if provided, send only to this email (test mode)
+
+    try {
+        if (to) {
+            // Single test email
+            const name = to.split('@')[0];
+            await sendEmail({
+                to,
+                subject: "Quick question from MeetingDebt's founder 🙏",
+                html: feedbackEmailHtml(name),
+            });
+            return res.json({ success: true, sent: [to] });
+        }
+
+        // Blast to all users
+        if (!supabaseAdmin) return res.status(500).json({ error: 'supabaseAdmin not configured' });
+        const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
+        if (error) return res.status(500).json({ error: error.message });
+
+        const sent = [];
+        const failed = [];
+        for (const user of users) {
+            if (!user.email) continue;
+            const name = user.user_metadata?.first_name
+                || user.user_metadata?.full_name?.split(' ')[0]
+                || user.email.split('@')[0];
+            try {
+                await sendEmail({
+                    to: user.email,
+                    subject: "Quick question from MeetingDebt's founder 🙏",
+                    html: feedbackEmailHtml(name),
+                });
+                sent.push(user.email);
+            } catch (err) {
+                failed.push({ email: user.email, error: err.message });
+            }
+        }
+        return res.json({ success: true, sent, failed });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // ─── AI CHAT ──────────────────────────────────────────────────────────────────
 app.post('/chat', requireAuth, async (req, res) => {
     try {
