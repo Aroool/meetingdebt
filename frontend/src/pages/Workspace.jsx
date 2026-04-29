@@ -7,7 +7,7 @@ import api from '../api';
 import useIsMobile from '../hooks/useIsMobile';
 
 
-function RightPanel({ ws, isActive, onSwitch }) {
+function RightPanel({ ws, isActive, onSwitch, onDeleted, currentUserId }) {
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [expandedMember, setExpandedMember] = useState(null);
@@ -17,6 +17,27 @@ function RightPanel({ ws, isActive, onSwitch }) {
     const [modalMember, setModalMember] = useState(null);
     const [modalTasks, setModalTasks] = useState([]);
     const [modalLoading, setModalLoading] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleteConfirm, setDeleteConfirm] = useState('');
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState('');
+
+    const isOwner = ws.owner_id === currentUserId;
+
+    async function handleDeleteWorkspace() {
+        if (deleteConfirm !== ws.name) return;
+        setDeleting(true);
+        setDeleteError('');
+        try {
+            await api.delete(`/workspaces/${ws.id}`);
+            setShowDeleteModal(false);
+            onDeleted(ws.id);
+        } catch (err) {
+            setDeleteError(err.response?.data?.error || 'Failed to delete workspace. Try again.');
+        } finally {
+            setDeleting(false);
+        }
+    }
 
 
 
@@ -290,6 +311,168 @@ function RightPanel({ ws, isActive, onSwitch }) {
                     )}
                 </div>
             )}
+            {/* Danger zone — owner only */}
+            {isOwner && (
+                <div style={{
+                    borderTop: '1px solid var(--border)',
+                    padding: '14px 20px',
+                    background: 'var(--bg)',
+                    flexShrink: 0,
+                }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>
+                        ⚠ Danger Zone
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                        <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
+                                Delete this workspace
+                            </div>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                Permanently removes all meetings, tasks and members. Cannot be undone.
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => { setShowDeleteModal(true); setDeleteConfirm(''); setDeleteError(''); }}
+                            style={{
+                                fontSize: 12, padding: '7px 16px', borderRadius: 8,
+                                border: '1px solid var(--red)',
+                                background: 'transparent', color: 'var(--red)',
+                                cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600,
+                                flexShrink: 0,
+                                transition: 'background 0.15s, color 0.15s',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--red)'; e.currentTarget.style.color = '#fff'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--red)'; }}
+                        >
+                            Delete workspace
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete confirmation modal */}
+            <AnimatePresence>
+                {showDeleteModal && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            onClick={() => !deleting && setShowDeleteModal(false)}
+                            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9000 }}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            transition={{ duration: 0.18 }}
+                            style={{
+                                position: 'fixed', top: '50%', left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                width: 'min(440px, calc(100vw - 32px))',
+                                background: 'var(--bg-card)',
+                                border: '1px solid var(--border)',
+                                borderRadius: 16,
+                                padding: 24,
+                                zIndex: 9001,
+                                boxShadow: '0 24px 64px rgba(0,0,0,0.25)',
+                            }}
+                        >
+                            {/* Header */}
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 20 }}>
+                                <div style={{
+                                    width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                                    background: 'rgba(239,68,68,0.12)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+                                }}>⚠</div>
+                                <div>
+                                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+                                        Delete "{ws.name}"?
+                                    </div>
+                                    <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                                        This will permanently delete:
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* What gets deleted */}
+                            <div style={{
+                                background: 'rgba(239,68,68,0.06)',
+                                border: '1px solid rgba(239,68,68,0.2)',
+                                borderRadius: 10, padding: '12px 14px', marginBottom: 20,
+                            }}>
+                                {[
+                                    `All ${ws.stats?.total || 0} commitments and tasks`,
+                                    `All meetings and transcripts`,
+                                    `All ${ws.stats?.members || 0} member${ws.stats?.members !== 1 ? 's' : ''} will be removed`,
+                                    `This action cannot be undone`,
+                                ].map((item, i) => (
+                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--red)', marginBottom: i < 3 ? 6 : 0, fontWeight: i === 3 ? 700 : 400 }}>
+                                        <span style={{ flexShrink: 0 }}>✕</span> {item}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Name confirmation */}
+                            <div style={{ marginBottom: 16 }}>
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
+                                    Type <strong style={{ color: 'var(--text-primary)' }}>{ws.name}</strong> to confirm:
+                                </div>
+                                <input
+                                    autoFocus
+                                    value={deleteConfirm}
+                                    onChange={e => { setDeleteConfirm(e.target.value); setDeleteError(''); }}
+                                    onKeyDown={e => e.key === 'Enter' && deleteConfirm === ws.name && handleDeleteWorkspace()}
+                                    placeholder={ws.name}
+                                    disabled={deleting}
+                                    style={{
+                                        width: '100%', padding: '10px 12px', borderRadius: 8, boxSizing: 'border-box',
+                                        border: `1px solid ${deleteConfirm === ws.name ? 'var(--red)' : 'var(--border)'}`,
+                                        background: 'var(--bg)', color: 'var(--text-primary)',
+                                        fontSize: 13, fontFamily: 'inherit', outline: 'none',
+                                        transition: 'border-color 0.15s',
+                                    }}
+                                />
+                            </div>
+
+                            {deleteError && (
+                                <div style={{ fontSize: 12, color: 'var(--red)', marginBottom: 12 }}>
+                                    {deleteError}
+                                </div>
+                            )}
+
+                            {/* Actions */}
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                    onClick={handleDeleteWorkspace}
+                                    disabled={deleteConfirm !== ws.name || deleting}
+                                    style={{
+                                        flex: 1, padding: '10px', borderRadius: 8, border: 'none',
+                                        background: deleteConfirm === ws.name && !deleting ? 'var(--red)' : 'var(--border)',
+                                        color: deleteConfirm === ws.name && !deleting ? '#fff' : 'var(--text-muted)',
+                                        fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+                                        cursor: deleteConfirm === ws.name && !deleting ? 'pointer' : 'default',
+                                        transition: 'all 0.15s',
+                                    }}
+                                >
+                                    {deleting ? '⏳ Deleting...' : 'Permanently Delete'}
+                                </button>
+                                <button
+                                    onClick={() => setShowDeleteModal(false)}
+                                    disabled={deleting}
+                                    style={{
+                                        padding: '10px 20px', borderRadius: 8,
+                                        border: '1px solid var(--border)',
+                                        background: 'transparent', color: 'var(--text-muted)',
+                                        fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
             <TeamMemberModal
                 member={modalMember}
                 tasks={modalTasks}
@@ -312,6 +495,7 @@ export default function Workspace() {
     const [workspaces, setWorkspaces] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState(null);
+    const [currentUserId, setCurrentUserId] = useState(null);
     const navigate = useNavigate();
     const isMobile = useIsMobile();
     const activeWsId = localStorage.getItem('workspaceId');
@@ -320,6 +504,7 @@ export default function Workspace() {
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
+            setCurrentUserId(session.user.id);
 
             const { data: wsData } = await api.get(`/workspaces?userId=${session.user.id}`);
 
@@ -370,6 +555,35 @@ export default function Workspace() {
         localStorage.removeItem('soloMode');
         window.dispatchEvent(new Event('workspaceSwitched'));
         navigate('/dashboard');
+    }
+
+    function handleWorkspaceDeleted(deletedId) {
+        const remaining = workspaces.filter(w => w.id !== deletedId);
+        setWorkspaces(remaining);
+
+        // If this was the active workspace, switch to another or go solo
+        if (activeWsId === deletedId) {
+            if (remaining.length > 0) {
+                const next = remaining[0];
+                localStorage.setItem('workspaceId', next.id);
+                localStorage.setItem('workspaceName', next.name);
+                localStorage.setItem('userRole', next.role);
+                localStorage.removeItem('soloMode');
+                window.dispatchEvent(new Event('workspaceSwitched'));
+                setSelected(next);
+            } else {
+                localStorage.removeItem('workspaceId');
+                localStorage.removeItem('workspaceName');
+                localStorage.setItem('soloMode', 'true');
+                localStorage.setItem('userRole', 'solo');
+                window.dispatchEvent(new Event('workspaceSwitched'));
+                setSelected(null);
+                navigate('/dashboard');
+            }
+        } else {
+            // Just deselect if not active
+            setSelected(remaining.length > 0 ? remaining[0] : null);
+        }
     }
 
     return (
@@ -491,6 +705,8 @@ export default function Workspace() {
                             ws={selected}
                             isActive={selected.id === activeWsId}
                             onSwitch={switchWorkspace}
+                            onDeleted={handleWorkspaceDeleted}
+                            currentUserId={currentUserId}
                         />
                     )}
                 </div>

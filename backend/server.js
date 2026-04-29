@@ -992,6 +992,66 @@ app.get('/workspaces/:workspaceId', requireAuth, async (req, res) => {
     }
 });
 
+// Delete a workspace — owner only
+app.delete('/workspaces/:workspaceId', requireAuth, async (req, res) => {
+    try {
+        const { workspaceId } = req.params;
+        const userId = req.userId;
+
+        // Fetch workspace — verify it exists and caller is the owner
+        const { data: workspace, error: wsErr } = await supabase
+            .from('workspaces')
+            .select('id, name, owner_id')
+            .eq('id', workspaceId)
+            .single();
+
+        if (wsErr || !workspace) return res.status(404).json({ error: 'Workspace not found' });
+        if (workspace.owner_id !== userId) {
+            return res.status(403).json({ error: 'Only the workspace owner can delete it' });
+        }
+
+        // Fetch all members (for notifications) before wiping membership
+        const { data: members } = await supabase
+            .from('workspace_members')
+            .select('user_id')
+            .eq('workspace_id', workspaceId)
+            .neq('user_id', userId); // exclude owner — no need to notify yourself
+
+        // Notify all members that the workspace was dissolved
+        if (members?.length > 0) {
+            const notifications = members.map(m => ({
+                user_id: m.user_id,
+                workspace_id: workspaceId,
+                type: 'workspace_deleted',
+                message: `The workspace "${workspace.name}" was deleted by its owner. Your tasks have been removed.`,
+            }));
+            await supabase.from('notifications').insert(notifications);
+        }
+
+        // Delete in safe dependency order
+        await supabase.from('notifications').delete()
+            .eq('workspace_id', workspaceId)
+            .neq('type', 'workspace_deleted'); // keep the deletion notices we just sent
+
+        await supabase.from('activity_log').delete().eq('workspace_id', workspaceId);
+        await supabase.from('commitments').delete().eq('workspace_id', workspaceId);
+        await supabase.from('meetings').delete().eq('workspace_id', workspaceId);
+        await supabase.from('workspace_members').delete().eq('workspace_id', workspaceId);
+
+        const { error: deleteErr } = await supabase
+            .from('workspaces')
+            .delete()
+            .eq('id', workspaceId);
+
+        if (deleteErr) throw deleteErr;
+
+        return res.json({ success: true });
+    } catch (err) {
+        console.error('Workspace delete error:', err);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // Test nudges manually
 app.get('/test-nudges', requireAuth, async (req, res) => {
     try {
