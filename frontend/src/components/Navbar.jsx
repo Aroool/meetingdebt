@@ -595,6 +595,13 @@ function Rail({ role, isSolo, user, overdueCount, workspaces, handleSwitchWorksp
         ...(!isSolo ? [{ to: '/workspace', label: 'Team', icon: UsersIcon }] : []),
         { to: '/chat', label: 'Ask AI', icon: SparklesIcon },
         { to: '/feedback', label: 'Feedback', icon: ChatBubbleIcon },
+        { to: '/about', label: 'About', icon: ({ size, color }) => (
+            <svg width={size || 16} height={size || 16} viewBox="0 0 16 16" fill="none" stroke={color || 'currentColor'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="8" cy="8" r="6" />
+                <line x1="8" y1="7" x2="8" y2="11" />
+                <circle cx="8" cy="5" r="0.5" fill={color || 'currentColor'} stroke="none" />
+            </svg>
+        )},
         ...(isSolo ? [{ to: '/workspace', label: 'Upgrade', icon: ArrowUpIcon, accent: true }] : []),
     ];
 

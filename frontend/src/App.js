@@ -57,7 +57,7 @@ function ProtectedLayout({ children }) {
 function AppInner() {
   const location = useLocation();
   const isMobile = useIsMobile();
-  const hideBubble = isMobile || ['/chat', '/', '/login', '/signup', '/forgot-password', '/reset-password'].includes(location.pathname);
+  const hideBubble = isMobile || ['/chat', '/', '/about', '/login', '/signup', '/forgot-password', '/reset-password'].includes(location.pathname);
 
   useEffect(() => {
     const theme = localStorage.getItem('theme');
