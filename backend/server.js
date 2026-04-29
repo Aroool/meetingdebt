@@ -1723,8 +1723,8 @@ async function sendDailyNudges() {
     }
 }
 
-// Runs every hour — sends to each user when it's their preferred nudge hour
-cron.schedule('0 * * * *', sendDailyNudges);
+// Runs once daily at 8 AM UTC (1:30 PM IST)
+cron.schedule('0 8 * * *', sendDailyNudges);
 
 // Manual trigger for testing — authenticated only
 // ── USER NOTIFICATION PREFERENCES ──
@@ -1815,24 +1815,22 @@ async function sendOverdueAlerts() {
         log.push(`Found ${overdueAll?.length || 0} overdue task(s) total`);
         if (!overdueAll?.length) return log;
 
-        // Filter per-user: only include tasks not yet notified today in their timezone
-        // and only when it's their preferred nudge hour
+        // Filter: only include tasks not yet notified today (UTC date dedup).
+        // Tasks that have already been notified today (overdue_notified_at >= today UTC)
+        // are skipped. Tasks without an assignee or workspace are silently stamped.
+        const todayUTC = now.toISOString().slice(0, 10); // "YYYY-MM-DD"
         const newlyOverdue = [];
         for (const c of overdueAll) {
-            if (!c.assigned_to && !c.workspace_id) { newlyOverdue.push(c); continue; }
-            const userId = c.assigned_to;
-            if (userId) {
-                const prefs = await getUserPrefs(userId);
-                // Only send during their preferred hour
-                if (currentHourInTz(prefs.timezone) !== prefs.nudge_hour) continue;
-                // Skip if already notified today in their timezone
-                if (c.overdue_notified_at) {
-                    const userTodayStr = now.toLocaleDateString('en-CA', { timeZone: prefs.timezone });
-                    const notifiedDateStr = new Date(c.overdue_notified_at)
-                        .toLocaleDateString('en-CA', { timeZone: prefs.timezone });
-                    if (notifiedDateStr >= userTodayStr) continue;
+            // Skip if already notified today (covers case where column exists)
+            if (c.overdue_notified_at) {
+                const notifiedDate = new Date(c.overdue_notified_at).toISOString().slice(0, 10);
+                if (notifiedDate >= todayUTC) {
+                    log.push(`  ⏭ Skipping task ${c.id} — already notified today`);
+                    continue;
                 }
             }
+            // Tasks with no recipient: stamp-and-skip (no email to send)
+            if (!c.assigned_to && !c.workspace_id) { newlyOverdue.push(c); continue; }
             newlyOverdue.push(c);
         }
 
@@ -1960,8 +1958,8 @@ async function sendOverdueAlerts() {
     return log;
 }
 
-// Runs every hour — per-user timezone check inside decides who gets emailed
-cron.schedule('0 * * * *', sendOverdueAlerts);
+// Runs once daily at 9 AM UTC (2:30 PM IST) — one digest per person per day
+cron.schedule('0 9 * * *', sendOverdueAlerts);
 
 // Manual trigger — returns full diagnostics so you can debug from the browser
 app.get('/trigger-overdue-check', requireAuth, async (req, res) => {
