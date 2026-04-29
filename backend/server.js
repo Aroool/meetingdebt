@@ -1974,15 +1974,8 @@ function feedbackEmailHtml(name) {
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:580px;margin:0 auto;background:#ffffff">
 
       <!-- Header bar -->
-      <div style="background:#0f172a;padding:20px 32px;border-radius:12px 12px 0 0">
-        <table cellpadding="0" cellspacing="0" border="0"><tr>
-          <td style="vertical-align:middle;padding-right:8px">
-            <div style="width:9px;height:9px;border-radius:50%;background:#16a34a"></div>
-          </td>
-          <td style="vertical-align:middle">
-            <span style="font-size:18px;font-weight:800;color:#ffffff;letter-spacing:-0.02em">Meeting<span style="color:#16a34a">Debt</span></span>
-          </td>
-        </tr></table>
+      <div style="background:#0f172a;padding:20px 32px;border-radius:12px 12px 0 0;line-height:1">
+        <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#16a34a;vertical-align:middle;margin-right:7px;margin-bottom:2px"></span><span style="font-size:18px;font-weight:800;color:#ffffff;letter-spacing:-0.02em;vertical-align:middle">Meeting<span style="color:#16a34a">Debt</span></span>
       </div>
 
       <!-- Body -->
