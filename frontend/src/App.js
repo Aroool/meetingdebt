@@ -25,6 +25,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import About from './pages/About';
 
 // Layout wrapper for all authenticated pages.
 // Desktop: sidebar 52px left + topbar 52px top.
@@ -75,6 +76,7 @@ function AppInner() {
         <Route path="/invite/:token" element={<AcceptInvite />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/about" element={<About />} />
         <Route path="/theme-picker" element={<ProtectedRoute><ThemePicker /></ProtectedRoute>} />
 
         {/* Auth-gated routes without nav (workspace setup flows) */}

@@ -138,6 +138,13 @@ export default function Landing() {
                             {l.label}
                         </div>
                     ))}
+                    <div
+                        onClick={() => navigate('/about')}
+                        style={S.navLink}
+                        onMouseEnter={e => e.currentTarget.style.color = '#16a34a'}
+                        onMouseLeave={e => e.currentTarget.style.color = textMuted}>
+                        About
+                    </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {/* Dark/Light toggle */}
