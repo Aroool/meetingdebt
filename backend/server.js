@@ -2060,7 +2060,7 @@ app.post('/admin/feedback-blast', async (req, res) => {
 
             await sendEmail({
                 to,
-                subject: `Hey ${name}, got 2 minutes? 🙏`,
+                subject: `Hey ${name}, got 2 minutes? 👀`,
                 html: feedbackEmailHtml(name),
             });
             return res.json({ success: true, sent: [to], name });
@@ -2080,7 +2080,7 @@ app.post('/admin/feedback-blast', async (req, res) => {
             try {
                 await sendEmail({
                     to: user.email,
-                    subject: `Hey ${name}, got 2 minutes? 🙏`,
+                    subject: `Hey ${name}, got 2 minutes? 👀`,
                     html: feedbackEmailHtml(name),
                 });
                 sent.push(user.email);
