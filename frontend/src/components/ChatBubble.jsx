@@ -71,7 +71,6 @@ export default function ChatBubble() {
 
     // Only show recent messages in bubble (last 10)
     const recent = messages.slice(-10);
-    const unread = messages.filter(m => m.role === 'assistant').length;
 
     return (
         <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
