@@ -14,6 +14,24 @@
       "runtimeArgs": ["server.js"],
       "port": 5001,
       "cwd": "backend"
+    },
+    {
+      "name": "archaeo-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "/Users/arulprashath/Desktop/code-archaeologist/frontend", "run", "dev", "--", "-p", "3010"],
+      "port": 3010
+    },
+    {
+      "name": "spark-homes",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "4178", "--directory", "/Users/arulprashath/Desktop/spark-homes-estimator"],
+      "port": 4178
+    },
+    {
+      "name": "myspotify",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "/Users/arulprashath/Desktop/myspotify", "run", "dev", "--", "-p", "3939"],
+      "port": 3939
     }
   ]
 }
