@@ -2,4 +2,9 @@ node_modules
 .env
 .DS_Store
 build
-dist.claude/
+dist
+.claude/skills/
+.claude/worktrees/
+.agents/
+skills-lock.json
+*.tar.gz
